@@ -17,7 +17,7 @@ serve(async (req) => {
     let userPrompt = "";
 
     if (drillType === "constraint") {
-      systemPrompt = `You are a writing coach with the mindset of a competitive distance running coach. You analyze writing drills — not to be nice, but to make the writer better. Be direct, specific, and constructive. Use short paragraphs. Reference specific words or phrases from their writing.`;
+      systemPrompt = `You are a writing coach with the mindset of a competitive distance running coach. You analyze writing drills - not to be nice, but to make the writer better. Be direct, specific, and constructive. Use short paragraphs. Reference specific words or phrases from their writing.`;
       userPrompt = `The writer was given this paragraph and asked to rewrite it in exactly 15 words within 60 seconds.
 
 **Original:**
