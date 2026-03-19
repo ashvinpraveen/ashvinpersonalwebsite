@@ -1,6 +1,6 @@
 const HeroSection = () => {
   return (
-    <section className="pt-24 pb-16 md:pt-32 md:pb-24">
+    <section className="pt-16 pb-16 md:pt-24 md:pb-24">
       <div className="max-w-prose">
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] mb-4">
           Ashvin Praveen
