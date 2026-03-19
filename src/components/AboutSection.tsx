@@ -9,7 +9,7 @@ const AboutSection = () => {
           I'm a mechanical engineer who somehow ended up building AI startups.
         </p>
         <p>
-          Grew up in Sarawak — Kuching, Miri, Bintulu — studied at the University of Sheffield on an ASEAN Merit Scholarship, and came back ready to build things.
+          Grew up in Sarawak - Kuching, Miri, Bintulu - studied at the University of Sheffield on an ASEAN Merit Scholarship, and came back ready to build things.
         </p>
         <p>
           First thing I built: a content agency. 14 people, six-figure revenue, working with founders to help them put their ideas into words. It was good work. I loved it.
