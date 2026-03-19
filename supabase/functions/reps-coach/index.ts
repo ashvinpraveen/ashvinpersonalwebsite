@@ -46,8 +46,8 @@ ${result.backspaceCount > 20 ? "(That's a lot of editing mid-flow.)" : ""}
 ${result.text.slice(0, 2000)}${result.text.length > 2000 ? "..." : ""}
 
 Analyze:
-1. Pace assessment — did they sustain output or fade?
-2. The backspace count — what does it say about their editing impulse?
+1. Pace assessment - did they sustain output or fade?
+2. The backspace count - what does it say about their editing impulse?
 3. Sentence structure patterns — do they default to long or short? Simple or complex?
 4. One specific observation about their voice or thinking style.
 5. What to focus on in the next session.`;
