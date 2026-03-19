@@ -33,7 +33,7 @@ Analyze:
 4. One specific drill to improve their compression skill.`;
     } else if (drillType === "threshold") {
       const wordsPerMinute = Math.round(result.wordCount / result.targetMinutes);
-      systemPrompt = `You are a writing coach with the mindset of a competitive distance running coach. You analyze threshold training sessions — volume, pace, and form under pressure. Be direct and specific. Use running analogies when they fit naturally.`;
+      systemPrompt = `You are a writing coach with the mindset of a competitive distance running coach. You analyze threshold training sessions - volume, pace, and form under pressure. Be direct and specific. Use running analogies when they fit naturally.`;
       userPrompt = `The writer set a target of ${result.targetWords} words in ${result.targetMinutes} minutes.
 
 **Results:**
