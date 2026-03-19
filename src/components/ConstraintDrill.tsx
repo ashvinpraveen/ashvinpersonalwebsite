@@ -20,9 +20,8 @@ const ConstraintDrill = ({ onComplete }: ConstraintDrillProps) => {
   const [finished, setFinished] = useState(false);
 
   const wordCount = useMemo(() => countWords(text), [text]);
-  const timeUsed = TIME_LIMIT - timer.timeLeft;
 
-  var timer = useTimer({
+  const timer = useTimer({
     duration: TIME_LIMIT,
     onComplete: () => {
       setFinished(true);
@@ -30,7 +29,6 @@ const ConstraintDrill = ({ onComplete }: ConstraintDrillProps) => {
     },
   });
 
-  // Fix: assign timer before using timeUsed
   const actualTimeUsed = TIME_LIMIT - timer.timeLeft;
 
   const handleStart = () => {
