@@ -33,7 +33,7 @@ const Reps = () => {
           </h1>
           <p className="text-muted-foreground leading-relaxed max-w-prose mb-2">
             Writing is a mechanical system. Clear inputs, feedback loops, daily reps. 
-            This isn't about inspiration — it's about training.
+            This isn't about inspiration - it's about training.
           </p>
           <p className="font-mono text-xs text-muted-foreground">
             The athlete's approach to clear thinking.

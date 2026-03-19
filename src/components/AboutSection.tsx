@@ -18,7 +18,7 @@ const AboutSection = () => {
           Then ChatGPT dropped. And I realised there was a deeper problem nobody had solved: AI tools are great, but they don't know <em>you</em>. Every session, you start from scratch.
         </p>
         <p>
-          So I went back to my engineering textbooks, taught myself to code, and started building Cleve — an AI workspace for writing that actually has context on who you are, how you think, and what you're trying to say.
+          So I went back to my engineering textbooks, taught myself to code, and started building Cleve - an AI workspace for writing that actually has context on who you are, how you think, and what you're trying to say.
         </p>
         <p>
           Two years in. ~35,000 users. Still going.

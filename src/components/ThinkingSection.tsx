@@ -1,6 +1,6 @@
 const ThinkingSection = () => {
   const models = [
-    "Clear inputs, feedback loops, daily reps. Not because it's a system I read about — because it's the only thing that's ever actually worked for me.",
+    "Clear inputs, feedback loops, daily reps. Not because it's a system I read about - because it's the only thing that's ever actually worked for me.",
     "Approximate the human capability threshold. Anyone can do that. Everything is learnable.",
     "First principles over formulas. If the underlying assumption changes, rebuild. Don't patch.",
   ];

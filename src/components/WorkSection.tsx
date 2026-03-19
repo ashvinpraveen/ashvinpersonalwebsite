@@ -25,7 +25,7 @@ const WorkSection = () => {
             National AI Competition (NAIC)
           </h3>
           <p className="text-base leading-relaxed text-foreground/90">
-            Director — helping young people actually understand AI, not just fear it.
+            Director - helping young people actually understand AI, not just fear it.
           </p>
         </div>
       </div>
