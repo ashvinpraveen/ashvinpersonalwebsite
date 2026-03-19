@@ -1,6 +1,5 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { supabase } from "@/integrations/supabase/client";
 
 interface CoachFeedbackProps {
   drillType: "constraint" | "threshold";
