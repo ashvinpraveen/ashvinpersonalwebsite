@@ -17,7 +17,7 @@ const WorkSection = () => {
             </a>
           </h3>
           <p className="text-base leading-relaxed text-foreground/90">
-            The AI writing workspace. Think Google Docs, if it had a senior thought partner who remembered everything you've ever written. We're building toward what Canva did for design — but for writing and self-expression.
+            The AI writing workspace. Think Google Docs, if it had a senior thought partner who remembered everything you've ever written. We're building toward what Canva did for design - but for writing and self-expression.
           </p>
         </div>
         <div>
