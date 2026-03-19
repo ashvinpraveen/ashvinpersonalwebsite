@@ -48,7 +48,7 @@ const ConstraintDrill = ({ onComplete }: ConstraintDrillProps) => {
     <div className="space-y-6">
       <div>
         <p className="font-mono text-xs text-muted-foreground uppercase tracking-widest mb-3">
-          Original — rewrite in exactly {WORD_LIMIT} words
+          Original - rewrite in exactly {WORD_LIMIT} words
         </p>
         <blockquote className="border-l-2 border-border pl-4 text-foreground/80 text-sm leading-relaxed">
           {prompt.text}

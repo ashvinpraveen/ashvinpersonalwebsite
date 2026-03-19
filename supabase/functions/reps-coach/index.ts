@@ -17,7 +17,7 @@ serve(async (req) => {
     let userPrompt = "";
 
     if (drillType === "constraint") {
-      systemPrompt = `You are a writing coach with the mindset of a competitive distance running coach. You analyze writing drills — not to be nice, but to make the writer better. Be direct, specific, and constructive. Use short paragraphs. Reference specific words or phrases from their writing.`;
+      systemPrompt = `You are a writing coach with the mindset of a competitive distance running coach. You analyze writing drills - not to be nice, but to make the writer better. Be direct, specific, and constructive. Use short paragraphs. Reference specific words or phrases from their writing.`;
       userPrompt = `The writer was given this paragraph and asked to rewrite it in exactly 15 words within 60 seconds.
 
 **Original:**
@@ -33,7 +33,7 @@ Analyze:
 4. One specific drill to improve their compression skill.`;
     } else if (drillType === "threshold") {
       const wordsPerMinute = Math.round(result.wordCount / result.targetMinutes);
-      systemPrompt = `You are a writing coach with the mindset of a competitive distance running coach. You analyze threshold training sessions — volume, pace, and form under pressure. Be direct and specific. Use running analogies when they fit naturally.`;
+      systemPrompt = `You are a writing coach with the mindset of a competitive distance running coach. You analyze threshold training sessions - volume, pace, and form under pressure. Be direct and specific. Use running analogies when they fit naturally.`;
       userPrompt = `The writer set a target of ${result.targetWords} words in ${result.targetMinutes} minutes.
 
 **Results:**
@@ -46,8 +46,8 @@ ${result.backspaceCount > 20 ? "(That's a lot of editing mid-flow.)" : ""}
 ${result.text.slice(0, 2000)}${result.text.length > 2000 ? "..." : ""}
 
 Analyze:
-1. Pace assessment — did they sustain output or fade?
-2. The backspace count — what does it say about their editing impulse?
+1. Pace assessment - did they sustain output or fade?
+2. The backspace count - what does it say about their editing impulse?
 3. Sentence structure patterns — do they default to long or short? Simple or complex?
 4. One specific observation about their voice or thinking style.
 5. What to focus on in the next session.`;

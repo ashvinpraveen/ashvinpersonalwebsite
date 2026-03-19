@@ -15,7 +15,7 @@ const WritingSection = () => {
             rel="noopener noreferrer"
             className="flex items-center gap-2 text-primary hover:underline underline-offset-4 transition-colors font-mono text-sm"
           >
-            <span className="text-muted-foreground">→</span> LinkedIn — where I share most of my thinking
+            <span className="text-muted-foreground">→</span> LinkedIn - where I share most of my thinking
           </a>
           <a
             href="https://instagram.com/ashvinpraveen"
@@ -23,7 +23,7 @@ const WritingSection = () => {
             rel="noopener noreferrer"
             className="flex items-center gap-2 text-primary hover:underline underline-offset-4 transition-colors font-mono text-sm"
           >
-            <span className="text-muted-foreground">→</span> Instagram — more casual, more behind-the-scenes
+            <span className="text-muted-foreground">→</span> Instagram - more casual, more behind-the-scenes
           </a>
         </div>
       </div>
