@@ -9,15 +9,21 @@ const SiteNav = () => {
           AP
         </Link>
         <div className="flex items-center gap-6 font-mono text-xs">
-          <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
-            Home
-          </Link>
+          <a href="https://linkedin.com/in/ashvinpraveen" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+            LinkedIn
+          </a>
+          <a href="https://instagram.com/ashvinpraveen" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+            Instagram
+          </a>
+          <a href="https://x.com/ashvinpk" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+            X
+          </a>
+          <a href="https://youtube.com/@ashvinpraveen" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
+            YouTube
+          </a>
           <Link to="/reps" className="text-muted-foreground hover:text-foreground transition-colors">
             Reps
           </Link>
-          <a href="/#contact" className="text-muted-foreground hover:text-foreground transition-colors">
-            Contact
-          </a>
           <ThemeToggle />
         </div>
       </div>
