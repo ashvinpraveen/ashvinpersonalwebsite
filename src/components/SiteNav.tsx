@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const SiteNav = () => {
   return (
@@ -17,6 +18,7 @@ const SiteNav = () => {
           <a href="/#contact" className="text-muted-foreground hover:text-foreground transition-colors">
             Contact
           </a>
+          <ThemeToggle />
         </div>
       </div>
     </nav>

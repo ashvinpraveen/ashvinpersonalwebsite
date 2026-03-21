@@ -91,7 +91,7 @@ const CoachFeedback = ({ drillType, result }: CoachFeedbackProps) => {
       <p className="font-mono text-xs text-muted-foreground uppercase tracking-widest mb-4">
         Coach Feedback
       </p>
-      <div className="prose prose-sm max-w-none text-foreground/90">
+      <div className="prose prose-sm max-w-none text-foreground/90 prose-headings:text-foreground prose-strong:text-foreground prose-code:text-primary">
         {loading && !feedback && (
           <p className="text-muted-foreground font-mono text-xs animate-pulse">Analyzing your rep...</p>
         )}
