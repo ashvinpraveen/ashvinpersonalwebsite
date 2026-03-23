@@ -1,4 +1,4 @@
-const PROXY_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cleve-proxy`;
+const PROXY_BASE = `${import.meta.env.VITE_CONVEX_SITE_URL}/cleve-proxy`;
 
 export interface CleveNote {
   id: string;
@@ -9,11 +9,7 @@ export interface CleveNote {
 }
 
 async function cleveRequest<T>(path: string): Promise<T> {
-  const res = await fetch(`${PROXY_BASE}${path}`, {
-    headers: {
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-    },
-  });
+  const res = await fetch(`${PROXY_BASE}?path=${encodeURIComponent(path)}`);
   if (!res.ok) throw new Error(`Cleve proxy error: ${res.status}`);
   return res.json();
 }

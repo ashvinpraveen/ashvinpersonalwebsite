@@ -118,7 +118,6 @@ const Reps = () => {
                 </button>
               </div>
               <ConstraintDrill onComplete={handleConstraintComplete} />
-              {drillResult && <CoachFeedback drillType="constraint" result={drillResult} />}
             </div>
           )}
 
@@ -136,7 +135,6 @@ const Reps = () => {
                 </button>
               </div>
               <ThresholdTraining onComplete={handleThresholdComplete} />
-              {drillResult && <CoachFeedback drillType="threshold" result={drillResult} />}
             </div>
           )}
         </section>

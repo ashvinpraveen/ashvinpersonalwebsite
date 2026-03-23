@@ -18,13 +18,10 @@ const CoachFeedback = ({ drillType, result }: CoachFeedbackProps) => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reps-coach`,
+        `${import.meta.env.VITE_CONVEX_SITE_URL}/reps-coach`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ drillType, result }),
         }
       );
@@ -48,20 +45,16 @@ const CoachFeedback = ({ drillType, result }: CoachFeedbackProps) => {
           let line = buffer.slice(0, newlineIndex);
           buffer = buffer.slice(newlineIndex + 1);
           if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") continue;
-          if (!line.startsWith("data: ")) continue;
+          if (line.trim() === "" || !line.startsWith("data: ")) continue;
           const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") break;
           try {
             const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              accumulated += content;
+            if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+              accumulated += parsed.delta.text;
               setFeedback(accumulated);
             }
           } catch {
-            buffer = line + "\n" + buffer;
-            break;
+            // skip malformed lines
           }
         }
       }
