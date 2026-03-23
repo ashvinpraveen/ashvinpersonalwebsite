@@ -26,19 +26,7 @@ const SiteNav = () => {
         <Link to="/" className="font-semibold text-sm tracking-tight text-foreground hover:text-primary transition-colors">
           AP
         </Link>
-        <div className="flex items-center gap-6 font-mono text-xs">
-          <a href="https://linkedin.com/in/ashvinpraveen" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
-            LinkedIn
-          </a>
-          <a href="https://instagram.com/ashvinpraveen" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
-            Instagram
-          </a>
-          <a href="https://x.com/ashvinpk" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
-            X
-          </a>
-          <a href="https://youtube.com/@ashvinpraveen" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
-            YouTube
-          </a>
+        <div className="flex items-center gap-5 font-mono text-xs">
           <Link to="/blog" className="text-muted-foreground hover:text-foreground transition-colors">
             Writing
           </Link>

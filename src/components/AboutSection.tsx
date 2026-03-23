@@ -24,6 +24,14 @@ const AboutSection = () => {
           Two years in. ~35,000 users. Still going.
         </p>
       </div>
+      <div className="mt-10">
+        <img
+          src="/ashvin-bfm-group.jpg"
+          alt="Ashvin at BFM 89.9"
+          className="w-full max-w-md rounded-sm object-cover"
+        />
+        <p className="font-mono text-xs text-muted-foreground mt-2">BFM 89.9</p>
+      </div>
     </section>
   );
 };
