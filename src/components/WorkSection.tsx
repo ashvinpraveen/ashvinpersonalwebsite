@@ -17,7 +17,7 @@ const WorkSection = () => {
             </a>
           </h3>
           <p className="text-base leading-relaxed text-foreground/90">
-            The AI writing workspace. Think Google Docs, if it had a senior thought partner who remembered everything you've ever written. We're building toward what Canva did for design - but for writing and self-expression.
+            An AI writing workspace that builds context on how you think and what you're trying to say — so you're not starting from scratch every session.
           </p>
         </div>
         <div>
@@ -25,7 +25,7 @@ const WorkSection = () => {
             National AI Competition (NAIC)
           </h3>
           <p className="text-base leading-relaxed text-foreground/90">
-            Director - helping young people actually understand AI, not just fear it.
+            Director. Getting young people to engage with AI seriously, not just consume it.
           </p>
         </div>
       </div>

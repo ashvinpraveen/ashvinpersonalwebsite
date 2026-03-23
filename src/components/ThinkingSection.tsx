@@ -1,8 +1,8 @@
 const ThinkingSection = () => {
   const models = [
-    "Clear inputs, feedback loops, daily reps. Not because it's a system I read about - because it's the only thing that's ever actually worked for me.",
-    "Approximate the human capability threshold. Anyone can do that. Everything is learnable.",
-    "First principles over formulas. If the underlying assumption changes, rebuild. Don't patch.",
+    "Clear inputs, feedback loops, daily reps. The only thing that's ever actually worked.",
+    "Most skills have a learnable ceiling that most people never reach. That gap is just reps.",
+    "First principles over formulas. If the underlying assumption changes, rebuild — don't patch.",
   ];
 
   return (
@@ -11,9 +11,6 @@ const ThinkingSection = () => {
         How I Think
       </p>
       <div className="max-w-prose">
-        <p className="text-base leading-relaxed text-foreground/90 mb-8">
-          I apply an engineer and athlete mindset to everything.
-        </p>
         <div className="space-y-6">
           {models.map((model, i) => (
             <div key={i} className="flex gap-4">

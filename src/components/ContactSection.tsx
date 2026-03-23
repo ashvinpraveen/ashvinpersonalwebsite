@@ -13,7 +13,7 @@ const ContactSection = () => {
       </p>
       <div className="max-w-prose">
         <p className="text-base leading-relaxed text-foreground/90 mb-6">
-          If something here resonated - or if you're building something and want to talk - reach out.
+          Building something? Have a question? Just reach out.
         </p>
         <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-sm">
           {links.map((link) => (
