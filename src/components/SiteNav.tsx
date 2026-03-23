@@ -39,6 +39,9 @@ const SiteNav = () => {
           <a href="https://youtube.com/@ashvinpraveen" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors">
             YouTube
           </a>
+          <Link to="/blog" className="text-muted-foreground hover:text-foreground transition-colors">
+            Writing
+          </Link>
           <Link to="/reps" className="text-muted-foreground hover:text-foreground transition-colors">
             Reps
           </Link>

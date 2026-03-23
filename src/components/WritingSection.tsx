@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 const WritingSection = () => {
   return (
     <section id="writing" className="py-16 md:py-20 border-t border-border">
@@ -9,6 +11,12 @@ const WritingSection = () => {
           Thoughts on building, AI, content, and whatever I'm figuring out right now.
         </p>
         <div className="space-y-3">
+          <Link
+            to="/blog"
+            className="flex items-center gap-2 text-primary hover:underline underline-offset-4 transition-colors font-mono text-sm"
+          >
+            <span className="text-muted-foreground">→</span> Blog - longer-form writing
+          </Link>
           <a
             href="https://linkedin.com/in/ashvinpraveen"
             target="_blank"
