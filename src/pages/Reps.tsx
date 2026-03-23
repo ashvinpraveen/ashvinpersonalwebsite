@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import SiteNav from "@/components/SiteNav";
 import ConstraintDrill from "@/components/ConstraintDrill";
 import ThresholdTraining from "@/components/ThresholdTraining";
@@ -7,8 +9,39 @@ import CoachFeedback from "@/components/CoachFeedback";
 type DrillMode = "select" | "constraint" | "threshold";
 
 const Reps = () => {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<DrillMode>("select");
   const [drillResult, setDrillResult] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/login");
+      }
+      setLoading(false);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/login");
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  if (loading) {
+    return (
+      <>
+        <SiteNav />
+        <main className="px-6 md:px-12 lg:px-20 max-w-3xl mx-auto pb-20 pt-12">
+          <p className="pt-24 text-muted-foreground font-mono text-xs">Loading...</p>
+        </main>
+      </>
+    );
+  }
 
   const handleConstraintComplete = (result: { original: string; rewrite: string; wordCount: number; timeUsed: number }) => {
     setDrillResult(result);
