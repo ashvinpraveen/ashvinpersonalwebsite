@@ -1,5 +1,6 @@
 import { useState } from "react";
 import SiteNav from "@/components/SiteNav";
+import Footer from "@/components/Footer";
 import ConstraintDrill from "@/components/ConstraintDrill";
 import ThresholdTraining from "@/components/ThresholdTraining";
 
@@ -104,6 +105,7 @@ const Reps = () => {
             </div>
           )}
         </section>
+        <Footer />
       </main>
     </>
   );

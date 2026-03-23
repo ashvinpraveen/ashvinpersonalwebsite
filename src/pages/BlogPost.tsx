@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import SiteNav from "@/components/SiteNav";
+import Footer from "@/components/Footer";
 import { fetchNote } from "@/lib/cleve";
 
 const BlogPost = () => {
@@ -50,11 +51,7 @@ const BlogPost = () => {
           </article>
         )}
 
-        <footer className="pt-12 mt-12 border-t border-border">
-          <p className="font-mono text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Ashvin Praveen
-          </p>
-        </footer>
+        <Footer />
       </main>
     </>
   );

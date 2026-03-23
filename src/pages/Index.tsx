@@ -1,4 +1,5 @@
 import SiteNav from "@/components/SiteNav";
+import Footer from "@/components/Footer";
 import HeroSection from "@/components/HeroSection";
 import AboutSection from "@/components/AboutSection";
 import WorkSection from "@/components/WorkSection";
@@ -19,11 +20,7 @@ const Index = () => {
         <WritingSection />
         <FactsSection />
         <ContactSection />
-        <footer className="pt-8 pb-12 border-t border-border">
-          <p className="font-mono text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Ashvin Praveen
-          </p>
-        </footer>
+        <Footer />
       </main>
     </>
   );

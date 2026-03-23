@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import SiteNav from "@/components/SiteNav";
+import Footer from "@/components/Footer";
 import { fetchNotes } from "@/lib/cleve";
 
 const Blog = () => {
@@ -53,11 +54,7 @@ const Blog = () => {
           </ul>
         )}
 
-        <footer className="pt-12 mt-12 border-t border-border">
-          <p className="font-mono text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Ashvin Praveen
-          </p>
-        </footer>
+        <Footer />
       </main>
     </>
   );
