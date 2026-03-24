@@ -6,7 +6,7 @@ const ContactSection = () => {
       </p>
       <div className="max-w-prose space-y-6">
         <p className="text-base leading-relaxed text-foreground/90">
-          Building something, or want to try Cleve. Reach out.
+          Building something, or want to try Cleve? Reach out.
         </p>
         <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-sm">
           <a

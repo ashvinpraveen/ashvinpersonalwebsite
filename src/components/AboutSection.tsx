@@ -6,13 +6,10 @@ const AboutSection = () => {
       </p>
       <div className="max-w-prose space-y-4 text-base md:text-[17px] leading-relaxed text-foreground/90">
         <p>
-          I sit at the intersection of science and art. Engineering degree. Background in marketing and content. Interests in music, design, and building things with my hands.
+          Engineering degree. Background in content and brand. I think about design, systems, and how things are made.
         </p>
         <p>
-          I care about whether things are done with taste. That's the lens I bring to AI.
-        </p>
-        <p>
-          Based in KL. Director of Malaysia's National AI Competition. Previously ran a 14-person content agency helping founders build their brands.
+          Ran a 14-person content agency helping founders build their brands. Now building Cleve and directing Malaysia's National AI Competition.
         </p>
       </div>
     </section>

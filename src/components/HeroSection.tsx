@@ -10,8 +10,7 @@ const HeroSection = () => {
             Co-founder & CEO, Cleve.ai
           </p>
           <p className="text-lg md:text-xl text-foreground/90 leading-relaxed">
-            I build AI tools and teach people how to use them.
-            Founder of Cleve. Building in the trenches.
+            I build AI tools and teach people how to use them well.
           </p>
           <nav className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-mono text-sm">
             <a href="#cleve" className="text-primary hover:underline underline-offset-4 transition-colors">

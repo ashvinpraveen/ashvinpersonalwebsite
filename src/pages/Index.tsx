@@ -3,9 +3,10 @@ import Footer from "@/components/Footer";
 import HeroSection from "@/components/HeroSection";
 import AboutSection from "@/components/AboutSection";
 import WorkSection from "@/components/WorkSection";
-import ThinkingSection from "@/components/ThinkingSection";
+import InvolvementSection from "@/components/InvolvementSection";
 import WritingSection from "@/components/WritingSection";
-import FactsSection from "@/components/FactsSection";
+import InterestsSection from "@/components/InterestsSection";
+import ResourcesSection from "@/components/ResourcesSection";
 import ContactSection from "@/components/ContactSection";
 
 const Index = () => {
@@ -14,11 +15,12 @@ const Index = () => {
       <SiteNav />
       <main className="px-6 md:px-12 lg:px-20 max-w-3xl mx-auto pb-20 pt-12">
         <HeroSection />
-        <AboutSection />
         <WorkSection />
-        <ThinkingSection />
+        <InvolvementSection />
+        <AboutSection />
         <WritingSection />
-        <FactsSection />
+        <InterestsSection />
+        <ResourcesSection />
         <ContactSection />
         <Footer />
       </main>
