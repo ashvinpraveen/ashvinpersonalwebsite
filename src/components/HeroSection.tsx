@@ -9,15 +9,16 @@ const HeroSection = () => {
           <p className="font-mono text-sm text-muted-foreground mb-6">
             Co-founder & CEO, Cleve.ai
           </p>
-          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-            Building tools that help people think and communicate better.
+          <p className="text-lg md:text-xl text-foreground/90 leading-relaxed">
+            I build AI tools and teach people how to use them.
+            Founder of Cleve. Building in the trenches.
           </p>
           <nav className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-mono text-sm">
-            <a href="#writing" className="text-primary hover:underline underline-offset-4 transition-colors">
-              Read my writing
+            <a href="#cleve" className="text-primary hover:underline underline-offset-4 transition-colors">
+              What I'm building
             </a>
-            <a href="#about" className="text-primary hover:underline underline-offset-4 transition-colors">
-              About me
+            <a href="#writing" className="text-primary hover:underline underline-offset-4 transition-colors">
+              Writing
             </a>
             <a href="#contact" className="text-primary hover:underline underline-offset-4 transition-colors">
               Get in touch

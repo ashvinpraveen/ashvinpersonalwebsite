@@ -4,33 +4,16 @@ const AboutSection = () => {
       <p className="font-mono text-xs text-muted-foreground uppercase tracking-widest mb-8">
         About
       </p>
-      <div className="max-w-prose space-y-5 text-base md:text-[17px] leading-relaxed text-foreground/90">
+      <div className="max-w-prose space-y-4 text-base md:text-[17px] leading-relaxed text-foreground/90">
         <p>
-          I'm a mechanical engineer who somehow ended up building AI startups.
+          I sit at the intersection of science and art. Engineering degree. Background in marketing and content. Interests in music, design, and building things with my hands.
         </p>
         <p>
-          Grew up in Sarawak - Kuching, Miri, Bintulu - studied at the University of Sheffield on an ASEAN Merit Scholarship, and came back ready to build things.
+          I care about whether things are done with taste. That's the lens I bring to AI.
         </p>
         <p>
-          First thing I built: a content agency. 14 people, six-figure revenue, working with founders to help them put their ideas into words. It was good work. I loved it.
+          Based in KL. Director of Malaysia's National AI Competition. Previously ran a 14-person content agency helping founders build their brands.
         </p>
-        <p>
-          Then ChatGPT dropped. And I realised there was a deeper problem nobody had solved: AI tools are great, but they don't know <em>you</em>. Every session, you start from scratch.
-        </p>
-        <p>
-          So I went back to my engineering textbooks, taught myself to code, and started building Cleve - an AI workspace for writing that actually has context on who you are, how you think, and what you're trying to say.
-        </p>
-        <p>
-          Two years in. ~35,000 users. Still going.
-        </p>
-      </div>
-      <div className="mt-10">
-        <img
-          src="/ashvin-bfm-group.jpg"
-          alt="Ashvin at BFM 89.9"
-          className="w-full max-w-md rounded-sm object-cover"
-        />
-        <p className="font-mono text-xs text-muted-foreground mt-2">BFM 89.9</p>
       </div>
     </section>
   );
