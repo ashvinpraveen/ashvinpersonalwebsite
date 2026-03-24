@@ -4,7 +4,7 @@ const projects = [
     logo: "/logo-naic.png",
     href: "https://rakantutor.org/naic",
     role: "Director",
-    description: "Helping young Malaysians understand and build with AI.",
+    description: "Malaysia's largest student AI challenge, co-organized with Sunway University. Students compete in 5 tracks — building AI apps, training models, generative art, smart city engineering, and future classroom design. Grand Finals at Sunway University, June 2026.",
   },
   {
     name: "Malaysian.ai",
