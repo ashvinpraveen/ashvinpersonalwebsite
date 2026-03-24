@@ -19,7 +19,7 @@ const socials = [
   },
   {
     label: "X",
-    href: "https://x.com/ashvinpraveen",
+    href: "https://x.com/ashvinpk",
     icon: "/social-icons/X_Twitter_logo.svg",
     iconDark: null,
   },
@@ -28,12 +28,6 @@ const socials = [
     href: "https://youtube.com/@ashvinpraveen",
     icon: "/social-icons/YouTube_logo.svg",
     iconDark: null,
-  },
-  {
-    label: "Threads",
-    href: "https://threads.net/@ashvinpraveen",
-    icon: "/social-icons/Threads_logo_black.svg",
-    iconDark: "/social-icons/Threads_logo_white.svg",
   },
 ];
 
