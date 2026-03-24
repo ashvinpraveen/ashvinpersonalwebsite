@@ -7,6 +7,7 @@ import InvolvementSection from "@/components/InvolvementSection";
 import WritingSection from "@/components/WritingSection";
 import InterestsSection from "@/components/InterestsSection";
 import ResourcesSection from "@/components/ResourcesSection";
+import SocialsSection from "@/components/SocialsSection";
 import ContactSection from "@/components/ContactSection";
 
 const Index = () => {
@@ -21,6 +22,7 @@ const Index = () => {
         <WritingSection />
         <InterestsSection />
         <ResourcesSection />
+        <SocialsSection />
         <ContactSection />
         <Footer />
       </main>
