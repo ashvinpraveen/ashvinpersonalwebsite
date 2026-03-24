@@ -1,24 +1,29 @@
 const interests = [
-  "Running. Still lace up most mornings.",
-  "Design — the craft of making things look and feel right.",
-  "The intersection of AI and human creativity.",
-  "Music. Always something on.",
+  "Music — always on",
+  "Running — most mornings",
+  "Design obsessive",
+  "AI × human creativity",
+  "Building in public",
+  "Sarawak born, KL based",
 ];
 
 const InterestsSection = () => {
   return (
     <section className="py-16 md:py-20 border-t border-border">
-      <p className="font-mono text-xs text-muted-foreground uppercase tracking-widest mb-8">
-        Interests
-      </p>
-      <ul className="max-w-prose space-y-3">
+      <div className="flex items-center gap-3 mb-8">
+        <span className="h-px w-6 bg-primary shrink-0" />
+        <p className="font-mono text-xs text-muted-foreground uppercase tracking-widest">Interests</p>
+      </div>
+      <div className="flex flex-wrap gap-2 max-w-prose">
         {interests.map((item, i) => (
-          <li key={i} className="flex gap-3 text-base leading-relaxed text-foreground/90">
-            <span className="text-muted-foreground mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
-            <span>{item}</span>
-          </li>
+          <span
+            key={i}
+            className="px-4 py-2 rounded-full border border-border bg-muted/60 text-sm font-medium text-foreground/80 hover:border-primary/40 hover:bg-muted transition-colors cursor-default"
+          >
+            {item}
+          </span>
         ))}
-      </ul>
+      </div>
     </section>
   );
 };

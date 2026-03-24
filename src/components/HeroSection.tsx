@@ -3,11 +3,20 @@ const HeroSection = () => {
     <section className="pt-16 pb-16 md:pt-24 md:pb-24">
       <div className="flex flex-col-reverse md:flex-row md:items-start md:justify-between gap-10">
         <div className="max-w-prose">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1] mb-4">
+          <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] mb-4">
             Ashvin Praveen
           </h1>
-          <p className="font-mono text-sm text-muted-foreground mb-6">
-            Co-founder & CEO, Cleve.ai
+          <p className="font-mono text-sm mb-6 flex items-center gap-2">
+            <span className="text-primary font-semibold">Co-founder & CEO</span>
+            <span className="text-muted-foreground">·</span>
+            <a
+              href="https://cleve.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-primary transition-colors"
+            >
+              Cleve.ai
+            </a>
           </p>
           <p className="text-lg md:text-xl text-foreground/90 leading-relaxed">
             I build AI tools and teach people how to use them well.
@@ -27,7 +36,7 @@ const HeroSection = () => {
         <img
           src="/ashvin-profile.png"
           alt="Ashvin Praveen"
-          className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover object-top shrink-0"
+          className="w-32 h-32 md:w-44 md:h-44 rounded-2xl object-cover object-top shrink-0 ring-4 ring-primary/15"
         />
       </div>
     </section>
