@@ -10,7 +10,7 @@ const WorkSection = () => {
         <div className="rounded-xl border border-border bg-muted/40 p-5 hover:border-primary/40 hover:bg-muted/60 transition-all">
           <div className="flex items-center gap-3 mb-3">
             <img
-              src="/logo-cleve.svg"
+              src="/logo-cleve.png"
               alt="Cleve"
               className="w-9 h-9 rounded-lg object-contain shrink-0"
             />

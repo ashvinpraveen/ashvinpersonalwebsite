@@ -8,7 +8,7 @@ const projects = [
   },
   {
     name: "Malaysian.ai",
-    logo: "/logo-malaysian-ai.svg",
+    logo: "/logo-malaysian-ai.png",
     href: "https://www.malaysian.ai/",
     role: "Contributor",
     description: "The home of AI builders in Malaysia. Events, communities, and education for anyone building with AI.",
