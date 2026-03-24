@@ -3,6 +3,7 @@ import SiteNav from "@/components/SiteNav";
 import Footer from "@/components/Footer";
 import ConstraintDrill from "@/components/ConstraintDrill";
 import ThresholdTraining from "@/components/ThresholdTraining";
+import CoachFeedback from "@/components/CoachFeedback";
 
 type DrillMode = "select" | "constraint" | "threshold";
 
@@ -85,6 +86,9 @@ const Reps = () => {
                 </button>
               </div>
               <ConstraintDrill onComplete={handleConstraintComplete} />
+              {drillResult && (
+                <CoachFeedback drillType="constraint" result={drillResult} />
+              )}
             </div>
           )}
 
@@ -102,6 +106,9 @@ const Reps = () => {
                 </button>
               </div>
               <ThresholdTraining onComplete={handleThresholdComplete} />
+              {drillResult && (
+                <CoachFeedback drillType="threshold" result={drillResult} />
+              )}
             </div>
           )}
         </section>
