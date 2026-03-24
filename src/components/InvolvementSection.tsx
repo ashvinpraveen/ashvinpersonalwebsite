@@ -11,7 +11,7 @@ const projects = [
     logo: "/logo-malaysian-ai.png",
     href: "https://www.malaysian.ai/",
     role: "Contributor",
-    description: "Leading the home of AI builders in Malaysia, backed by 500 Global. Connects builders across communities, events, and a residency program supporting Malaysian AI startups.",
+    description: "The home of AI builders in Malaysia, backed by 500 Global. Connects builders across communities, events, and a residency program supporting Malaysian AI startups.",
   },
 ];
 
