@@ -29,6 +29,12 @@ const socials = [
     icon: "/social-icons/YouTube_logo.svg",
     iconDark: null,
   },
+  {
+    label: "Threads",
+    href: "https://threads.net/@ashvinpraveen",
+    icon: "/social-icons/Threads_logo_black.svg",
+    iconDark: "/social-icons/Threads_logo_white.svg",
+  },
 ];
 
 const HeroSection = () => {
