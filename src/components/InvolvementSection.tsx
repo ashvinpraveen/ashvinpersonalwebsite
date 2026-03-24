@@ -4,14 +4,14 @@ const projects = [
     logo: "/logo-naic.png",
     href: "https://rakantutor.org/naic",
     role: "Director",
-    description: "Malaysia's largest student AI challenge, co-organized with Sunway University. Students compete in 5 tracks — building AI apps, training models, generative art, smart city engineering, and future classroom design. Grand Finals at Sunway University, June 2026.",
+    description: "Leading Malaysia's largest student AI challenge, run by Rakan Tutor and co-organized with Sunway University. Students compete in 5 tracks: building AI apps, training models, generative art, smart city engineering, and future classroom design. Grand Finals at Sunway University, June 2026.",
   },
   {
     name: "Malaysian.ai",
     logo: "/logo-malaysian-ai.png",
     href: "https://www.malaysian.ai/",
     role: "Contributor",
-    description: "The home of AI builders in Malaysia. Events, communities, and education for anyone building with AI.",
+    description: "Leading the home of AI builders in Malaysia, backed by 500 Global. Connects builders across communities, events, and a residency program supporting Malaysian AI startups.",
   },
 ];
 
