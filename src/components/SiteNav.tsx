@@ -5,7 +5,10 @@ const SiteNav = () => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
       <div className="max-w-3xl mx-auto px-6 md:px-12 lg:px-20 flex items-center justify-between h-12">
-        <Link to="/" className="font-semibold text-sm tracking-tight text-foreground hover:text-primary transition-colors">
+        <Link
+          to="/"
+          className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground font-bold text-sm tracking-tight hover:opacity-85 transition-opacity"
+        >
           AP
         </Link>
         <div className="flex items-center gap-5 font-mono text-xs">
