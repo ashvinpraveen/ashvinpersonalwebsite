@@ -38,7 +38,16 @@ const WorkSection = () => {
         </div>
 
         <div>
-          <h3 className="text-lg font-semibold mb-3">National AI Competition (NAIC)</h3>
+          <h3 className="text-lg font-semibold mb-3">
+            <a
+              href="https://rakantutor.org/naic"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline underline-offset-4 transition-colors"
+            >
+              National AI Competition (NAIC)
+            </a>
+          </h3>
           <p className="text-base leading-relaxed text-foreground/90">
             Director. Helping young Malaysians understand and build with AI.
           </p>
