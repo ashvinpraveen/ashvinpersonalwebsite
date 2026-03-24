@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchNotes } from "@/lib/cleve";
 
 const WritingSection = () => {
-  const { data: notes } = useQuery({
+  const { data: notes, isLoading, isError } = useQuery({
     queryKey: ["cleve-notes"],
     queryFn: fetchNotes,
   });
@@ -18,7 +18,25 @@ const WritingSection = () => {
       </div>
       <div className="max-w-prose">
         <div className="space-y-4 mb-10">
-          {posts.map((post) => (
+          {isLoading && (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="p-4 rounded-xl border border-transparent">
+                  <div className="h-4 w-3/4 bg-muted animate-pulse rounded mb-2" />
+                  <div className="h-3 w-1/3 bg-muted animate-pulse rounded" />
+                </div>
+              ))}
+            </div>
+          )}
+          {isError && (
+            <p className="font-mono text-xs text-muted-foreground pl-4">
+              Couldn't load posts.{" "}
+              <Link to="/blog" className="text-primary hover:underline underline-offset-4">
+                Browse all →
+              </Link>
+            </p>
+          )}
+          {!isLoading && !isError && posts.map((post) => (
             <Link
               key={post.id}
               to={`/blog/${post.id}`}
@@ -41,16 +59,6 @@ const WritingSection = () => {
               </span>
             </Link>
           ))}
-          {posts.length === 0 && (
-            <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="p-4 rounded-xl border border-transparent">
-                  <div className="h-4 w-3/4 bg-muted animate-pulse rounded mb-2" />
-                  <div className="h-3 w-1/3 bg-muted animate-pulse rounded" />
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-sm pl-4">
