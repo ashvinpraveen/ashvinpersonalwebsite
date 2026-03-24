@@ -4,8 +4,15 @@ import SiteNav from "@/components/SiteNav";
 import Footer from "@/components/Footer";
 import { fetchNotes } from "@/lib/cleve";
 
+const PostSkeleton = () => (
+  <li className="space-y-2">
+    <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
+    <div className="h-3 w-1/4 bg-muted animate-pulse rounded" />
+  </li>
+);
+
 const Blog = () => {
-  const { data: notes, isLoading, isError } = useQuery({
+  const { data: notes, isLoading, isError, refetch } = useQuery({
     queryKey: ["cleve-notes"],
     queryFn: fetchNotes,
   });
@@ -19,11 +26,25 @@ const Blog = () => {
         </p>
 
         {isLoading && (
-          <p className="font-mono text-sm text-muted-foreground">Loading...</p>
+          <ul className="space-y-8">
+            {[...Array(5)].map((_, i) => (
+              <PostSkeleton key={i} />
+            ))}
+          </ul>
         )}
 
         {isError && (
-          <p className="font-mono text-sm text-destructive">Failed to load posts.</p>
+          <div className="space-y-3">
+            <p className="font-mono text-sm text-destructive">
+              Couldn't load posts right now.
+            </p>
+            <button
+              onClick={() => refetch()}
+              className="font-mono text-xs text-primary hover:underline underline-offset-4 transition-colors"
+            >
+              Try again →
+            </button>
+          </div>
         )}
 
         {notes && notes.length === 0 && (

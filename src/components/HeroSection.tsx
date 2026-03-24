@@ -39,7 +39,7 @@ const socials = [
 
 const HeroSection = () => {
   return (
-    <section className="pt-16 pb-16 md:pt-24 md:pb-24">
+    <section id="hero" className="pt-16 pb-16 md:pt-24 md:pb-24">
       <div className="flex flex-col-reverse md:flex-row md:items-start md:justify-between gap-10">
         <div className="max-w-prose">
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] mb-4">
@@ -71,13 +71,14 @@ const HeroSection = () => {
               >
                 <img
                   src={social.icon}
-                  alt={social.label}
+                  alt={`${social.label} profile`}
                   className={`w-4 h-4 object-contain${social.iconDark ? " dark:hidden" : ""}`}
                 />
                 {social.iconDark && (
                   <img
                     src={social.iconDark}
-                    alt={social.label}
+                    alt=""
+                    aria-hidden="true"
                     className="w-4 h-4 object-contain hidden dark:block"
                   />
                 )}
