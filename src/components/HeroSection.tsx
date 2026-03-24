@@ -58,7 +58,7 @@ const HeroSection = () => {
             </a>
           </p>
           <p className="text-lg md:text-xl text-foreground/90 leading-relaxed">
-            I build AI tools and teach people how to use them well.
+            Experimenting with AI's applications, building and sharing what I've found helpful.
           </p>
           <div className="mt-8 flex flex-wrap gap-2.5">
             {socials.map((social) => (
