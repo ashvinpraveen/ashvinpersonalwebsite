@@ -71,13 +71,14 @@ const HeroSection = () => {
               >
                 <img
                   src={social.icon}
-                  alt={social.label}
+                  alt={`${social.label} profile`}
                   className={`w-4 h-4 object-contain${social.iconDark ? " dark:hidden" : ""}`}
                 />
                 {social.iconDark && (
                   <img
                     src={social.iconDark}
-                    alt={social.label}
+                    alt=""
+                    aria-hidden="true"
                     className="w-4 h-4 object-contain hidden dark:block"
                   />
                 )}
