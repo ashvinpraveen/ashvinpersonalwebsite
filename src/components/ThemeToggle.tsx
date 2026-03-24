@@ -27,7 +27,7 @@ const ThemeToggle = () => {
       className="text-muted-foreground hover:text-foreground transition-colors font-mono text-xs"
       aria-label="Toggle theme"
     >
-      {dark ? <Sun size={15} /> : <Moon size={15} />}
+      {dark ? <Moon size={15} /> : <Sun size={15} />}
     </button>
   );
 };
