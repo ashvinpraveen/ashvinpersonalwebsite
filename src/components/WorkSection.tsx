@@ -8,16 +8,23 @@ const WorkSection = () => {
       <div className="max-w-prose space-y-10">
 
         <div className="rounded-xl border border-border bg-muted/40 p-5 hover:border-primary/40 hover:bg-muted/60 transition-all">
-          <h3 className="text-lg font-semibold mb-3">
-            <a
-              href="https://cleve.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-primary transition-colors"
-            >
-              Cleve.ai ↗
-            </a>
-          </h3>
+          <div className="flex items-center gap-3 mb-3">
+            <img
+              src="/logo-cleve.svg"
+              alt="Cleve"
+              className="w-9 h-9 rounded-lg object-contain shrink-0"
+            />
+            <h3 className="text-lg font-semibold">
+              <a
+                href="https://cleve.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-primary transition-colors"
+              >
+                Cleve.ai ↗
+              </a>
+            </h3>
+          </div>
           <div className="space-y-3 text-base leading-relaxed text-foreground/90">
             <p>
               AI workspace for writing and thinking. All the major models in one place, with memory that carries across sessions.

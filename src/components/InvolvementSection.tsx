@@ -1,12 +1,14 @@
 const projects = [
   {
     name: "National AI Competition (NAIC)",
+    logo: "/logo-naic.png",
     href: "https://rakantutor.org/naic",
     role: "Director",
     description: "Helping young Malaysians understand and build with AI.",
   },
   {
     name: "Malaysian.ai",
+    logo: "/logo-malaysian-ai.svg",
     href: "https://www.malaysian.ai/",
     role: "Contributor",
     description: "The home of AI builders in Malaysia. Events, communities, and education for anyone building with AI.",
@@ -27,21 +29,28 @@ const InvolvementSection = () => {
             className="rounded-xl border border-border bg-muted/40 p-5 hover:border-primary/40 hover:bg-muted/60 transition-all"
           >
             <div className="flex items-start justify-between gap-4 mb-2">
-              <h3 className="text-base font-semibold">
-                <a
-                  href={project.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-primary transition-colors"
-                >
-                  {project.name} ↗
-                </a>
-              </h3>
+              <div className="flex items-center gap-3">
+                <img
+                  src={project.logo}
+                  alt={project.name}
+                  className="w-9 h-9 rounded-lg object-contain shrink-0"
+                />
+                <h3 className="text-base font-semibold">
+                  <a
+                    href={project.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-primary transition-colors"
+                  >
+                    {project.name} ↗
+                  </a>
+                </h3>
+              </div>
               <span className="font-mono text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">
                 {project.role}
               </span>
             </div>
-            <p className="text-sm leading-relaxed text-foreground/80">
+            <p className="text-sm leading-relaxed text-foreground/80 pl-12">
               {project.description}
             </p>
           </div>
