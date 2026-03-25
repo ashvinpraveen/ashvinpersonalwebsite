@@ -35,6 +35,12 @@ const socials = [
     icon: "/social-icons/Threads_logo_black.svg",
     iconDark: "/social-icons/Threads_logo_white.svg",
   },
+  {
+    label: "GitHub",
+    href: "https://github.com/ashvinpraveen",
+    icon: "/social-icons/GitHub_logo_black.svg",
+    iconDark: "/social-icons/GitHub_logo_white.svg",
+  },
 ];
 
 const HeroSection = () => {
