@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchNotes } from "@/lib/cleve";
+import ActivityMap from "./ActivityMap";
 
 const formatNoteDate = (timestamp: number | null | undefined) => {
   if (!timestamp) return "Updated recently";
@@ -26,6 +27,13 @@ const WritingSection = () => {
         <span className="h-px w-6 bg-primary shrink-0" />
         <p className="font-mono text-xs text-muted-foreground uppercase tracking-widest">Writing</p>
       </div>
+      {!isLoading && !isError && notes && notes.length > 0 && (
+        <ActivityMap notes={notes} />
+      )}
+      {isLoading && (
+        <div className="mb-10 h-[110px] rounded-lg bg-muted/40 animate-pulse" />
+      )}
+
       <div className="max-w-prose">
         <div className="space-y-4 mb-10">
           {isLoading && (
