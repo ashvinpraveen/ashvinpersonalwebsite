@@ -357,10 +357,10 @@ const Postcard = () => {
           <section className="space-y-12">
             <div className="max-w-2xl space-y-3">
               <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-                Drop a thought
+                drop a thought!
               </h1>
               <p className="text-base leading-relaxed text-muted-foreground">
-                What's something you learned today? Or something random you're thinking about? Or a question? Share a thought, a story, an article, a YouTube video, or a tiny drawing. I read and reply to everything.
+                what's something you learned today? or something random you're thinking about? (or just wanna say hi while you're here haha) leave a note! i read and respond to everything.
               </p>
             </div>
 

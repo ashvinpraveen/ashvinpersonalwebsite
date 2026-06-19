@@ -10,7 +10,7 @@ const SiteNav = () => {
           AP
         </Link>
         <div className="flex items-center gap-5 font-mono text-xs">
-          <Link href="/postcard" className="text-muted-foreground hover:text-foreground transition-colors">
+          <Link href="/postcards" className="text-muted-foreground hover:text-foreground transition-colors">
             Postcards
           </Link>
           <Link href="/blog" className="text-muted-foreground hover:text-foreground transition-colors">
