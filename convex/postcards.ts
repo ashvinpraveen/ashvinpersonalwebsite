@@ -1,5 +1,7 @@
 import { v } from "convex/values";
 import { env, mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 
 const MAX_NAME_LENGTH = 40;
 const MAX_LOCATION_LENGTH = 60;
@@ -53,6 +55,7 @@ export const list = query({
       .take(POSTCARD_CANDIDATE_LIMIT);
 
     const rankedPostcards = postcards
+      .filter((postcard) => !postcard.hiddenAt)
       .sort((a, b) => {
         const likeDifference = (b.likeCount ?? 0) - (a.likeCount ?? 0);
         if (likeDifference !== 0) return likeDifference;
@@ -67,6 +70,7 @@ export const list = query({
             ...postcard,
             likeCount: postcard.likeCount ?? 0,
             isLiked: false,
+            canEdit: false,
           };
         }
 
@@ -81,6 +85,7 @@ export const list = query({
           ...postcard,
           likeCount: postcard.likeCount ?? 0,
           isLiked: Boolean(like),
+          canEdit: postcard.clientId === clientId,
         };
       }),
     );
@@ -109,9 +114,12 @@ export const create = mutation({
     name: v.string(),
     location: v.string(),
     message: v.string(),
+    clientId: v.optional(v.string()),
     drawingDataUrl: v.union(v.string(), v.null()),
   },
   handler: async (ctx, args) => {
+    const clientId = normalizeClientId(args.clientId);
+
     const message = trimMessage(args.message);
     if (message.length === 0) {
       throw new Error("Postcard needs a message.");
@@ -121,10 +129,78 @@ export const create = mutation({
       name: trimToLength(args.name, MAX_NAME_LENGTH),
       location: trimToLength(args.location, MAX_LOCATION_LENGTH),
       message,
+      ...(clientId ? { clientId } : {}),
       drawingDataUrl: normalizeDrawing(args.drawingDataUrl),
       likeCount: 0,
       createdAt: Date.now(),
     });
+  },
+});
+
+export const updateOwn = mutation({
+  args: {
+    postcardId: v.id("postcards"),
+    clientId: v.string(),
+    name: v.string(),
+    location: v.string(),
+    message: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const clientId = normalizeClientId(args.clientId);
+    if (!clientId) {
+      throw new Error("Could not update postcard.");
+    }
+
+    const postcard = await ctx.db.get(args.postcardId);
+    if (!postcard || postcard.clientId !== clientId) {
+      throw new Error("Postcard not found.");
+    }
+
+    const message = trimMessage(args.message);
+    if (message.length === 0) {
+      throw new Error("Postcard needs a message.");
+    }
+
+    await ctx.db.patch(args.postcardId, {
+      name: trimToLength(args.name, MAX_NAME_LENGTH),
+      location: trimToLength(args.location, MAX_LOCATION_LENGTH),
+      message,
+    });
+  },
+});
+
+const deletePostcardAndLikes = async (
+  ctx: MutationCtx,
+  postcardId: Id<"postcards">,
+) => {
+  const likes = ctx.db
+    .query("postcardLikes")
+    .withIndex("by_postcardId", (q) => q.eq("postcardId", postcardId));
+
+  for await (const like of likes) {
+    await ctx.db.delete(like._id);
+  }
+
+  await ctx.db.delete(postcardId);
+};
+
+export const deleteOwn = mutation({
+  args: {
+    postcardId: v.id("postcards"),
+    clientId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const clientId = normalizeClientId(args.clientId);
+    if (!clientId) {
+      throw new Error("Could not delete postcard.");
+    }
+
+    const postcard = await ctx.db.get(args.postcardId);
+    if (!postcard || postcard.clientId !== clientId) {
+      throw new Error("Postcard not found.");
+    }
+
+    await deletePostcardAndLikes(ctx, args.postcardId);
   },
 });
 
@@ -184,6 +260,33 @@ export const reply = mutation({
     await ctx.db.patch(args.postcardId, {
       reply,
       repliedAt: reply.length > 0 ? Date.now() : 0,
+    });
+  },
+});
+
+export const deleteForAdmin = mutation({
+  args: {
+    adminSecret: v.string(),
+    postcardId: v.id("postcards"),
+  },
+  handler: async (ctx, args) => {
+    requireAdmin(args.adminSecret);
+
+    await deletePostcardAndLikes(ctx, args.postcardId);
+  },
+});
+
+export const setHiddenForAdmin = mutation({
+  args: {
+    adminSecret: v.string(),
+    postcardId: v.id("postcards"),
+    hidden: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    requireAdmin(args.adminSecret);
+
+    await ctx.db.patch(args.postcardId, {
+      hiddenAt: args.hidden ? Date.now() : 0,
     });
   },
 });

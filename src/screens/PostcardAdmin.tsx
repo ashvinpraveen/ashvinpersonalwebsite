@@ -27,7 +27,11 @@ const PostcardAdmin = () => {
   const [secretInput, setSecretInput] = useState("");
   const [adminSecret, setAdminSecret] = useState("");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [deletingPostcardId, setDeletingPostcardId] = useState<Id<"postcards"> | null>(null);
+  const [hidingPostcardId, setHidingPostcardId] = useState<Id<"postcards"> | null>(null);
   const replyToPostcard = useMutation(api.postcards.reply);
+  const deletePostcard = useMutation(api.postcards.deleteForAdmin);
+  const setPostcardHidden = useMutation(api.postcards.setHiddenForAdmin);
   const postcards = useQuery(
     api.postcards.listForAdmin,
     adminSecret ? { adminSecret } : "skip",
@@ -77,6 +81,37 @@ const PostcardAdmin = () => {
       toast.success("Reply saved.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save reply.");
+    }
+  }
+
+  async function removePostcard(postcardId: Id<"postcards">) {
+    if (!window.confirm("Delete this postcard?")) return;
+
+    setDeletingPostcardId(postcardId);
+    try {
+      await deletePostcard({ adminSecret, postcardId });
+      setDrafts((currentDrafts) => {
+        const nextDrafts = { ...currentDrafts };
+        delete nextDrafts[postcardId];
+        return nextDrafts;
+      });
+      toast.success("Postcard deleted.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete postcard.");
+    } finally {
+      setDeletingPostcardId(null);
+    }
+  }
+
+  async function toggleHidden(postcardId: Id<"postcards">, hidden: boolean) {
+    setHidingPostcardId(postcardId);
+    try {
+      await setPostcardHidden({ adminSecret, postcardId, hidden });
+      toast.success(hidden ? "Postcard hidden." : "Postcard restored.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update postcard.");
+    } finally {
+      setHidingPostcardId(null);
     }
   }
 
@@ -153,6 +188,11 @@ const PostcardAdmin = () => {
                     className="grid gap-5 rounded-[12px] border border-border bg-card p-5 md:grid-cols-[0.95fr_1.05fr]"
                   >
                     <div className="space-y-4">
+                      {postcard.hiddenAt ? (
+                        <p className="w-fit rounded-full border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                          Hidden
+                        </p>
+                      ) : null}
                       {postcard.drawingDataUrl && (
                         <div className="h-44 rounded-[12px] border border-border bg-background p-3 dark:bg-muted">
                           <img
@@ -166,10 +206,16 @@ const PostcardAdmin = () => {
                       <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
                         {postcard.message}
                       </p>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-dashed border-border pt-4 font-mono text-[10px] text-muted-foreground">
-                        <span>{postcard.name || "Anonymous"}</span>
-                        {postcard.location && <span>{postcard.location}</span>}
-                        <time>{formatPostcardDate(postcard.createdAt)}</time>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-dashed border-border pt-4 font-mono text-[10px]">
+                        <span className="text-muted-foreground/70">
+                          {postcard.name || "Anonymous"}
+                        </span>
+                        {postcard.location && (
+                          <span className="text-muted-foreground/60">{postcard.location}</span>
+                        )}
+                        <time className="text-muted-foreground">
+                          {formatPostcardDate(postcard.createdAt)}
+                        </time>
                       </div>
                     </div>
 
@@ -197,13 +243,37 @@ const PostcardAdmin = () => {
                         <p className="font-mono text-[10px] text-muted-foreground">
                           {(drafts[postcard._id] ?? "").length}/{MAX_REPLY_LENGTH}
                         </p>
-                        <Button
-                          type="button"
-                          onClick={() => saveReply(postcard._id)}
-                          className="rounded-[8px] font-mono text-xs"
-                        >
-                          Save reply →
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => toggleHidden(postcard._id, !postcard.hiddenAt)}
+                            disabled={hidingPostcardId === postcard._id}
+                            className="rounded-[8px] font-mono text-xs"
+                          >
+                            {hidingPostcardId === postcard._id
+                              ? "Saving..."
+                              : postcard.hiddenAt
+                                ? "Restore"
+                                : "Hide"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => removePostcard(postcard._id)}
+                            disabled={deletingPostcardId === postcard._id}
+                            className="rounded-[8px] font-mono text-xs"
+                          >
+                            {deletingPostcardId === postcard._id ? "Deleting..." : "Delete"}
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={() => saveReply(postcard._id)}
+                            className="rounded-[8px] font-mono text-xs"
+                          >
+                            Save reply →
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </article>
