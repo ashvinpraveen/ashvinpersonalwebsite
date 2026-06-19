@@ -194,13 +194,6 @@ const DrawingPad = ({
         >
           <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
-        <button
-          type="button"
-          onClick={clearDrawing}
-          className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Clear
-        </button>
       </div>
       <div
         className={cn(
@@ -218,6 +211,15 @@ const DrawingPad = ({
           onPointerCancel={stopDrawing}
           aria-label="Drawing canvas"
         />
+      </div>
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={clearDrawing}
+          className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Clear
+        </button>
       </div>
     </div>
   );
@@ -357,10 +359,10 @@ const Postcard = () => {
           <section className="space-y-12">
             <div className="max-w-2xl space-y-3">
               <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
-                drop a thought!
+                drop a thought
               </h1>
               <p className="text-base leading-relaxed text-muted-foreground">
-                what's something you learned today? or something random you're thinking about? (or just wanna say hi while you're here haha) leave a note! i read and respond to everything.
+                what's something random you learned today? or have any questions? (or just wanna say hi while you're here haha) leave a note! i read and respond to everything
               </p>
             </div>
 
