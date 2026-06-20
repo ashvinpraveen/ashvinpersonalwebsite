@@ -13,10 +13,10 @@ const SectionBlock = ({ children, className, id, label }: SectionBlockProps) => 
   return (
     <section
       id={id}
-      className={cn(contentColumnClassName, "py-20 md:py-28", className)}
+      className={cn(contentColumnClassName, "py-10 md:py-14", className)}
     >
       {label && (
-        <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mb-10">
+        <h2 className="text-lg font-semibold tracking-tight mb-6">
           {label}
         </h2>
       )}

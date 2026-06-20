@@ -72,7 +72,7 @@ const AboutSection = () => {
 
   return (
     <SectionBlock id="about" label="About">
-      <div className={`${proseColumnClassName} text-base md:text-[17px] leading-relaxed ${textBody}`}>
+      <div className={`${proseColumnClassName} text-sm leading-relaxed ${textBody}`}>
         <div className="space-y-4">
           {preview.map((paragraph, index) => (
             <p key={index}>{paragraph}</p>

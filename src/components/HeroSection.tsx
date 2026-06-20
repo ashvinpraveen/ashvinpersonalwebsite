@@ -47,7 +47,7 @@ import { socialChip, linkMuted, textBody, textSecondary, heading } from "@/lib/s
 
 const HeroSection = () => {
   return (
-    <section id="hero" className="pt-20 pb-20 md:pt-32 md:pb-32">
+    <section id="hero" className="pt-16 pb-10 md:pt-24 md:pb-14">
       <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start">
         <div className="md:hidden">
           <img
@@ -57,7 +57,7 @@ const HeroSection = () => {
           />
         </div>
         <div className="max-w-prose">
-          <h1 className={`text-5xl md:text-6xl font-bold leading-[1.05] mb-4 ${heading}`}>
+          <h1 className={`text-3xl md:text-4xl font-bold leading-[1.1] mb-3 ${heading}`}>
             Ashvin Praveen
           </h1>
           <p className="font-mono text-sm mb-6 flex items-center gap-2">
@@ -72,7 +72,7 @@ const HeroSection = () => {
               Cleve.ai
             </a>
           </p>
-          <p className={`text-lg md:text-xl ${textBody} leading-relaxed`}>
+          <p className={`text-base ${textBody} leading-relaxed`}>
             Experimenting with AI's applications, building and sharing what I've found helpful.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
