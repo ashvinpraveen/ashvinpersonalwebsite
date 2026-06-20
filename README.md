@@ -1,289 +1,271 @@
 # Ashvin's Personal Website
 
-A minimal personal website for builders who want their writing, projects, and story in one place.
+A personal website template for builders who want their writing, projects, and story in one place — without the hassle.
 
-This site is built with Next.js, React, Tailwind, shadcn/ui, Convex, and [Cleve](https://cleve.ai). The interesting part is the writing system: blog posts are not stored in this repo. They are published from a public Cleve profile and pulled into the website automatically through a small Convex HTTP proxy.
+**If you like this project, give it a star!** Hit the star button at the top right of this page. It helps others find it and makes my day.
 
-That means you can use this as a personal website template where:
+---
 
-- your homepage is edited in code
-- your blog is powered by Cleve
-- new public Cleve notes show up without redeploying
-- the whole thing can run on free tiers
+## What Is This?
 
-## Demo Shape
+This is the source code for [ashvinpraveen.com](https://ashvinpraveen.com). It's a real, working personal website that you can fork and turn into your own — for free.
 
-The site includes:
+The cool part: blog posts aren't stored in the code. They come from [Cleve](https://cleve.ai), a writing app. You write in Cleve, hit publish, and your website updates automatically. No redeploying. No editing files. Just write and go.
 
-- Hero with profile links
-- Work and projects
-- Expandable About section
-- Writing section powered by Cleve
-- Activity heatmap for recent writing habits
-- `/blog` writing index
-- `/blog/:id` individual post pages
-- A side panel preview when clicking writing activity cells
+## What You Get
 
-## Tech Stack
+- A clean homepage with your bio, work, projects, and social links
+- A blog powered by your Cleve writing (no markdown files to manage)
+- A writing activity heatmap (like GitHub's contribution graph, but for your writing)
+- A postcard wall where visitors can leave you notes
+- SEO-friendly pages with Open Graph tags and JSON-LD
+- Dark mode support
+- Fully responsive on mobile, tablet, and desktop
+- Runs entirely on free tiers
 
-| Layer | Tool |
-| --- | --- |
-| App | Next.js + React |
-| Styling | Tailwind CSS + shadcn/ui |
-| Routing | Next App Router |
-| Data fetching | TanStack Query |
-| Backend proxy | Convex HTTP actions |
-| Writing source | Cleve public profile |
-| Analytics | Vercel Analytics |
-| Hosting | Vercel |
+## New to GitHub? Start Here
 
-## Quickstart
+If you've never used GitHub before, don't worry. Here's what you need to know:
+
+- **Repository (repo)**: A folder that holds all the code for a project, hosted on GitHub
+- **Fork**: Your own copy of someone else's repo. You can change it however you want without affecting the original
+- **Clone**: Downloading a repo to your computer so you can work on it locally
+- **Commit**: Saving a snapshot of your changes (like a save point in a game)
+- **Push**: Uploading your saved changes from your computer back to GitHub
+- **Deploy**: Making your website live on the internet so anyone can visit it
+
+You'll use all of these as you set up your site. Each step is explained below.
+
+## Prerequisites
+
+Before you start, you'll need to install a few things on your computer. If you already have these, skip ahead.
+
+### 1. Install Node.js
+
+Node.js lets you run JavaScript on your computer (outside a browser). You need it to build and run this website.
+
+Go to [nodejs.org](https://nodejs.org) and download the **LTS** (Long Term Support) version. Run the installer, accept the defaults, and you're done.
+
+To check it worked, open your terminal and run:
 
 ```bash
-git clone https://github.com/ashvinpraveen/ashvinpersonalwebsite.git
+node --version
+```
+
+You should see something like `v20.x.x` or higher.
+
+### 2. Install Git
+
+Git is the tool that lets you download code from GitHub and track your changes.
+
+- **Mac**: Open Terminal and run `git --version`. If it's not installed, macOS will prompt you to install it.
+- **Windows**: Download from [git-scm.com](https://git-scm.com). During installation, keep the default options.
+- **Linux**: Run `sudo apt install git` (Ubuntu/Debian) or `sudo dnf install git` (Fedora).
+
+To check it worked:
+
+```bash
+git --version
+```
+
+### 3. Create a GitHub Account
+
+If you don't have one yet, sign up at [github.com](https://github.com). It's free.
+
+### 4. Get a Code Editor (Optional but Recommended)
+
+You can use any text editor, but [VS Code](https://code.visualstudio.com) is free and popular. It has a built-in terminal, so you can edit code and run commands in the same window.
+
+---
+
+## Fork This Repo (Make It Yours)
+
+Forking creates your own copy of this project on your GitHub account. You can change anything you want without affecting the original.
+
+### Step 1: Click the Fork Button
+
+At the top right of this page, click **Fork**. GitHub will create a copy under your account.
+
+### Step 2: Clone Your Fork to Your Computer
+
+Go to YOUR fork (it'll be at `github.com/YOUR-USERNAME/ashvinpersonalwebsite`). Click the green **Code** button and copy the URL.
+
+Then open your terminal and run:
+
+```bash
+git clone https://github.com/YOUR-USERNAME/ashvinpersonalwebsite.git
 cd ashvinpersonalwebsite
+```
+
+Replace `YOUR-USERNAME` with your actual GitHub username.
+
+### Step 3: Install Dependencies
+
+This downloads all the libraries the project needs:
+
+```bash
 npm install
+```
+
+This might take a minute. You'll see a progress bar. When it's done, you're ready to go.
+
+---
+
+## Run It Locally
+
+Let's see the website on your computer before making any changes.
+
+```bash
 npm run dev
 ```
 
-Open:
+Open your browser and go to:
 
-```text
+```
 http://localhost:8080
 ```
 
-The frontend will load, but the Writing section needs Convex environment variables before it can fetch Cleve notes.
+You should see the website! It'll look like Ashvin's site right now — that's expected. The writing section won't work yet (we'll set that up next), but the rest of the site should load fine.
 
-## Environment Variables
+To stop the server, press `Ctrl + C` in your terminal.
 
-Create `.env.local` in the project root:
+---
+
+## Set Up the Blog (Cleve + Convex)
+
+The blog system has two parts:
+
+1. **Cleve** — where you write and publish posts
+2. **Convex** — a backend that connects your Cleve writing to your website
+
+Here's how it flows:
+
+```
+You write in Cleve
+  -> Cleve hosts your public writing profile
+  -> Convex fetches your posts via a small proxy
+  -> Your website displays them
+```
+
+### Step 1: Create a Cleve Account
+
+Go to [cleve.ai](https://cleve.ai) and create a free account.
+
+Write some notes and publish the ones you want on your website. Your public profile will be at:
+
+```
+https://app.cleve.ai/user/YOUR_CLEVE_USERNAME
+```
+
+### Step 2: Set Up Convex
+
+Convex is the backend that fetches your Cleve posts. It's free for personal use.
+
+First, install the Convex CLI if you don't have it:
+
+```bash
+npx convex dev
+```
+
+The first time you run this, it'll walk you through creating a Convex account and project. Follow the prompts — it takes about 2 minutes.
+
+Once you have a Convex deployment, set your Cleve username:
+
+```bash
+npx convex env set CLEVE_PUBLIC_PROFILE_SLUG your_cleve_username
+```
+
+For example, if your Cleve profile is `https://app.cleve.ai/user/janedoe`:
+
+```bash
+npx convex env set CLEVE_PUBLIC_PROFILE_SLUG janedoe
+```
+
+### Step 3: Add Environment Variables
+
+Create a file called `.env.local` in the root of your project (the same folder as `package.json`):
 
 ```bash
 NEXT_PUBLIC_CONVEX_URL=your_convex_cloud_url
 NEXT_PUBLIC_CONVEX_SITE_URL=your_convex_site_url
 ```
 
-Do not commit `.env.local`.
+You can find these URLs in your Convex dashboard after setting up your project. The site URL usually looks like `https://your-deployment.convex.site`.
 
-`NEXT_PUBLIC_CONVEX_URL` is the normal Convex deployment URL.
+**Important**: Never commit `.env.local` to GitHub. It's already in `.gitignore`, so Git will ignore it automatically.
 
-`NEXT_PUBLIC_CONVEX_SITE_URL` is the Convex HTTP Actions URL. It usually looks like:
+### Step 4: Run Everything Together
 
-```text
-https://your-deployment.convex.site
-```
+Open **two terminal windows** (or two tabs in VS Code's terminal):
 
-The frontend calls:
-
-```text
-${NEXT_PUBLIC_CONVEX_SITE_URL}/cleve-proxy?resource=notes
-${NEXT_PUBLIC_CONVEX_SITE_URL}/cleve-proxy?resource=note&id=<note_id>
-```
-
-The postcard admin page at `/admin/postcards` also needs a server-side Convex
-password:
-
-```bash
-npx convex env set POSTCARD_ADMIN_SECRET your_admin_password
-```
-
-## Set Up Convex
-
-This project uses Convex as the public proxy for Cleve writing and as the tiny
-database behind the postcard wall.
-
-Start Convex locally:
-
-```bash
-npx convex dev
-```
-
-The Convex function is in:
-
-```text
-convex/http.ts
-```
-
-It exposes:
-
-```text
-GET /cleve-proxy?resource=notes
-GET /cleve-proxy?resource=note&id=<note_id>
-```
-
-By default, the proxy reads from Ashvin's public Cleve profile:
-
-```text
-https://app.cleve.ai/user/ashvinpraveen
-```
-
-To use your own Cleve profile, set this Convex environment variable:
-
-```bash
-npx convex env set CLEVE_PUBLIC_PROFILE_SLUG your_cleve_username
-```
-
-For example, if your public Cleve profile is:
-
-```text
-https://app.cleve.ai/user/janedoe
-```
-
-set:
-
-```bash
-npx convex env set CLEVE_PUBLIC_PROFILE_SLUG janedoe
-```
-
-Then publish your Convex functions:
-
-```bash
-npx convex dev --once
-```
-
-## How Cleve Powers The Blog
-
-Cleve is the writing source of truth.
-
-The flow is:
-
-```text
-Public Cleve profile
-  -> Convex HTTP action at /cleve-proxy
-  -> src/lib/cleve.ts
-  -> WritingSection, ActivityMap, /blog, /blog/:id
-```
-
-When you publish notes on your public Cleve profile:
-
-1. The homepage Writing section updates.
-2. The `/blog` page updates.
-3. The activity map updates.
-4. Individual posts are available at `/blog/:id`.
-
-You do not need to edit markdown files or redeploy the site for new writing.
-
-## Make This Your Own
-
-The fastest way to use this template is:
-
-1. Fork the repo.
-2. Create your own Convex deployment.
-3. Point `CLEVE_PUBLIC_PROFILE_SLUG` at your Cleve username.
-4. Replace the homepage content with your own story.
-5. Deploy to Vercel.
-
-### 1. Fork Or Clone
-
-Click **Use this template** or fork the repo on GitHub.
-
-Or clone manually:
-
-```bash
-git clone https://github.com/ashvinpraveen/ashvinpersonalwebsite.git my-personal-site
-cd my-personal-site
-npm install
-```
-
-### 2. Create Your Cleve Writing Profile
-
-Create a free Cleve account:
-
-```text
-https://cleve.ai
-```
-
-Write notes in Cleve and publish the ones you want to show on your site.
-
-Your public writing profile should look like:
-
-```text
-https://app.cleve.ai/user/your_username
-```
-
-Use `your_username` as `CLEVE_PUBLIC_PROFILE_SLUG` in Convex.
-
-### 3. Customize The Homepage
-
-Most of the personal content lives in small React components:
-
-| Section | File |
-| --- | --- |
-| Navigation | `src/components/SiteNav.tsx` |
-| Hero | `src/components/HeroSection.tsx` |
-| Work | `src/components/WorkSection.tsx` |
-| Involvement | `src/components/InvolvementSection.tsx` |
-| About | `src/components/AboutSection.tsx` |
-| Writing preview | `src/components/WritingSection.tsx` |
-| Interests | `src/components/InterestsSection.tsx` |
-| Resources | `src/components/ResourcesSection.tsx` |
-| Contact | `src/components/ContactSection.tsx` |
-| Footer | `src/components/Footer.tsx` |
-
-Shared layout primitives live in:
-
-```text
-src/lib/layout.ts
-src/components/SectionBlock.tsx
-```
-
-The Cleve writing client lives in:
-
-```text
-src/lib/cleve.ts
-```
-
-### 4. Replace Images And Links
-
-Add your images to:
-
-```text
-public/
-```
-
-Then update references in:
-
-```text
-src/components/HeroSection.tsx
-```
-
-Also update:
-
-- social profile links
-- work/project links
-- contact email
-- Cal.com link, if you use one
-- resources you want to recommend
-
-### 5. Run Locally
-
-In one terminal:
-
+**Terminal 1** — Run the website:
 ```bash
 npm run dev
 ```
 
-In another terminal:
-
+**Terminal 2** — Run Convex:
 ```bash
 npx convex dev
 ```
 
-Open:
+Now go to `http://localhost:8080` again. The writing section should show your Cleve posts!
 
-```text
-http://localhost:8080
+---
+
+## Make It Your Own
+
+Time for the fun part — replacing Ashvin's info with yours.
+
+### Where Everything Lives
+
+The personal content is split into small React components. You don't need to understand React deeply — just find the text you want to change and replace it.
+
+| What | File | What to Change |
+| --- | --- | --- |
+| Your name, tagline, photo, social links | `src/components/HeroSection.tsx` | Text, image path, URLs |
+| Navigation links | `src/components/SiteNav.tsx` | Link labels and URLs |
+| Work experience | `src/components/WorkSection.tsx` | Job titles, companies, descriptions |
+| Involvement/activities | `src/components/InvolvementSection.tsx` | Organizations, roles |
+| Your bio | `src/components/AboutSection.tsx` | Your story |
+| Writing preview | `src/components/WritingSection.tsx` | Usually no changes needed |
+| Interests | `src/components/InterestsSection.tsx` | Your interests |
+| Resources you recommend | `src/components/ResourcesSection.tsx` | Books, tools, links |
+| Contact info | `src/components/ContactSection.tsx` | Email, Cal.com link |
+| Footer | `src/components/Footer.tsx` | Credits, links |
+
+### Replace Images
+
+Put your own images (profile photo, project screenshots, etc.) in the `public/` folder. Then update the file paths in the components above to point to your new images.
+
+For example, if you add `public/my-photo.jpg`, you'd reference it in code as `/my-photo.jpg`.
+
+### Update Social Links
+
+In `src/components/HeroSection.tsx`, you'll find a `socials` array at the top of the file. Replace the URLs with your own:
+
+```tsx
+{
+  label: "LinkedIn",
+  href: "https://linkedin.com/in/YOUR-NAME",
+  icon: "/social-icons/LinkedIn_logo.svg",
+},
 ```
 
-## Deploy For Free
+### Postcard Wall
 
-You can run this on free tiers:
+The site includes a postcard feature where visitors can leave you notes at `/postcards`. There's also an admin page at `/admin/postcards` for managing them. To set the admin password:
 
-- Cleve for public writing
-- Convex for the HTTP proxy
-- Vercel for hosting
+```bash
+npx convex env set POSTCARD_ADMIN_SECRET your_secret_password
+```
 
-### Deploy Convex
+---
+
+## Deploy for Free
+
+Once your site looks good locally, let's put it on the internet. Everything below is free.
+
+### Step 1: Deploy Convex
 
 Make sure your Cleve username is set:
 
@@ -291,192 +273,227 @@ Make sure your Cleve username is set:
 npx convex env set CLEVE_PUBLIC_PROFILE_SLUG your_cleve_username
 ```
 
-Deploy Convex:
+Then deploy:
 
 ```bash
 npx convex deploy
 ```
 
-Copy your Convex URLs into your production environment variables:
+This pushes your Convex functions to the cloud. Copy the deployment URLs it gives you — you'll need them for Vercel.
+
+### Step 2: Push Your Code to GitHub
+
+If you forked the repo, your changes need to be pushed to your fork:
 
 ```bash
-NEXT_PUBLIC_CONVEX_URL=your_convex_cloud_url
-NEXT_PUBLIC_CONVEX_SITE_URL=your_convex_site_url
+git add -A
+git commit -m "customize site with my info"
+git push
 ```
 
-### Deploy Vercel
+If this is your first push, Git might ask you to log in. Follow the prompts.
 
-Import the GitHub repo into [Vercel](https://vercel.com).
+### Step 3: Deploy to Vercel
 
-Use the default Next.js settings:
+[Vercel](https://vercel.com) is where your website will live. It's free for personal projects.
 
-```text
-Build command: npm run build
+1. Go to [vercel.com](https://vercel.com) and sign up with your GitHub account
+2. Click **Add New Project**
+3. Import your forked repository
+4. Vercel will auto-detect it's a Next.js project — the defaults are fine
+5. Before deploying, add your environment variables:
+   - `NEXT_PUBLIC_CONVEX_URL` — your Convex cloud URL
+   - `NEXT_PUBLIC_CONVEX_SITE_URL` — your Convex site URL (the one ending in `.convex.site`)
+6. Click **Deploy**
+
+In about a minute, your site will be live! Vercel gives you a URL like `your-project.vercel.app`. You can also connect a custom domain later from Vercel's dashboard.
+
+---
+
+## Tech Stack
+
+For the curious, here's what powers everything:
+
+| Layer | Tool | What It Does |
+| --- | --- | --- |
+| Framework | Next.js + React | Builds the pages and handles routing |
+| Styling | Tailwind CSS + shadcn/ui | Makes everything look good without writing much CSS |
+| Data fetching | TanStack Query | Fetches and caches blog posts efficiently |
+| Backend | Convex | Runs the proxy that connects to Cleve |
+| Blog content | Cleve | Where you write and publish posts |
+| Analytics | Vercel Analytics | Tracks page views (privacy-friendly) |
+| Hosting | Vercel | Serves the site to visitors |
+
+---
+
+## Project Structure
+
+Here's a map of the important files:
+
+```
+ashvinpersonalwebsite/
+|
+|-- app/                          # Pages and routes
+|   |-- blog/
+|   |   |-- [id]/page.tsx         # Individual blog post page
+|   |   |-- page.tsx              # Blog index (list of all posts)
+|   |-- admin/postcards/page.tsx  # Postcard admin panel
+|   |-- sitemap.ts                # Auto-generated sitemap for SEO
+|
+|-- convex/
+|   |-- http.ts                   # The Cleve proxy (fetches your posts)
+|
+|-- public/                       # Images, icons, and static files
+|
+|-- src/
+|   |-- components/               # UI building blocks
+|   |   |-- HeroSection.tsx       # Your name, photo, and social links
+|   |   |-- AboutSection.tsx      # Your bio
+|   |   |-- WorkSection.tsx       # Work experience
+|   |   |-- WritingSection.tsx    # Blog preview on homepage
+|   |   |-- ActivityMap.tsx       # Writing heatmap + side panel
+|   |   |-- ContactSection.tsx    # How to reach you
+|   |   |-- ...                   # Other sections
+|   |
+|   |-- lib/
+|   |   |-- cleve.ts              # Talks to the Convex proxy
+|   |   |-- layout.ts             # Shared layout settings
+|   |   |-- seo.ts                # SEO metadata helpers
+|   |
+|   |-- screens/
+|       |-- Index.tsx              # Homepage
+|       |-- Blog.tsx               # Blog listing page
+|       |-- BlogPost.tsx           # Single blog post page
+|
+|-- .env.local                    # Your secret environment variables (not committed)
+|-- package.json                  # Project dependencies and scripts
 ```
 
-Add these Vercel environment variables:
+---
 
-```bash
-NEXT_PUBLIC_CONVEX_URL=your_convex_cloud_url
-NEXT_PUBLIC_CONVEX_SITE_URL=your_convex_site_url
-```
+## Useful Commands
 
-Deploy.
+| Command | What It Does |
+| --- | --- |
+| `npm run dev` | Start the website locally on port 8080 |
+| `npm run build` | Build for production (Vercel does this for you) |
+| `npm run lint` | Check code for common mistakes |
+| `npm run test` | Run automated tests |
+| `npx convex dev` | Run Convex locally (needed for the blog to work) |
+| `npx convex deploy` | Deploy Convex to the cloud |
 
-## How The Writing UI Works
-
-### Homepage
-
-`src/components/WritingSection.tsx` fetches public Cleve notes and shows:
-
-- activity heatmap
-- three latest posts
-- links to all writing and LinkedIn
-
-### Blog Index
-
-`app/blog/page.tsx` server-renders metadata for the writing index. `src/screens/Blog.tsx` hydrates the interactive writing UI at:
-
-```text
-/blog
-```
-
-### Blog Post
-
-`app/blog/[id]/page.tsx` server-renders each post's title, description, canonical URL, Open Graph tags, and JSON-LD. `src/screens/BlogPost.tsx` hydrates the post UI at:
-
-```text
-/blog/:id
-```
-
-### Activity Map
-
-`src/components/ActivityMap.tsx` groups posts by publish date and renders a year-long writing heatmap.
-
-On small screens, the chart starts scrolled to the recent end so the focus is on current habit building. You can still scroll backward to older months.
-
-Hovering a filled cell previews the post. Clicking opens the post in a side panel.
-
-## Commands
-
-```bash
-npm run dev        # start local Next dev server on port 8080
-npm run build      # production build
-npm run lint       # lint project
-npm run test       # run tests
-npx convex dev     # run Convex locally
-npx convex deploy  # deploy Convex functions
-```
+---
 
 ## Troubleshooting
 
-### Writing section says it cannot load posts
+### "I see the site but the writing section is empty"
 
-Check that `.env.local` includes:
+You need both environment variables in `.env.local`:
 
 ```bash
-NEXT_PUBLIC_CONVEX_URL=...
-NEXT_PUBLIC_CONVEX_SITE_URL=...
+NEXT_PUBLIC_CONVEX_URL=your_convex_url
+NEXT_PUBLIC_CONVEX_SITE_URL=your_convex_site_url
 ```
 
-Then check your Convex HTTP action:
+And you need Convex running (`npx convex dev` in a second terminal).
 
-```text
-https://your-deployment.convex.site/cleve-proxy?resource=notes
-```
+### "It still shows Ashvin's blog posts"
 
-It should return JSON with a `data` array.
-
-### It still shows Ashvin's posts
-
-Set your own Cleve profile slug in Convex:
+Set your own Cleve username in Convex:
 
 ```bash
 npx convex env set CLEVE_PUBLIC_PROFILE_SLUG your_cleve_username
 ```
 
-Then redeploy or restart Convex:
+Then restart Convex:
 
 ```bash
 npx convex dev --once
 ```
 
-### My Cleve posts do not show up
+### "My Cleve posts don't show up"
 
-Make sure the notes are published to your public Cleve profile. Private notes will not appear.
+Make sure your notes are **published** on your public Cleve profile. Private notes won't appear on your website.
 
-### The frontend works but `/cleve-proxy` does not
+### "The site works locally but the blog breaks on Vercel"
 
-Run:
+Double-check that Vercel has both environment variables set:
 
-```bash
-npx convex dev
-```
+- `NEXT_PUBLIC_CONVEX_URL`
+- `NEXT_PUBLIC_CONVEX_SITE_URL`
 
-or deploy your Convex functions:
-
-```bash
-npx convex deploy
-```
-
-### Vercel deploy works but writing is broken
-
-Make sure Vercel has:
+And that Convex has your Cleve slug:
 
 ```bash
-NEXT_PUBLIC_CONVEX_URL
-NEXT_PUBLIC_CONVEX_SITE_URL
+npx convex env set CLEVE_PUBLIC_PROFILE_SLUG your_cleve_username
 ```
 
-And make sure Convex has:
+### "npm install gives errors"
+
+Make sure you have Node.js 18 or higher:
 
 ```bash
-CLEVE_PUBLIC_PROFILE_SLUG
+node --version
 ```
 
-## Project Structure
+If you're on an older version, download the latest LTS from [nodejs.org](https://nodejs.org).
 
-```text
-convex/
-  http.ts                    # Cleve public notes proxy
+### "git push asks for a password"
 
-app/
-  blog/
-    [id]/page.tsx            # server-rendered blog post route + metadata
-    page.tsx                 # server-rendered writing index
-  sitemap.ts                 # dynamic sitemap with Cleve posts
+GitHub no longer accepts passwords for Git operations. You'll need to either:
+- Use **GitHub CLI**: Install from [cli.github.com](https://cli.github.com), then run `gh auth login`
+- Or set up an **SSH key**: Follow [GitHub's guide](https://docs.github.com/en/authentication/connecting-to-github-with-ssh)
 
-src/
-  components/
-    ActivityMap.tsx           # writing heatmap + post side panel
-    HeroSection.tsx
-    AboutSection.tsx
-    WritingSection.tsx
-    ...
-  lib/
-    cleve.ts                  # frontend client for /cleve-proxy
-    layout.ts                 # shared width/layout classes
-    seo.ts                    # Next metadata helpers
-  screens/
-    Blog.tsx
-    BlogPost.tsx
-    Index.tsx
+---
+
+## How the Writing System Works (For the Curious)
+
+You don't need to understand this to use the template, but if you're curious:
+
 ```
+You publish a note on Cleve
+  -> Your Cleve public profile updates (app.cleve.ai/user/you)
+  -> Your website's Convex proxy fetches from Cleve's API
+  -> The frontend (WritingSection, Blog, ActivityMap) displays it
+```
+
+The Convex proxy lives in `convex/http.ts`. It exposes two endpoints:
+
+```
+GET /cleve-proxy?resource=notes        # All published notes
+GET /cleve-proxy?resource=note&id=123  # A single note by ID
+```
+
+The frontend client in `src/lib/cleve.ts` calls these endpoints and feeds the data into React components. TanStack Query handles caching so the site feels fast.
+
+When you publish a new note on Cleve:
+- The homepage writing section updates
+- The `/blog` page shows the new post
+- The activity heatmap gets a new green square
+- The post is available at `/blog/:id` with full SEO metadata
+
+No redeploy needed. Just write and publish.
+
+---
 
 ## Philosophy
 
-Most personal websites go stale because publishing requires too much ceremony.
+Most personal websites go stale because publishing is too much work. You have to write markdown, commit it, push, wait for a deploy...
 
-This setup keeps the stable parts in code and the living parts in Cleve:
+This setup fixes that by keeping the stable parts in code and the living parts in Cleve:
 
-- code owns layout and identity
-- Cleve owns thinking and writing
-- Convex safely connects them
+- **Code** owns your layout, design, and identity
+- **Cleve** owns your thinking and writing
+- **Convex** safely connects them
 
-Write in Cleve. Publish when ready. Your website becomes a public record of what you are learning and building.
+Write in Cleve. Publish when ready. Your website stays alive.
+
+---
 
 ## Credits
 
 Built by [Ashvin Praveen](https://ashvinpraveen.com), co-founder and CEO of [Cleve](https://cleve.ai).
 
-Use it, remix it, and make it yours.
+Use it, remix it, make it yours. And if you do, I'd love to see what you build — drop a link in the Issues tab or tag me on [X](https://x.com/ashvinpk)!
+
+If this helped you, please **star the repo** — it really helps others discover it.
