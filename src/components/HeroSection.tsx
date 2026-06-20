@@ -43,6 +43,8 @@ const socials = [
   },
 ];
 
+import { socialChip, linkMuted, textBody, textSecondary } from "@/lib/styles";
+
 const HeroSection = () => {
   return (
     <section id="hero" className="pt-16 pb-16 md:pt-24 md:pb-24">
@@ -65,12 +67,12 @@ const HeroSection = () => {
               href="https://cleve.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-primary transition-colors"
+              className={linkMuted}
             >
               Cleve.ai
             </a>
           </p>
-          <p className="text-lg md:text-xl text-foreground/90 leading-relaxed">
+          <p className={`text-lg md:text-xl ${textBody} leading-relaxed`}>
             Experimenting with AI's applications, building and sharing what I've found helpful.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
@@ -84,7 +86,7 @@ const HeroSection = () => {
               href="https://cal.com/ashvinpraveen"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground/80 hover:border-primary/40 hover:text-foreground transition-all"
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium ${textSecondary} hover:border-primary/40 hover:text-foreground transition-all`}
             >
               Book a call
             </a>
@@ -96,7 +98,7 @@ const HeroSection = () => {
                 href={social.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-muted/40 hover:border-primary/40 hover:bg-muted/60 transition-all"
+                className={socialChip}
               >
                 <img
                   src={social.icon}
@@ -111,7 +113,7 @@ const HeroSection = () => {
                     className="w-4 h-4 object-contain hidden dark:block"
                   />
                 )}
-                <span className="text-sm font-medium text-foreground/80 group-hover:text-foreground transition-colors">
+                <span className={`text-sm font-medium ${textSecondary} group-hover:text-foreground transition-colors`}>
                   {social.label}
                 </span>
               </a>

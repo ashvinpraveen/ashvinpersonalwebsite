@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 import { pageShellClassName } from "@/lib/layout";
+import { navLink } from "@/lib/styles";
 
 const SiteNav = () => {
   return (
@@ -10,10 +11,10 @@ const SiteNav = () => {
           AP
         </Link>
         <div className="flex items-center gap-5 font-mono text-xs">
-          <Link href="/postcards" className="text-muted-foreground hover:text-foreground transition-colors">
+          <Link href="/postcards" className={navLink}>
             Postcards
           </Link>
-          <Link href="/blog" className="text-muted-foreground hover:text-foreground transition-colors">
+          <Link href="/blog" className={navLink}>
             Writing
           </Link>
           <ThemeToggle />

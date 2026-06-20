@@ -1,4 +1,5 @@
 import SectionBlock from "@/components/SectionBlock";
+import { cardCompact, arrowHover } from "@/lib/styles";
 
 const resources = [
   {
@@ -53,7 +54,7 @@ const ResourcesSection = () => {
             href={resource.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="group flex min-h-32 items-start justify-between gap-4 rounded-lg border border-border bg-muted/40 p-5 hover:border-primary/40 hover:bg-muted/60 transition-all"
+            className={`group flex min-h-32 items-start justify-between gap-4 ${cardCompact}`}
           >
             <div>
               <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
@@ -63,7 +64,7 @@ const ResourcesSection = () => {
                 {resource.description}
               </p>
             </div>
-            <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all text-sm mt-0.5 shrink-0">
+            <span className={`${arrowHover} mt-0.5`}>
               →
             </span>
           </a>

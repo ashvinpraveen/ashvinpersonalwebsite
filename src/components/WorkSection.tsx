@@ -1,4 +1,5 @@
 import SectionBlock from "@/components/SectionBlock";
+import { card, textBody, linkPrimary } from "@/lib/styles";
 
 type WorkItem = {
   name: string;
@@ -32,7 +33,7 @@ const WorkSection = () => {
         {work.map((item) => (
           <div
             key={item.href}
-            className="rounded-lg border border-border bg-muted/40 p-5 md:p-6 hover:border-primary/40 hover:bg-muted/60 transition-all"
+            className={card}
           >
             <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
               <div>
@@ -59,7 +60,7 @@ const WorkSection = () => {
                     </a>
                   </h3>
                 </div>
-                <div className="max-w-2xl space-y-3 text-base leading-relaxed text-foreground/90">
+                <div className={`max-w-2xl space-y-3 text-base leading-relaxed ${textBody}`}>
                   {item.description.map((paragraph) => (
                     <p key={paragraph}>{paragraph}</p>
                   ))}
@@ -70,7 +71,7 @@ const WorkSection = () => {
                   href={item.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-mono text-sm text-primary hover:underline underline-offset-4 transition-colors"
+                  className={`font-mono text-sm ${linkPrimary}`}
                 >
                   {item.cta} →
                 </a>
@@ -79,7 +80,7 @@ const WorkSection = () => {
                     href={item.sourceHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-mono text-sm text-muted-foreground hover:text-primary hover:underline underline-offset-4 transition-colors"
+                    className={`font-mono text-sm ${linkPrimary} text-muted-foreground`}
                   >
                     Source →
                   </a>

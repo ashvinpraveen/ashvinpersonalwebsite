@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import LazyRichMarkdown from "@/components/LazyRichMarkdown";
 import { CleveNote, fetchNote } from "@/lib/cleve";
 import { contentColumnClassName, pageShellClassName } from "@/lib/layout";
+import { navLink } from "@/lib/styles";
 
 const formatNoteDate = (timestamp: number | null | undefined) => {
   if (!timestamp) return "Updated recently";
@@ -38,7 +39,7 @@ const BlogPost = ({ id, initialNote }: BlogPostProps) => {
         <div className={contentColumnClassName}>
           <Link
             href="/blog"
-            className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className={`font-mono text-xs ${navLink}`}
           >
             ← All posts
           </Link>

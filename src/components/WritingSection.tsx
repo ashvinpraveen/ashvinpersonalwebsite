@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchNotes } from "@/lib/cleve";
 import SectionBlock from "@/components/SectionBlock";
 import ActivityMap from "./ActivityMap";
+import { linkPrimary, arrowHover } from "@/lib/styles";
 
 const formatNoteDate = (timestamp: number | null | undefined) => {
   if (!timestamp) return "Updated recently";
@@ -46,7 +47,7 @@ const WritingSection = () => {
           {isError && (
             <p className="font-mono text-xs text-muted-foreground pl-4">
               Couldn't load posts.{" "}
-              <Link href="/blog" className="text-primary hover:underline underline-offset-4">
+              <Link href="/blog" className={linkPrimary}>
                 Browse all →
               </Link>
             </p>
@@ -65,7 +66,7 @@ const WritingSection = () => {
                   {formatNoteDate(post.createdAt)}
                 </p>
               </div>
-              <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all text-sm shrink-0 mt-0.5">
+              <span className={`${arrowHover} mt-0.5`}>
                 →
               </span>
             </Link>
@@ -75,7 +76,7 @@ const WritingSection = () => {
         <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-sm pl-4">
           <Link
             href="/blog"
-            className="text-primary hover:underline underline-offset-4 transition-colors"
+            className={linkPrimary}
           >
             All posts →
           </Link>
@@ -83,7 +84,7 @@ const WritingSection = () => {
             href="https://linkedin.com/in/ashvinpraveen"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary hover:underline underline-offset-4 transition-colors"
+            className={linkPrimary}
           >
             LinkedIn →
           </a>

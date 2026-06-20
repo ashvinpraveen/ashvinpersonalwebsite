@@ -1,8 +1,9 @@
 import { useState } from "react";
 import SectionBlock from "@/components/SectionBlock";
 import { proseColumnClassName } from "@/lib/layout";
+import { linkPrimary, textBody, monoLabel } from "@/lib/styles";
 
-const inlineLinkClassName = "text-primary hover:underline underline-offset-4 transition-colors";
+const inlineLinkClassName = linkPrimary;
 
 const preview = [
   "I'm Ashvin, 27, born and raised in Sarawak, Malaysia, now based in Kuala Lumpur. I'm Malaysian with Indian heritage; my grandparents came to Sarawak from Kerala, and that family history still shapes a lot of how I think.",
@@ -71,7 +72,7 @@ const AboutSection = () => {
 
   return (
     <SectionBlock id="about" label="About">
-      <div className={`${proseColumnClassName} text-base md:text-[17px] leading-relaxed text-foreground/90`}>
+      <div className={`${proseColumnClassName} text-base md:text-[17px] leading-relaxed ${textBody}`}>
         <div className="space-y-4">
           {preview.map((paragraph, index) => (
             <p key={index}>{paragraph}</p>
@@ -82,7 +83,7 @@ const AboutSection = () => {
           <div className="mt-8 space-y-8">
             {expanded.map((section) => (
               <div key={section.title} className="space-y-3">
-                <h3 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                <h3 className={monoLabel}>
                   {section.title}
                 </h3>
                 <div className="space-y-4">

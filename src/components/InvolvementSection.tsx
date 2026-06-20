@@ -1,4 +1,5 @@
 import SectionBlock from "@/components/SectionBlock";
+import { cardCompact, textSecondary, linkPrimary } from "@/lib/styles";
 
 const projects = [
   {
@@ -44,7 +45,7 @@ const InvolvementSection = () => {
         {projects.map((project) => (
           <div
             key={project.href}
-            className="flex h-full flex-col rounded-lg border border-border bg-muted/40 p-5 hover:border-primary/40 hover:bg-muted/60 transition-all"
+            className={`flex h-full flex-col ${cardCompact}`}
           >
             <div className="flex items-start justify-between gap-4 mb-2">
               <div className="flex items-center gap-3">
@@ -74,7 +75,7 @@ const InvolvementSection = () => {
                 {project.role}
               </span>
             </div>
-            <p className="text-sm leading-relaxed text-foreground/80">
+            <p className={`text-sm leading-relaxed ${textSecondary}`}>
               {project.description}
             </p>
             <div className="mt-auto pt-4">
@@ -82,7 +83,7 @@ const InvolvementSection = () => {
                 href={project.sourceHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-mono text-xs text-muted-foreground hover:text-primary hover:underline underline-offset-4 transition-colors"
+                className={`font-mono text-xs ${linkPrimary} text-muted-foreground`}
               >
                 Source →
               </a>

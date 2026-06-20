@@ -1,4 +1,5 @@
 import { contentColumnClassName } from "@/lib/layout";
+import { linkSubtle } from "@/lib/styles";
 
 const Footer = () => {
   const year = new Date().getFullYear();
@@ -20,7 +21,7 @@ const Footer = () => {
               href="https://github.com/ashvinpraveen/ashvinpersonalwebsite"
               target="_blank"
               rel="noreferrer"
-              className="text-foreground/60 hover:text-primary transition-colors"
+              className={linkSubtle}
             >
               Source
             </a>
@@ -29,7 +30,7 @@ const Footer = () => {
               href="https://github.com/ashvinpraveen/ashvinpersonalwebsite/fork"
               target="_blank"
               rel="noreferrer"
-              className="text-foreground/60 hover:text-primary transition-colors"
+              className={linkSubtle}
             >
               Fork this site
             </a>
@@ -38,7 +39,7 @@ const Footer = () => {
               href="https://cleve.ai"
               target="_blank"
               rel="noreferrer"
-              className="text-foreground/60 hover:text-primary transition-colors"
+              className={linkSubtle}
             >
               Built with Cleve
             </a>
