@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { contentColumnClassName } from "@/lib/layout";
-import { monoLabel } from "@/lib/styles";
 import { cn } from "@/lib/utils";
 
 interface SectionBlockProps {
@@ -17,10 +16,9 @@ const SectionBlock = ({ children, className, id, label }: SectionBlockProps) => 
       className={cn(contentColumnClassName, "py-20 md:py-28", className)}
     >
       {label && (
-        <div className="flex items-center gap-3 mb-10">
-          <span className="h-px w-6 bg-muted-foreground/40 shrink-0" />
-          <p className={monoLabel}>{label}</p>
-        </div>
+        <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mb-10">
+          {label}
+        </h2>
       )}
       {children}
     </section>
