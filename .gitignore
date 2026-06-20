@@ -12,6 +12,7 @@ dist
 dist-ssr
 .next
 out
+tsconfig.tsbuildinfo
 *.local
 .env
 .env.*
