@@ -5,7 +5,6 @@ import Footer from "@/components/Footer";
 import HeroSection from "@/components/HeroSection";
 import AboutSection from "@/components/AboutSection";
 import WorkSection from "@/components/WorkSection";
-import InvolvementSection from "@/components/InvolvementSection";
 import WritingSection from "@/components/WritingSection";
 import InterestsSection from "@/components/InterestsSection";
 import ResourcesSection from "@/components/ResourcesSection";
@@ -19,7 +18,6 @@ const Index = () => {
       <main className={`${pageShellClassName} pb-20 pt-12`}>
         <HeroSection />
         <WorkSection />
-        <InvolvementSection />
         <AboutSection />
         <WritingSection />
         <InterestsSection />
