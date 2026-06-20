@@ -82,7 +82,7 @@ const Blog = ({ initialNotes }: BlogProps) => {
                     href={`/blog/${note.id}`}
                     className="group block space-y-1"
                   >
-                    <h2 className={`text-lg font-medium text-foreground group-hover:text-primary transition-colors ${heading}`}>
+                    <h2 className={`text-lg font-medium text-foreground group-hover:text-foreground/70 transition-colors ${heading}`}>
                       {note.title || "Untitled"}
                     </h2>
                     <p className="font-mono text-xs text-muted-foreground">

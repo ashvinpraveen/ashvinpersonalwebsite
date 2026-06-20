@@ -399,7 +399,7 @@ const ActivityMap = ({ notes }: ActivityMapProps) => {
           {panelNote && (
             <Link
               href={`/blog/${panelNote.id}`}
-              className="border-t border-border px-6 py-4 font-mono text-sm text-primary hover:underline underline-offset-4"
+              className="border-t border-border/40 px-6 py-4 font-mono text-sm text-muted-foreground hover:text-foreground underline-offset-4 transition-colors"
             >
               Open full post →
             </Link>

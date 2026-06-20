@@ -1,10 +1,10 @@
 import SectionBlock from "@/components/SectionBlock";
-import { card, textBody, linkPrimary, heading } from "@/lib/styles";
+import { card, textBody, heading } from "@/lib/styles";
 
 type WorkItem = {
   name: string;
   href: string;
-  sourceHref?: string;
+  githubHref?: string;
   cta: string;
   description: string[];
   logo?: string;
@@ -42,22 +42,15 @@ const WorkSection = () => {
                     <img
                       src={item.logo}
                       alt={item.alt ?? item.name}
-                      className="w-10 h-10 rounded-lg object-contain shrink-0"
+                      className="w-10 h-10 rounded-xl object-contain shrink-0"
                     />
                   ) : (
-                    <span className="flex w-10 h-10 items-center justify-center rounded-xl bg-primary/10 font-mono text-xs font-semibold text-primary shrink-0">
+                    <span className="flex w-10 h-10 items-center justify-center rounded-xl bg-muted font-mono text-xs font-semibold text-muted-foreground shrink-0">
                       {item.initials}
                     </span>
                   )}
                   <h3 className={`text-lg font-semibold ${heading}`}>
-                    <a
-                      href={item.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-primary transition-colors"
-                    >
-                      {item.name} ↗
-                    </a>
+                    {item.name}
                   </h3>
                 </div>
                 <div className={`max-w-2xl space-y-3 text-base leading-relaxed ${textBody}`}>
@@ -71,18 +64,18 @@ const WorkSection = () => {
                   href={item.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`font-mono text-sm ${linkPrimary}`}
+                  className="font-mono text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {item.cta} →
                 </a>
-                {item.sourceHref && (
+                {item.githubHref && (
                   <a
-                    href={item.sourceHref}
+                    href={item.githubHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`font-mono text-sm ${linkPrimary} text-muted-foreground`}
+                    className="font-mono text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Source →
+                    GitHub →
                   </a>
                 )}
               </div>

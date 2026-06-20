@@ -5,13 +5,13 @@ export const cardCompact =
   "rounded-2xl bg-muted/50 p-5 transition-colors";
 
 export const linkPrimary =
-  "text-primary hover:underline underline-offset-4 transition-colors";
+  "text-muted-foreground hover:text-foreground underline-offset-4 transition-colors";
 
 export const linkMuted =
   "text-muted-foreground hover:text-foreground transition-colors";
 
 export const linkSubtle =
-  "text-foreground/60 hover:text-primary transition-colors";
+  "text-foreground/60 hover:text-foreground transition-colors";
 
 export const navLink =
   "text-muted-foreground hover:text-foreground transition-colors";
@@ -30,4 +30,4 @@ export const socialChip =
   "group flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted/50 transition-colors";
 
 export const arrowHover =
-  "text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all text-sm shrink-0";
+  "text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all text-sm shrink-0";

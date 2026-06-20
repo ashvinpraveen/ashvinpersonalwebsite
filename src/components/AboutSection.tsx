@@ -99,7 +99,7 @@ const AboutSection = () => {
         <button
           type="button"
           onClick={() => setIsExpanded((value) => !value)}
-          className="mt-6 font-mono text-sm text-primary hover:underline underline-offset-4 transition-colors"
+          className="mt-6 font-mono text-sm text-muted-foreground hover:text-foreground underline-offset-4 transition-colors"
           aria-expanded={isExpanded}
         >
           {isExpanded ? "Show less" : "See more"}

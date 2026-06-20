@@ -61,7 +61,7 @@ const HeroSection = () => {
             Ashvin Praveen
           </h1>
           <p className="font-mono text-sm mb-6 flex items-center gap-2">
-            <span className="text-primary font-semibold">Co-founder & CEO</span>
+            <span className="text-foreground font-semibold">Co-founder & CEO</span>
             <span className="text-muted-foreground">·</span>
             <a
               href="https://cleve.ai"

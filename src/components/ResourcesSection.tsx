@@ -57,7 +57,7 @@ const ResourcesSection = () => {
             className={`group flex min-h-32 items-start justify-between gap-4 ${cardCompact}`}
           >
             <div>
-              <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+              <p className="text-sm font-semibold text-foreground group-hover:text-foreground/70 transition-colors">
                 {resource.label}
               </p>
               <p className="text-sm leading-relaxed text-muted-foreground mt-0.5">

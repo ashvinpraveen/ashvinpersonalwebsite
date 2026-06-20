@@ -63,7 +63,7 @@ const WritingSection = () => {
               </p>
               <span className={arrowHover}>↗</span>
             </div>
-            <p className={`text-xl font-medium group-hover:text-primary transition-colors ${heading}`}>
+            <p className={`text-xl font-medium group-hover:text-foreground transition-colors ${heading}`}>
               {post.title || "Untitled"}
             </p>
             <p className="font-mono text-xs text-muted-foreground mt-2">

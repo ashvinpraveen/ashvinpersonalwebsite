@@ -18,7 +18,7 @@ const SectionBlock = ({ children, className, id, label }: SectionBlockProps) => 
     >
       {label && (
         <div className="flex items-center gap-3 mb-10">
-          <span className="h-px w-6 bg-primary/60 shrink-0" />
+          <span className="h-px w-6 bg-muted-foreground/40 shrink-0" />
           <p className={monoLabel}>{label}</p>
         </div>
       )}
