@@ -73,7 +73,23 @@ const HeroSection = () => {
           <p className="text-lg md:text-xl text-foreground/90 leading-relaxed">
             Experimenting with AI's applications, building and sharing what I've found helpful.
           </p>
-          <div className="mt-8 flex flex-wrap gap-2.5">
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a
+              href="/blog"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              Read my writing
+            </a>
+            <a
+              href="https://cal.com/ashvinpraveen"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground/80 hover:border-primary/40 hover:text-foreground transition-all"
+            >
+              Book a call
+            </a>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-2.5">
             {socials.map((social) => (
               <a
                 key={social.label}
