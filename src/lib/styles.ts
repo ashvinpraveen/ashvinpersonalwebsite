@@ -21,7 +21,7 @@ export const textSecondary = "text-foreground/80";
 export const textSubtle = "text-foreground/60";
 
 export const heading =
-  "font-serif tracking-tight";
+  "tracking-tight";
 
 export const monoLabel =
   "font-mono text-xs text-muted-foreground uppercase tracking-widest";
