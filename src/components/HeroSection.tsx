@@ -47,6 +47,13 @@ const HeroSection = () => {
   return (
     <section id="hero" className="pt-16 pb-16 md:pt-24 md:pb-24">
       <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start">
+        <div className="md:hidden">
+          <img
+            src="/ashvin-profile.png"
+            alt="Ashvin Praveen"
+            className="w-24 h-24 rounded-full object-cover object-top ring-2 ring-border"
+          />
+        </div>
         <div className="max-w-prose">
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] mb-4">
             Ashvin Praveen
@@ -95,11 +102,11 @@ const HeroSection = () => {
             ))}
           </div>
         </div>
-        <div className="flex flex-col gap-4">
+        <div className="hidden md:flex flex-col gap-4">
           <img
             src="/ashvin-profile.png"
             alt="Ashvin Praveen"
-            className="w-32 h-32 md:w-full md:h-auto md:aspect-square rounded-lg object-cover object-top shrink-0 ring-1 ring-border"
+            className="w-full h-auto aspect-square rounded-lg object-cover object-top shrink-0 ring-1 ring-border"
           />
         </div>
       </div>
