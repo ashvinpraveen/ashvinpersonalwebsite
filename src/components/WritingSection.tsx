@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchNotes } from "@/lib/cleve";
 import SectionBlock from "@/components/SectionBlock";
 import ActivityMap from "./ActivityMap";
-import { linkPrimary, arrowHover } from "@/lib/styles";
+import { linkPrimary, arrowHover, heading } from "@/lib/styles";
 
 const formatNoteDate = (timestamp: number | null | undefined) => {
   if (!timestamp) return "Updated recently";
@@ -59,7 +59,7 @@ const WritingSection = () => {
               className="group flex items-start justify-between gap-4 border-b border-border p-4 transition-colors last:border-b-0 hover:bg-muted/35"
             >
               <div>
-                <p className="text-base font-medium group-hover:text-primary transition-colors">
+                <p className={`text-base font-medium group-hover:text-primary transition-colors ${heading}`}>
                   {post.title || "Untitled"}
                 </p>
                 <p className="font-mono text-xs text-muted-foreground mt-1">

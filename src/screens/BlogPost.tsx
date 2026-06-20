@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import LazyRichMarkdown from "@/components/LazyRichMarkdown";
 import { CleveNote, fetchNote } from "@/lib/cleve";
 import { contentColumnClassName, pageShellClassName } from "@/lib/layout";
-import { navLink } from "@/lib/styles";
+import { navLink, heading } from "@/lib/styles";
 
 const formatNoteDate = (timestamp: number | null | undefined) => {
   if (!timestamp) return "Updated recently";
@@ -54,7 +54,7 @@ const BlogPost = ({ id, initialNote }: BlogPostProps) => {
 
           {note && (
             <article className="mt-8 space-y-4">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              <h1 className={`text-3xl md:text-4xl font-semibold text-foreground ${heading}`}>
                 {note.title || "Untitled"}
               </h1>
               <p className="font-mono text-xs text-muted-foreground">

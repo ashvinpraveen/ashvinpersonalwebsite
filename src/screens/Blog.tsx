@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import ActivityMap from "@/components/ActivityMap";
 import { CleveNote, fetchNotes } from "@/lib/cleve";
 import { contentColumnClassName, pageShellClassName } from "@/lib/layout";
+import { monoLabel, heading, linkPrimary } from "@/lib/styles";
 
 const formatNoteDate = (timestamp: number | null | undefined) => {
   if (!timestamp) return "Updated recently";
@@ -41,9 +42,7 @@ const Blog = ({ initialNotes }: BlogProps) => {
       <SiteNav />
       <main className={`${pageShellClassName} pb-20 pt-24`}>
         <div className={contentColumnClassName}>
-          <p className="font-mono text-xs text-muted-foreground uppercase tracking-widest mb-8">
-            Writing
-          </p>
+          <p className={`${monoLabel} mb-8`}>Writing</p>
 
           {isLoading && (
             <ul className="space-y-8">
@@ -60,7 +59,7 @@ const Blog = ({ initialNotes }: BlogProps) => {
               </p>
               <button
                 onClick={() => refetch()}
-                className="font-mono text-xs text-primary hover:underline underline-offset-4 transition-colors"
+                className={`font-mono text-xs ${linkPrimary}`}
               >
                 Try again →
               </button>
@@ -83,7 +82,7 @@ const Blog = ({ initialNotes }: BlogProps) => {
                     href={`/blog/${note.id}`}
                     className="group block space-y-1"
                   >
-                    <h2 className="text-base font-medium text-foreground group-hover:text-primary transition-colors">
+                    <h2 className={`text-lg font-medium text-foreground group-hover:text-primary transition-colors ${heading}`}>
                       {note.title || "Untitled"}
                     </h2>
                     <p className="font-mono text-xs text-muted-foreground">

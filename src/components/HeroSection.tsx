@@ -43,11 +43,11 @@ const socials = [
   },
 ];
 
-import { socialChip, linkMuted, textBody, textSecondary } from "@/lib/styles";
+import { socialChip, linkMuted, textBody, textSecondary, heading } from "@/lib/styles";
 
 const HeroSection = () => {
   return (
-    <section id="hero" className="pt-16 pb-16 md:pt-24 md:pb-24">
+    <section id="hero" className="pt-20 pb-20 md:pt-32 md:pb-32">
       <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start">
         <div className="md:hidden">
           <img
@@ -57,7 +57,7 @@ const HeroSection = () => {
           />
         </div>
         <div className="max-w-prose">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] mb-4">
+          <h1 className={`text-5xl md:text-6xl font-bold leading-[1.05] mb-4 ${heading}`}>
             Ashvin Praveen
           </h1>
           <p className="font-mono text-sm mb-6 flex items-center gap-2">

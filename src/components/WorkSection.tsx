@@ -1,5 +1,5 @@
 import SectionBlock from "@/components/SectionBlock";
-import { card, textBody, linkPrimary } from "@/lib/styles";
+import { card, textBody, linkPrimary, heading } from "@/lib/styles";
 
 type WorkItem = {
   name: string;
@@ -49,7 +49,7 @@ const WorkSection = () => {
                       {item.initials}
                     </span>
                   )}
-                  <h3 className="text-lg font-semibold">
+                  <h3 className={`text-lg font-semibold ${heading}`}>
                     <a
                       href={item.href}
                       target="_blank"

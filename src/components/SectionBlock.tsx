@@ -14,11 +14,11 @@ const SectionBlock = ({ children, className, id, label }: SectionBlockProps) => 
   return (
     <section
       id={id}
-      className={cn(contentColumnClassName, "py-16 md:py-20 border-t border-border", className)}
+      className={cn(contentColumnClassName, "py-20 md:py-28 border-t border-border/50", className)}
     >
       {label && (
-        <div className="flex items-center gap-3 mb-8">
-          <span className="h-px w-6 bg-primary shrink-0" />
+        <div className="flex items-center gap-3 mb-10">
+          <span className="h-px w-6 bg-primary/60 shrink-0" />
           <p className={monoLabel}>{label}</p>
         </div>
       )}

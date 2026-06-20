@@ -1,5 +1,5 @@
 import SectionBlock from "@/components/SectionBlock";
-import { cardCompact, textSecondary, linkPrimary } from "@/lib/styles";
+import { cardCompact, textSecondary, linkPrimary, heading } from "@/lib/styles";
 
 const projects = [
   {
@@ -60,7 +60,7 @@ const InvolvementSection = () => {
                     {project.initials || "P"}
                   </span>
                 )}
-                <h3 className="text-base font-semibold">
+                <h3 className={`text-base font-semibold ${heading}`}>
                   <a
                     href={project.href}
                     target="_blank"
