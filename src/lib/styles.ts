@@ -1,8 +1,8 @@
 export const card =
-  "rounded-xl border border-border/60 bg-card p-5 md:p-6 hover:border-border hover:shadow-sm transition-all";
+  "rounded-2xl bg-muted/50 p-5 md:p-6 transition-colors";
 
 export const cardCompact =
-  "rounded-xl border border-border/60 bg-card p-5 hover:border-border hover:shadow-sm transition-all";
+  "rounded-2xl bg-muted/50 p-5 transition-colors";
 
 export const linkPrimary =
   "text-primary hover:underline underline-offset-4 transition-colors";
@@ -27,7 +27,7 @@ export const monoLabel =
   "font-mono text-xs text-muted-foreground uppercase tracking-widest";
 
 export const socialChip =
-  "group flex items-center gap-2 px-3.5 py-2 rounded-xl border border-border/60 bg-card hover:border-border hover:shadow-sm transition-all";
+  "group flex items-center gap-2 px-3.5 py-2 rounded-full bg-muted/50 transition-colors";
 
 export const arrowHover =
   "text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all text-sm shrink-0";

@@ -14,7 +14,7 @@ const SectionBlock = ({ children, className, id, label }: SectionBlockProps) => 
   return (
     <section
       id={id}
-      className={cn(contentColumnClassName, "py-20 md:py-28 border-t border-border/50", className)}
+      className={cn(contentColumnClassName, "py-20 md:py-28", className)}
     >
       {label && (
         <div className="flex items-center gap-3 mb-10">

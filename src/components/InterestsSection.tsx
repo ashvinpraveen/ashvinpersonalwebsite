@@ -13,7 +13,7 @@ const interests = [
 const InterestsSection = () => {
   return (
     <SectionBlock id="interests" label="Interests">
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-border/40">
         {interests.map((item) => (
           <div
             key={item.name}

@@ -56,7 +56,7 @@ const InvolvementSection = () => {
                     className="w-9 h-9 rounded-lg object-contain shrink-0"
                   />
                 ) : (
-                  <span className="flex w-9 h-9 items-center justify-center rounded-lg border border-border bg-background font-mono text-xs font-semibold text-primary shrink-0">
+                  <span className="flex w-9 h-9 items-center justify-center rounded-xl bg-primary/10 font-mono text-xs font-semibold text-primary shrink-0">
                     {project.initials || "P"}
                   </span>
                 )}

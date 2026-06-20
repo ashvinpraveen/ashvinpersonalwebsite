@@ -53,7 +53,7 @@ const HeroSection = () => {
           <img
             src="/ashvin-profile.png"
             alt="Ashvin Praveen"
-            className="w-24 h-24 rounded-full object-cover object-top ring-2 ring-border"
+            className="w-24 h-24 rounded-full object-cover object-top"
           />
         </div>
         <div className="max-w-prose">
@@ -78,7 +78,7 @@ const HeroSection = () => {
           <div className="mt-6 flex flex-wrap gap-3">
             <a
               href="/blog"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
             >
               Read my writing
             </a>
@@ -86,7 +86,7 @@ const HeroSection = () => {
               href="https://cal.com/ashvinpraveen"
               target="_blank"
               rel="noopener noreferrer"
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium ${textSecondary} hover:border-primary/40 hover:text-foreground transition-all`}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 text-sm font-medium ${textSecondary} hover:text-foreground transition-colors`}
             >
               Book a call
             </a>
@@ -124,7 +124,7 @@ const HeroSection = () => {
           <img
             src="/ashvin-profile.png"
             alt="Ashvin Praveen"
-            className="w-full h-auto aspect-square rounded-lg object-cover object-top shrink-0 ring-1 ring-border"
+            className="w-full h-auto aspect-square rounded-2xl object-cover object-top shrink-0"
           />
         </div>
       </div>

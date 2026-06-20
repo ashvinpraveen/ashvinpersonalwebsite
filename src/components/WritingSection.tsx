@@ -29,51 +29,50 @@ const WritingSection = () => {
         <ActivityMap notes={notes} />
       )}
       {isLoading && (
-        <div className="mb-10 h-[110px] rounded-lg bg-muted/40 animate-pulse" />
+        <div className="mb-10 h-[110px] rounded-2xl bg-muted/50 animate-pulse" />
       )}
 
-      <div>
-        <div className="mb-10 border-y border-border">
-          {isLoading && (
-            <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="p-4 border-b border-border last:border-b-0">
-                  <div className="h-4 w-3/4 bg-muted animate-pulse rounded mb-2" />
-                  <div className="h-3 w-1/3 bg-muted animate-pulse rounded" />
-                </div>
-              ))}
-            </div>
-          )}
-          {isError && (
-            <p className="font-mono text-xs text-muted-foreground pl-4">
-              Couldn't load posts.{" "}
-              <Link href="/blog" className={linkPrimary}>
-                Browse all →
-              </Link>
-            </p>
-          )}
-          {!isLoading && !isError && posts.map((post) => (
-            <Link
-              key={post.id}
-              href={`/blog/${post.id}`}
-              className="group flex items-start justify-between gap-4 border-b border-border p-4 transition-colors last:border-b-0 hover:bg-muted/35"
-            >
-              <div>
-                <p className={`text-base font-medium group-hover:text-primary transition-colors ${heading}`}>
-                  {post.title || "Untitled"}
-                </p>
-                <p className="font-mono text-xs text-muted-foreground mt-1">
-                  {formatNoteDate(post.createdAt)}
-                </p>
+      <div className="space-y-4">
+        {isLoading && (
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="rounded-2xl bg-muted/50 p-6">
+                <div className="h-4 w-3/4 bg-muted animate-pulse rounded mb-2" />
+                <div className="h-3 w-1/3 bg-muted animate-pulse rounded" />
               </div>
-              <span className={`${arrowHover} mt-0.5`}>
-                →
-              </span>
+            ))}
+          </div>
+        )}
+        {isError && (
+          <p className="font-mono text-xs text-muted-foreground">
+            Couldn't load posts.{" "}
+            <Link href="/blog" className={linkPrimary}>
+              Browse all →
             </Link>
-          ))}
-        </div>
+          </p>
+        )}
+        {!isLoading && !isError && posts.map((post) => (
+          <Link
+            key={post.id}
+            href={`/blog/${post.id}`}
+            className="group block rounded-2xl bg-muted/50 p-6 transition-colors hover:bg-muted/70"
+          >
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <p className="font-mono text-xs text-muted-foreground">
+                Writing · Blog
+              </p>
+              <span className={arrowHover}>↗</span>
+            </div>
+            <p className={`text-xl font-medium group-hover:text-primary transition-colors ${heading}`}>
+              {post.title || "Untitled"}
+            </p>
+            <p className="font-mono text-xs text-muted-foreground mt-2">
+              {formatNoteDate(post.createdAt)}
+            </p>
+          </Link>
+        ))}
 
-        <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-sm pl-4">
+        <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-sm pt-2">
           <Link
             href="/blog"
             className={linkPrimary}
