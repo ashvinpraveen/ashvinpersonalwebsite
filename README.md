@@ -76,6 +76,37 @@ If you don't have one yet, sign up at [github.com](https://github.com). It's fre
 
 You can use any text editor, but [VS Code](https://code.visualstudio.com) is free and popular. It has a built-in terminal, so you can edit code and run commands in the same window.
 
+### 5. Use a Coding Agent to Help You (Seriously, Do This)
+
+If you've never coded before, a coding agent is like having a developer friend sitting next to you. It can read the codebase, answer your questions, make changes for you, and even debug problems. Here are three great options:
+
+| Tool | Cost | Best For | How to Get It |
+| --- | --- | --- | --- |
+| [Antigravity](https://antigravity.com) | Free | Beginners who want a no-cost option | Download the app from [antigravity.com](https://antigravity.com) |
+| [Claude Code](https://claude.ai/code) | Included with Claude Pro/Max | Claude subscribers | Install via `npm install -g @anthropic-ai/claude-code`, then run `claude` in your project folder |
+| [Codex](https://openai.com/index/introducing-codex/) | Included with ChatGPT Pro | ChatGPT subscribers | Install via `npm install -g @openai/codex`, then run `codex` in your project folder |
+
+**Why use one?** Instead of manually editing each component file, you can just tell the agent:
+
+> "Replace Ashvin's name with mine, update the social links to my profiles, and swap the profile photo to my-photo.jpg"
+
+...and it'll make all the changes for you. It can also help you set up Convex, debug issues, and deploy to Vercel.
+
+**Antigravity** is the easiest starting point — it's completely free, no subscription needed. If you already pay for Claude or ChatGPT, their coding agents (Claude Code and Codex) are included in your subscription and work great too.
+
+To use any of these agents with this project, just open your terminal, navigate to your project folder, and launch the agent:
+
+```bash
+cd ashvinpersonalwebsite
+
+# Pick one:
+antigravity          # if using Antigravity
+claude               # if using Claude Code
+codex                # if using Codex
+```
+
+Then start asking it questions or telling it what to change. It's that simple.
+
 ---
 
 ## Fork This Repo (Make It Yours)
@@ -215,6 +246,8 @@ Now go to `http://localhost:8080` again. The writing section should show your Cl
 ## Make It Your Own
 
 Time for the fun part — replacing Ashvin's info with yours.
+
+> **Pro tip**: If you installed a coding agent (Antigravity, Claude Code, or Codex) from the prerequisites, you can skip the manual editing below. Just tell the agent what you want to change and it'll do it for you. For example: *"Replace all of Ashvin's personal info with mine — my name is Jane Doe, I'm a designer in NYC, here are my social links..."*
 
 ### Where Everything Lives
 
