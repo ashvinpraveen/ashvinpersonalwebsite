@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
-const ThemeToggle = () => {
+type ThemeToggleProps = {
+  className?: string;
+};
+
+const ThemeToggle = ({ className }: ThemeToggleProps) => {
   const [mounted, setMounted] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
 
@@ -15,7 +19,7 @@ const ThemeToggle = () => {
   return (
     <button
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="text-muted-foreground hover:text-foreground transition-colors font-mono text-xs"
+      className={`transition-colors font-mono text-xs ${className ?? "text-muted-foreground hover:text-foreground"}`}
       aria-label="Toggle theme"
     >
       {isDark ? <Moon size={15} /> : <Sun size={15} />}
