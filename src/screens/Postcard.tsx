@@ -460,19 +460,28 @@ const Postcard = () => {
     canvasRef.current = canvas;
     if (!canvas || !hasDrawing) return null;
 
-    const maxExportWidth = 800;
-    if (canvas.width <= maxExportWidth) {
-      return canvas.toDataURL("image/png");
-    }
-
-    const scale = maxExportWidth / canvas.width;
+    const maxBytes = 170_000;
     const exportCanvas = document.createElement("canvas");
-    exportCanvas.width = maxExportWidth;
-    exportCanvas.height = Math.floor(canvas.height * scale);
     const ctx = exportCanvas.getContext("2d");
     if (!ctx) return canvas.toDataURL("image/png");
 
-    ctx.drawImage(canvas, 0, 0, exportCanvas.width, exportCanvas.height);
+    for (const width of [800, 600, 400]) {
+      if (canvas.width > width) {
+        const scale = width / canvas.width;
+        exportCanvas.width = width;
+        exportCanvas.height = Math.floor(canvas.height * scale);
+        ctx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
+        ctx.drawImage(canvas, 0, 0, exportCanvas.width, exportCanvas.height);
+      } else {
+        exportCanvas.width = canvas.width;
+        exportCanvas.height = canvas.height;
+        ctx.clearRect(0, 0, exportCanvas.width, exportCanvas.height);
+        ctx.drawImage(canvas, 0, 0);
+      }
+      const dataUrl = exportCanvas.toDataURL("image/png");
+      if (dataUrl.length <= maxBytes) return dataUrl;
+    }
+
     return exportCanvas.toDataURL("image/png");
   }
 
