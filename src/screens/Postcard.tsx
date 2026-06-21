@@ -18,14 +18,6 @@ const MESSAGE_COUNTER_THRESHOLD = 420;
 const CLIENT_ID_KEY = "postcard-client-id";
 const DRAFT_KEY = "postcard-draft";
 const DEFAULT_PEN_SIZE = 3;
-const promptIdeas = [
-  "something small you learned today",
-  "a question you keep coming back to",
-  "a place you miss",
-  "a tiny story from your day",
-  "something you changed your mind about",
-  "draw your current mood",
-];
 const drawingPlacements = [
   { left: "8%", top: "18%", width: "28%", rotate: "-4deg" },
   { left: "36%", top: "8%", width: "24%", rotate: "3deg" },
@@ -403,7 +395,6 @@ const Postcard = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [lastSharedUrl, setLastSharedUrl] = useState("");
-  const [promptText, setPromptText] = useState(promptIdeas[0]);
   const [highlightedPostcardId, setHighlightedPostcardId] = useState("");
   const [savingPostcardId, setSavingPostcardId] = useState<Id<"postcards"> | null>(null);
   const [deletingPostcardId, setDeletingPostcardId] = useState<Id<"postcards"> | null>(null);
@@ -529,10 +520,6 @@ const Postcard = () => {
     setEditMessage("");
   }
 
-  function randomizePrompt() {
-    const nextPrompt = promptIdeas[Math.floor(Math.random() * promptIdeas.length)];
-    setPromptText(nextPrompt);
-  }
 
   async function copyShareLink() {
     if (!lastSharedUrl) return;
@@ -610,13 +597,6 @@ const Postcard = () => {
               <p className="text-base leading-relaxed text-muted-foreground">
                 what's something random you learned today? or have any questions? (or just wanna say hi while you're here haha) leave a note! i read and respond to everything
               </p>
-              <button
-                type="button"
-                onClick={randomizePrompt}
-                className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Need a prompt? {promptText}
-              </button>
             </div>
 
             <form
@@ -645,7 +625,7 @@ const Postcard = () => {
                     value={message}
                     onChange={(event) => setMessage(event.target.value)}
                     maxLength={MAX_MESSAGE_LENGTH}
-                    placeholder={promptText}
+                    placeholder="Write something..."
                     className="min-h-56 flex-1 resize-none border-0 bg-transparent px-0 py-0 text-lg leading-8 shadow-none ring-offset-0 placeholder:text-muted-foreground/60 focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
 
