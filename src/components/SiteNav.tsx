@@ -44,7 +44,7 @@ const SiteNav = ({ variant = "dark" }: SiteNavProps) => {
           <Link href="/blog" className={`transition-colors ${linkClass}`}>
             Writing
           </Link>
-          <ThemeToggle />
+          <ThemeToggle className={`transition-colors ${linkClass}`} />
         </div>
       </div>
     </nav>
