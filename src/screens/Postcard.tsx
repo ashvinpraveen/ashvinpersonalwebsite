@@ -459,7 +459,21 @@ const Postcard = () => {
     const canvas = document.querySelector<HTMLCanvasElement>("#postcard-drawing");
     canvasRef.current = canvas;
     if (!canvas || !hasDrawing) return null;
-    return canvas.toDataURL("image/png");
+
+    const maxExportWidth = 800;
+    if (canvas.width <= maxExportWidth) {
+      return canvas.toDataURL("image/png");
+    }
+
+    const scale = maxExportWidth / canvas.width;
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = maxExportWidth;
+    exportCanvas.height = Math.floor(canvas.height * scale);
+    const ctx = exportCanvas.getContext("2d");
+    if (!ctx) return canvas.toDataURL("image/png");
+
+    ctx.drawImage(canvas, 0, 0, exportCanvas.width, exportCanvas.height);
+    return exportCanvas.toDataURL("image/png");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

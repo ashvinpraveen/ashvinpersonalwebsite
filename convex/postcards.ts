@@ -21,7 +21,9 @@ const trimMessage = (value: string) =>
 const normalizeDrawing = (value: string | null) => {
   if (!value) return null;
   if (!value.startsWith("data:image/png;base64,")) return null;
-  if (value.length > MAX_DRAWING_DATA_URL_LENGTH) return null;
+  if (value.length > MAX_DRAWING_DATA_URL_LENGTH) {
+    throw new Error("Drawing is too large. Try a simpler sketch.");
+  }
   return value;
 };
 
