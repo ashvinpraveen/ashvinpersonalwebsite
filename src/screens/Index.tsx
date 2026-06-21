@@ -15,7 +15,7 @@ const Index = () => {
   return (
     <>
       <SiteNav />
-      <main className={`${pageShellClassName} pb-20 pt-12 overflow-x-hidden`}>
+      <main className={`${pageShellClassName} pb-20 pt-12`}>
         <HeroSection />
         <WorkSection />
         <AboutSection />
