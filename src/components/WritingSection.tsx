@@ -55,17 +55,17 @@ const WritingSection = () => {
           <Link
             key={post.id}
             href={`/blog/${post.id}`}
-            className="group block rounded-2xl bg-muted/50 p-6 transition-colors hover:bg-muted/70"
+            className="group flex items-start justify-between gap-4 rounded-2xl bg-muted/50 p-6 transition-colors hover:bg-muted/70"
           >
-            <div className="flex items-center justify-end gap-4 mb-4">
-              <span className={arrowHover}>↗</span>
+            <div>
+              <p className={`text-base font-medium group-hover:text-foreground transition-colors ${heading}`}>
+                {post.title || "Untitled"}
+              </p>
+              <p className="font-mono text-xs text-muted-foreground mt-2">
+                {formatNoteDate(post.createdAt)}
+              </p>
             </div>
-            <p className={`text-base font-medium group-hover:text-foreground transition-colors ${heading}`}>
-              {post.title || "Untitled"}
-            </p>
-            <p className="font-mono text-xs text-muted-foreground mt-2">
-              {formatNoteDate(post.createdAt)}
-            </p>
+            <span className={`${arrowHover} mt-1`}>↗</span>
           </Link>
         ))}
 
