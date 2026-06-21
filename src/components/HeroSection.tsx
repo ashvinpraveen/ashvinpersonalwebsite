@@ -43,12 +43,12 @@ const socials = [
   },
 ];
 
-import { socialChip, linkMuted, textBody, textSecondary, heading } from "@/lib/styles";
+import { heading } from "@/lib/styles";
 
 const HeroSection = () => {
   return (
-    <section id="hero" className="relative -mx-6 md:-mx-12 lg:-mx-16 px-6 md:px-12 lg:px-16 pt-16 pb-10 md:pt-24 md:pb-14 bg-muted/40 rounded-b-3xl overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 rounded-b-3xl opacity-[0.07] dark:opacity-[0.12] mix-blend-overlay" aria-hidden="true" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`, backgroundRepeat: "repeat", backgroundSize: "128px 128px" }} />
+    <section id="hero" className="relative -mx-6 md:-mx-12 lg:-mx-16 px-6 md:px-12 lg:px-16 pt-16 pb-10 md:pt-24 md:pb-14 rounded-b-3xl overflow-hidden text-white" style={{ backgroundColor: "hsl(150, 20%, 12%)" }}>
+      <div className="pointer-events-none absolute inset-0 rounded-b-3xl opacity-[0.15] mix-blend-overlay" aria-hidden="true" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`, backgroundRepeat: "repeat", backgroundSize: "128px 128px" }} />
       <div className="relative grid gap-10 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start">
         <div className="md:hidden">
           <img
@@ -62,18 +62,18 @@ const HeroSection = () => {
             Ashvin Praveen
           </h1>
           <p className="font-mono text-sm mb-6 flex items-center gap-2">
-            <span className="text-foreground font-semibold">Co-founder & CEO</span>
-            <span className="text-muted-foreground">·</span>
+            <span className="font-semibold">Co-founder & CEO</span>
+            <span className="text-white/50">·</span>
             <a
               href="https://cleve.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className={linkMuted}
+              className="text-white/70 hover:text-white transition-colors"
             >
               Cleve.ai
             </a>
           </p>
-          <p className={`text-base ${textBody} leading-relaxed`}>
+          <p className="text-base text-white/80 leading-relaxed">
             Experimenting with AI's applications, building and sharing what I've found helpful.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
@@ -87,7 +87,7 @@ const HeroSection = () => {
               href="https://cal.com/ashvinpraveen"
               target="_blank"
               rel="noopener noreferrer"
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 text-sm font-medium ${textSecondary} hover:text-foreground transition-colors`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-sm font-medium text-white/80 hover:text-white transition-colors"
             >
               Book a call
             </a>
@@ -99,22 +99,14 @@ const HeroSection = () => {
                 href={social.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={socialChip}
+                className="group flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/10 transition-colors"
               >
                 <img
-                  src={social.icon}
+                  src={social.iconDark || social.icon}
                   alt={`${social.label} profile`}
-                  className={`w-4 h-4 object-contain${social.iconDark ? " dark:hidden" : ""}`}
+                  className="w-4 h-4 object-contain"
                 />
-                {social.iconDark && (
-                  <img
-                    src={social.iconDark}
-                    alt=""
-                    aria-hidden="true"
-                    className="w-4 h-4 object-contain hidden dark:block"
-                  />
-                )}
-                <span className={`text-sm font-medium ${textSecondary} group-hover:text-foreground transition-colors`}>
+                <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">
                   {social.label}
                 </span>
               </a>
