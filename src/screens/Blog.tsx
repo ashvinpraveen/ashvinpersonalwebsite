@@ -42,7 +42,10 @@ const Blog = ({ initialNotes }: BlogProps) => {
       <SiteNav />
       <main className={`${pageShellClassName} pb-20 pt-24`}>
         <div className={contentColumnClassName}>
-          <p className={`${monoLabel} mb-8`}>Writing</p>
+          <h1 className={`text-3xl md:text-4xl font-bold mb-3 ${heading}`}>Writing</h1>
+          <p className="text-base text-muted-foreground mb-10 max-w-md">
+            Thoughts on AI, building products, and things I've learned along the way.
+          </p>
 
           {isLoading && (
             <ul className="space-y-8">

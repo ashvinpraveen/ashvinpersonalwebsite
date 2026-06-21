@@ -14,7 +14,7 @@ import { pageShellClassName } from "@/lib/layout";
 const Index = () => {
   return (
     <>
-      <SiteNav />
+      <SiteNav variant="light" />
       <main className={`${pageShellClassName} pb-20 pt-12`}>
         <HeroSection />
         <WorkSection />
