@@ -2,12 +2,7 @@ import SectionBlock from "@/components/SectionBlock";
 import { cardCompact, arrowHover } from "@/lib/styles";
 
 const resources = [
-  {
-    label: "Cleve.ai",
-    href: "https://cleve.ai",
-    description: "My AI workspace. Best place to start if you want to write better with AI.",
-  },
-  {
+{
     label: "Paul Graham's essays",
     href: "http://paulgraham.com/essays.html",
     description: "Still the clearest thinking on building.",

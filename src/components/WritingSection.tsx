@@ -57,10 +57,7 @@ const WritingSection = () => {
             href={`/blog/${post.id}`}
             className="group block rounded-2xl bg-muted/50 p-6 transition-colors hover:bg-muted/70"
           >
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <p className="font-mono text-xs text-muted-foreground">
-                Writing · Blog
-              </p>
+            <div className="flex items-center justify-end gap-4 mb-4">
               <span className={arrowHover}>↗</span>
             </div>
             <p className={`text-base font-medium group-hover:text-foreground transition-colors ${heading}`}>
