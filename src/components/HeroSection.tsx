@@ -47,9 +47,9 @@ import { socialChip, linkMuted, textBody, textSecondary, heading } from "@/lib/s
 
 const HeroSection = () => {
   return (
-    <section id="hero" className="relative pt-16 pb-10 md:pt-24 md:pb-14 overflow-hidden">
-      <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl md:h-96 md:w-96" aria-hidden="true" />
-      <div className="pointer-events-none absolute -top-10 right-0 h-56 w-56 rounded-full bg-primary/[0.06] blur-3xl md:h-80 md:w-80" aria-hidden="true" />
+    <section id="hero" className="relative pt-16 pb-10 md:pt-24 md:pb-14">
+      <div className="pointer-events-none absolute -top-24 left-0 h-72 w-72 rounded-full bg-primary/10 blur-3xl md:h-96 md:w-96" aria-hidden="true" />
+      <div className="pointer-events-none absolute -top-10 right-8 h-56 w-56 rounded-full bg-primary/[0.06] blur-3xl md:h-80 md:w-80" aria-hidden="true" />
       <div className="pointer-events-none absolute top-32 left-1/3 h-40 w-40 rounded-full bg-accent/[0.05] blur-3xl md:h-64 md:w-64" aria-hidden="true" />
       <div className="relative grid gap-10 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start">
         <div className="md:hidden">
