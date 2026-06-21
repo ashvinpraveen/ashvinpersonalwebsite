@@ -44,6 +44,13 @@ type EditablePostcard = {
   message: string;
 };
 
+type PendingPostcard = {
+  name: string;
+  location: string;
+  message: string;
+  drawingDataUrl: string | null;
+};
+
 type PostcardDraft = {
   name?: string;
   location?: string;
@@ -396,6 +403,7 @@ const Postcard = () => {
   const [submitError, setSubmitError] = useState("");
   const [lastSharedUrl, setLastSharedUrl] = useState("");
   const [highlightedPostcardId, setHighlightedPostcardId] = useState("");
+  const [pendingPostcard, setPendingPostcard] = useState<PendingPostcard | null>(null);
   const [savingPostcardId, setSavingPostcardId] = useState<Id<"postcards"> | null>(null);
   const [deletingPostcardId, setDeletingPostcardId] = useState<Id<"postcards"> | null>(null);
   const [likingPostcardId, setLikingPostcardId] = useState<Id<"postcards"> | null>(null);
@@ -498,16 +506,18 @@ const Postcard = () => {
       return;
     }
 
+    const drawingDataUrl = getDrawingDataUrl();
     setIsSubmitting(true);
     setSubmitError("");
     setLastSharedUrl("");
+    setPendingPostcard({ name, location, message, drawingDataUrl });
     try {
       const postcardId = await createPostcard({
         name,
         location,
         message,
         clientId,
-        drawingDataUrl: getDrawingDataUrl(),
+        drawingDataUrl,
       });
       const shareUrl = `${window.location.origin}/postcards#postcard-${postcardId}`;
       setName("");
@@ -519,10 +529,12 @@ const Postcard = () => {
       window.history.replaceState(null, "", `#postcard-${postcardId}`);
       setHighlightedPostcardId(String(postcardId));
       setLastSharedUrl(shareUrl);
+      setPendingPostcard(null);
       toast.success("Postcard added.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not add postcard.";
       setSubmitError(message);
+      setPendingPostcard(null);
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -698,6 +710,42 @@ const Postcard = () => {
                 </div>
               </div>
             </form>
+
+            {pendingPostcard && (
+              <article className="animate-pulse rounded-[12px] border border-primary/30 bg-card p-4">
+                <div className="space-y-4">
+                  {pendingPostcard.drawingDataUrl && (
+                    <div className="h-36 w-full rounded-[12px] border border-border bg-background p-2 dark:bg-muted">
+                      <img
+                        src={pendingPostcard.drawingDataUrl}
+                        alt=""
+                        className="h-full w-full object-contain dark:invert"
+                      />
+                    </div>
+                  )}
+                  <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground/95">
+                    {pendingPostcard.message}
+                  </p>
+                </div>
+                <footer className="mt-6 flex items-center justify-between border-t border-dashed border-border pt-4">
+                  <div className="space-y-0.5">
+                    {pendingPostcard.name.trim() && (
+                      <p className="font-mono text-[10px] text-muted-foreground/70">
+                        {pendingPostcard.name.trim()}
+                      </p>
+                    )}
+                    {pendingPostcard.location.trim() && (
+                      <p className="font-mono text-[10px] text-muted-foreground/60">
+                        {pendingPostcard.location.trim()}
+                      </p>
+                    )}
+                  </div>
+                  <p className="font-mono text-[10px] text-muted-foreground">
+                    Posting...
+                  </p>
+                </footer>
+              </article>
+            )}
 
             {submitError && (
               <div className="rounded-[12px] border border-destructive/30 bg-destructive/5 p-4 text-sm text-muted-foreground">
