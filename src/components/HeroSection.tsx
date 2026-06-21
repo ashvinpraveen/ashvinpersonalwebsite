@@ -47,8 +47,9 @@ import { socialChip, linkMuted, textBody, textSecondary, heading } from "@/lib/s
 
 const HeroSection = () => {
   return (
-    <section id="hero" className="-mx-6 md:-mx-12 lg:-mx-16 px-6 md:px-12 lg:px-16 pt-16 pb-10 md:pt-24 md:pb-14 bg-muted/40 rounded-b-3xl">
-      <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start">
+    <section id="hero" className="relative -mx-6 md:-mx-12 lg:-mx-16 px-6 md:px-12 lg:px-16 pt-16 pb-10 md:pt-24 md:pb-14 bg-muted/40 rounded-b-3xl overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 rounded-b-3xl opacity-[0.07] dark:opacity-[0.12] mix-blend-overlay" aria-hidden="true" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`, backgroundRepeat: "repeat", backgroundSize: "128px 128px" }} />
+      <div className="relative grid gap-10 md:grid-cols-[minmax(0,1fr)_16rem] md:items-start">
         <div className="md:hidden">
           <img
             src="/ashvin-profile.png"
