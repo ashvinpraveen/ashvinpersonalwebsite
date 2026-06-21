@@ -6,24 +6,23 @@ export interface CleveNote {
   updatedAt?: number | null;
 }
 
-function getConvexSiteUrl() {
-  const siteUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
-
-  if (!siteUrl) {
-    throw new Error("NEXT_PUBLIC_CONVEX_SITE_URL is not configured");
-  }
-
-  return siteUrl;
+function getConvexSiteUrl(): string | null {
+  return process.env.NEXT_PUBLIC_CONVEX_SITE_URL || null;
 }
 
 function cleveProxyUrl(params: Record<string, string>) {
-  const url = new URL(`${getConvexSiteUrl()}/cleve-proxy`);
+  const siteUrl = getConvexSiteUrl();
+  if (!siteUrl) return null;
+  const url = new URL(`${siteUrl}/cleve-proxy`);
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
   return url.toString();
 }
 
-async function cleveRequest<T>(params: Record<string, string>): Promise<T> {
-  const res = await fetch(cleveProxyUrl(params));
+async function cleveRequest<T>(params: Record<string, string>, fallback: T): Promise<T> {
+  const url = cleveProxyUrl(params);
+  if (!url) return fallback;
+
+  const res = await fetch(url);
   const payload = await res.json().catch(() => null);
 
   if (!res.ok) {
@@ -42,9 +41,9 @@ async function cleveRequest<T>(params: Record<string, string>): Promise<T> {
 }
 
 export async function fetchNotes(): Promise<CleveNote[]> {
-  return cleveRequest<CleveNote[]>({ resource: "notes" });
+  return cleveRequest<CleveNote[]>({ resource: "notes" }, []);
 }
 
 export async function fetchNote(id: string): Promise<CleveNote> {
-  return cleveRequest<CleveNote>({ resource: "note", id });
+  return cleveRequest<CleveNote>({ resource: "note", id }, { id, title: "", createdAt: null });
 }

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Postcard from "@/screens/Postcard";
 import { absoluteUrl, createMetadata } from "@/lib/seo";
 
+export const dynamic = "force-dynamic";
+
 const title = "Postcards — Ashvin Praveen";
 const description =
   "Drop a thought, share something you learned, or just say hi. I read and respond to everything.";

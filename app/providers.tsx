@@ -11,18 +11,22 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
-export default function Providers({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+function MaybeConvexProvider({ children }: { children: ReactNode }) {
   const convex = useMemo(() => {
-    if (!convexUrl) {
-      throw new Error("NEXT_PUBLIC_CONVEX_URL is not configured");
-    }
-
+    if (!convexUrl) return null;
     return new ConvexReactClient(convexUrl);
   }, []);
 
+  if (!convex) return <>{children}</>;
+
+  return <ConvexProvider client={convex}>{children}</ConvexProvider>;
+}
+
+export default function Providers({ children }: { children: ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient());
+
   return (
-    <ConvexProvider client={convex}>
+    <MaybeConvexProvider>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <TooltipProvider>
@@ -33,6 +37,6 @@ export default function Providers({ children }: { children: ReactNode }) {
           </TooltipProvider>
         </ThemeProvider>
       </QueryClientProvider>
-    </ConvexProvider>
+    </MaybeConvexProvider>
   );
 }
