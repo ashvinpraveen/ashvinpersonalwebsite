@@ -48,7 +48,8 @@ const socials = [
   },
 ];
 
-const gridSvg = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='60' height='60' fill='none' stroke='rgba(255,255,255,0.06)' stroke-width='0.5'/%3E%3C/svg%3E")`;
+const gridLightSvg = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='60' height='60' fill='none' stroke='rgba(0,0,0,0.06)' stroke-width='0.5'/%3E%3C/svg%3E")`;
+const gridDarkSvg = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='60' height='60' fill='none' stroke='rgba(255,255,255,0.06)' stroke-width='0.5'/%3E%3C/svg%3E")`;
 
 const grainSvg = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
 
@@ -65,27 +66,36 @@ const HeroSection = () => {
   return (
     <section
       id="hero"
-      className="relative -mx-6 md:-mx-12 lg:-mx-16 -mt-12 px-6 md:px-12 lg:px-16 flex items-end pb-16 md:pb-20 overflow-hidden text-white"
-      style={{
-        backgroundColor: "hsl(30, 15%, 12%)",
-        minHeight: "100dvh",
-      }}
+      className="relative -mx-6 md:-mx-12 lg:-mx-16 -mt-12 px-6 md:px-12 lg:px-16 flex items-end pb-16 md:pb-20 overflow-hidden bg-[hsl(35,30%,90%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white"
+      style={{ minHeight: "100dvh" }}
     >
-      {/* Fine grid */}
+      {/* Fine grid — light mode */}
       <div
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 dark:hidden"
         aria-hidden="true"
-        style={{ backgroundImage: gridSvg, backgroundRepeat: "repeat", backgroundSize: "60px 60px" }}
+        style={{ backgroundImage: gridLightSvg, backgroundRepeat: "repeat", backgroundSize: "60px 60px" }}
+      />
+      {/* Fine grid — dark mode */}
+      <div
+        className="pointer-events-none absolute inset-0 hidden dark:block"
+        aria-hidden="true"
+        style={{ backgroundImage: gridDarkSvg, backgroundRepeat: "repeat", backgroundSize: "60px 60px" }}
       />
       {/* Grain */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-50 mix-blend-overlay"
+        className="pointer-events-none absolute inset-0 opacity-30 dark:opacity-50 mix-blend-overlay"
         aria-hidden="true"
         style={{ backgroundImage: grainSvg, backgroundRepeat: "repeat", backgroundSize: "128px 128px" }}
       />
-      {/* Bottom fade */}
+      {/* Bottom fade — light */}
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-32"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-32 dark:hidden"
+        aria-hidden="true"
+        style={{ background: "linear-gradient(to top, hsl(35, 30%, 90%), transparent)" }}
+      />
+      {/* Bottom fade — dark */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-32 hidden dark:block"
         aria-hidden="true"
         style={{ background: "linear-gradient(to top, hsl(30, 15%, 12%), transparent)" }}
       />
@@ -119,18 +129,18 @@ const HeroSection = () => {
             custom={1}
           >
             <span className="font-semibold">Co-founder & CEO</span>
-            <span className="text-white/40">·</span>
+            <span className="text-foreground/40 dark:text-white/40">·</span>
             <a
               href="https://cleve.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white/60 hover:text-white transition-colors"
+              className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white transition-colors"
             >
               Cleve.ai
             </a>
           </motion.p>
           <motion.p
-            className="text-base text-white/70 leading-relaxed"
+            className="text-base text-foreground/70 dark:text-white/70 leading-relaxed"
             variants={fadeUp}
             initial="hidden"
             animate="visible"
@@ -147,7 +157,7 @@ const HeroSection = () => {
           >
             <a
               href="/blog"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-neutral-900 text-sm font-medium hover:bg-white/90 transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground dark:bg-white text-background dark:text-neutral-900 text-sm font-medium hover:opacity-90 transition-opacity"
             >
               Read my writing
             </a>
@@ -155,7 +165,7 @@ const HeroSection = () => {
               href="https://cal.com/ashvinpraveen"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/10 text-sm font-medium text-white/80 hover:bg-white/15 hover:text-white transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full backdrop-blur-md bg-foreground/[0.08] dark:bg-white/10 text-sm font-medium text-foreground/80 dark:text-white/80 hover:bg-foreground/[0.12] dark:hover:bg-white/15 hover:text-foreground dark:hover:text-white transition-colors"
             >
               Book a call
             </a>
@@ -173,14 +183,22 @@ const HeroSection = () => {
                 href={social.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.07] hover:bg-white/[0.12] transition-colors"
+                className="group flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md bg-foreground/[0.06] dark:bg-white/[0.07] hover:bg-foreground/[0.1] dark:hover:bg-white/[0.12] transition-colors"
               >
                 <img
-                  src={social.iconDark || social.icon}
+                  src={social.icon}
                   alt={`${social.label} profile`}
-                  className="w-3.5 h-3.5 object-contain"
+                  className={`w-3.5 h-3.5 object-contain${social.iconDark ? " dark:hidden" : ""}`}
                 />
-                <span className="text-xs font-medium text-white/70 group-hover:text-white transition-colors">
+                {social.iconDark && (
+                  <img
+                    src={social.iconDark}
+                    alt=""
+                    aria-hidden="true"
+                    className="w-3.5 h-3.5 object-contain hidden dark:block"
+                  />
+                )}
+                <span className="text-xs font-medium text-foreground/70 dark:text-white/70 group-hover:text-foreground dark:group-hover:text-white transition-colors">
                   {social.label}
                 </span>
               </a>

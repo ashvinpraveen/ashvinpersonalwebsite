@@ -19,13 +19,13 @@ const SiteNav = ({ variant = "dark" }: SiteNavProps) => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const showLight = variant === "light" && !scrolled;
+  const onHero = variant === "light" && !scrolled;
 
-  const logoClass = showLight
-    ? "text-white/90 hover:text-white"
+  const logoClass = onHero
+    ? "text-foreground hover:text-foreground/70 dark:text-white/90 dark:hover:text-white"
     : "text-foreground hover:text-foreground/70";
-  const linkClass = showLight
-    ? "text-white/70 hover:text-white"
+  const linkClass = onHero
+    ? "text-muted-foreground hover:text-foreground dark:text-white/70 dark:hover:text-white"
     : "text-muted-foreground hover:text-foreground";
   const navBg = scrolled
     ? "bg-background/80 backdrop-blur-md"
