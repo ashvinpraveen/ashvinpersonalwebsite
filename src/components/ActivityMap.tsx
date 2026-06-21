@@ -99,9 +99,9 @@ function panelContent(note: CleveNote | null) {
 
 function cellColor(count: number) {
   if (count === 0) return "fill-muted";
-  if (count === 1) return "fill-emerald-200 dark:fill-emerald-900";
-  if (count === 2) return "fill-emerald-400 dark:fill-emerald-700";
-  return "fill-emerald-600 dark:fill-emerald-500";
+  if (count === 1) return "fill-orange-200 dark:fill-orange-900";
+  if (count === 2) return "fill-orange-300 dark:fill-orange-700";
+  return "fill-orange-400 dark:fill-orange-500";
 }
 
 const ActivityMap = ({ notes }: ActivityMapProps) => {

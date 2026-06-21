@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchNotes } from "@/lib/cleve";
 import SectionBlock from "@/components/SectionBlock";
 import ActivityMap from "./ActivityMap";
-import { linkPrimary, arrowHover, heading } from "@/lib/styles";
+import { linkPrimary, arrowHover, cardCompact, heading } from "@/lib/styles";
 
 const formatNoteDate = (timestamp: number | null | undefined) => {
   if (!timestamp) return "Updated recently";
@@ -24,7 +24,7 @@ const WritingSection = () => {
   const posts = notes?.slice(0, 3) ?? [];
 
   return (
-    <SectionBlock id="writing" label="Writing">
+    <SectionBlock id="writing" label="writing">
       {!isLoading && !isError && notes && notes.length > 0 && (
         <ActivityMap notes={notes} />
       )}
@@ -45,9 +45,9 @@ const WritingSection = () => {
         )}
         {isError && (
           <p className="font-mono text-xs text-muted-foreground">
-            Couldn't load posts.{" "}
+            couldn't load posts.{" "}
             <Link href="/blog" className={linkPrimary}>
-              Browse all →
+              browse all →
             </Link>
           </p>
         )}
@@ -55,17 +55,17 @@ const WritingSection = () => {
           <Link
             key={post.id}
             href={`/blog/${post.id}`}
-            className="group block rounded-2xl bg-muted/50 p-6 transition-colors hover:bg-muted/70"
+            className={`group flex items-start justify-between gap-4 ${cardCompact}`}
           >
-            <div className="flex items-center justify-end gap-4 mb-4">
-              <span className={arrowHover}>↗</span>
+            <div>
+              <p className="text-sm font-semibold text-foreground group-hover:text-foreground/70 transition-colors">
+                {post.title || "Untitled"}
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground mt-0.5">
+                {formatNoteDate(post.createdAt)}
+              </p>
             </div>
-            <p className={`text-base font-medium group-hover:text-foreground transition-colors ${heading}`}>
-              {post.title || "Untitled"}
-            </p>
-            <p className="font-mono text-xs text-muted-foreground mt-2">
-              {formatNoteDate(post.createdAt)}
-            </p>
+            <span className={`${arrowHover} mt-0.5`}>↗</span>
           </Link>
         ))}
 
@@ -74,7 +74,7 @@ const WritingSection = () => {
             href="/blog"
             className={linkPrimary}
           >
-            All posts →
+            all posts →
           </Link>
           <a
             href="https://linkedin.com/in/ashvinpraveen"
@@ -82,7 +82,7 @@ const WritingSection = () => {
             rel="noopener noreferrer"
             className={linkPrimary}
           >
-            LinkedIn →
+            linkedin →
           </a>
         </div>
       </div>

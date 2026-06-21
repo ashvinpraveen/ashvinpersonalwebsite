@@ -56,7 +56,7 @@ const projects: ProjectItem[] = [
 
 const WorkSection = () => {
   return (
-    <SectionBlock id="projects" label="Projects">
+    <SectionBlock id="projects" label="projects">
       <div className="grid gap-3 md:grid-cols-2">
         {projects.map((item) => (
           <div key={item.href} className={`flex h-full flex-col ${cardCompact}`}>

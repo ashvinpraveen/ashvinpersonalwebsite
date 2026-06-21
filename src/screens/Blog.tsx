@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import ActivityMap from "@/components/ActivityMap";
 import { CleveNote, fetchNotes } from "@/lib/cleve";
 import { contentColumnClassName, pageShellClassName } from "@/lib/layout";
-import { monoLabel, heading, linkPrimary } from "@/lib/styles";
+import { linkPrimary } from "@/lib/styles";
 
 const formatNoteDate = (timestamp: number | null | undefined) => {
   if (!timestamp) return "Updated recently";
@@ -42,9 +42,9 @@ const Blog = ({ initialNotes }: BlogProps) => {
       <SiteNav />
       <main className={`${pageShellClassName} pb-20 pt-24`}>
         <div className={contentColumnClassName}>
-          <h1 className={`text-3xl md:text-4xl font-bold mb-3 ${heading}`}>Writing</h1>
-          <p className="text-base text-muted-foreground mb-10 max-w-md">
-            Thoughts on AI, building products, and things I've learned along the way.
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">writing</h1>
+          <p className="text-base leading-relaxed text-muted-foreground mb-10 max-w-md">
+            most of these are notes to myself and my public notes. they're pulled directly from cleve using the api.
           </p>
 
           {isLoading && (
@@ -58,13 +58,13 @@ const Blog = ({ initialNotes }: BlogProps) => {
           {isError && (
             <div className="space-y-3">
               <p className="font-mono text-sm text-destructive">
-                Couldn't load posts right now.
+                couldn't load posts right now.
               </p>
               <button
                 onClick={() => refetch()}
                 className={`font-mono text-xs ${linkPrimary}`}
               >
-                Try again →
+                try again →
               </button>
             </div>
           )}
@@ -74,7 +74,7 @@ const Blog = ({ initialNotes }: BlogProps) => {
           )}
 
           {notes && notes.length === 0 && (
-            <p className="font-mono text-sm text-muted-foreground">No posts yet.</p>
+            <p className="font-mono text-sm text-muted-foreground">no posts yet.</p>
           )}
 
           {notes && notes.length > 0 && (
@@ -85,7 +85,7 @@ const Blog = ({ initialNotes }: BlogProps) => {
                     href={`/blog/${note.id}`}
                     className="group block space-y-1"
                   >
-                    <h2 className={`text-lg font-medium text-foreground group-hover:text-foreground/70 transition-colors ${heading}`}>
+                    <h2 className="text-lg font-medium text-foreground group-hover:text-foreground/70 transition-colors tracking-tight">
                       {note.title || "Untitled"}
                     </h2>
                     <p className="font-mono text-xs text-muted-foreground">

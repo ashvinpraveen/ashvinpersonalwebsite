@@ -4,10 +4,10 @@ import { textBody, linkPrimary } from "@/lib/styles";
 
 const ContactSection = () => {
   return (
-    <SectionBlock id="contact" label="Get in Touch">
+    <SectionBlock id="contact" label="get in touch">
       <div className={`${proseColumnClassName} space-y-6`}>
         <p className={`text-base leading-relaxed ${textBody}`}>
-          Building something, or want to try Cleve? Reach out.
+          building something, or want to try cleve? reach out.
         </p>
         <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-sm">
           <a

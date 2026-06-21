@@ -13,7 +13,7 @@ const preview = [
 
 const expanded = [
   {
-    title: "Where This Comes From",
+    title: "where this comes from",
     paragraphs: [
       "My late grandad was stationed in Sarawak by the British military. He joined the military in India as a teenager and trained as a telegraph operator. Most of his career was near minimum wage, but somehow he prioritised education for all his children.",
       "At one point he mortgaged his house to afford it. The siblings helped each other through their degrees. One generation later, all five sons became engineers and later engineering leaders. My mom's story had a similar arc: small town in Kerala, studied hard, became a doctor.",
@@ -21,7 +21,7 @@ const expanded = [
     ],
   },
   {
-    title: "What I'm Learning To Build",
+    title: "what i'm learning to build",
     paragraphs: [
       "In university, I got exposed to startups, internet businesses, creators, technology skills, and the new opportunities being created by media and software. I decided to study two things intensely: tech and media.",
       "My goal was to get good enough at these skills that I could teach them honestly. I had to be a practitioner to teach, and I had to become good enough as a practitioner to make the teaching useful.",
@@ -39,7 +39,7 @@ const expanded = [
     ],
   },
   {
-    title: "How I Think",
+    title: "how i think",
     paragraphs: [
       "I learn through building and regularly refining my understanding of the world. My models usually start from physics and first principles, then move up through biology, economics, history, politics, psychology, and the messier human layers I'm still learning.",
       "I care a lot about learning how to learn: the fun factor, getting past the annoyance threshold of a new domain, asking better questions, and helping people reach escape velocity in a subject. Once someone gets there, they can fly fast and go far.",
@@ -47,7 +47,7 @@ const expanded = [
     ],
   },
   {
-    title: "Impact",
+    title: "impact",
     paragraphs: [
       <>
         Being one of the main organisers of the{" "}
@@ -71,7 +71,7 @@ const AboutSection = () => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <SectionBlock id="about" label="About">
+    <SectionBlock id="about" label="about">
       <div className={`${proseColumnClassName} text-sm leading-relaxed ${textBody}`}>
         <div className="space-y-4">
           {preview.map((paragraph, index) => (
@@ -102,7 +102,7 @@ const AboutSection = () => {
           className="mt-6 font-mono text-sm text-muted-foreground hover:text-foreground underline-offset-4 transition-colors"
           aria-expanded={isExpanded}
         >
-          {isExpanded ? "Show less" : "See more"}
+          {isExpanded ? "show less" : "see more"}
         </button>
       </div>
     </SectionBlock>

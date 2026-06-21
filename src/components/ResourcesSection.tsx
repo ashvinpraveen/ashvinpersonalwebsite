@@ -22,12 +22,7 @@ const resources = [
     href: "https://www.youtube.com/playlist?list=PL5q_lef6zVkaTY_cT1k7qFNF2TidHCe-1",
     description: "Stanford lectures from YC partners. Free MBA in 20 hours.",
   },
-  {
-    label: "Stratechery",
-    href: "https://stratechery.com",
-    description: "Ben Thompson on tech strategy. Deep and consistent.",
-  },
-  {
+{
     label: "Antler",
     href: "https://www.antler.co",
     description: "The VC that backed Cleve. Great for day-zero founders.",
@@ -41,7 +36,7 @@ const resources = [
 
 const ResourcesSection = () => {
   return (
-    <SectionBlock id="resources" label="Resources">
+    <SectionBlock id="resources" label="resources">
       <div className="grid gap-3 md:grid-cols-2">
         {resources.map((resource) => (
           <a

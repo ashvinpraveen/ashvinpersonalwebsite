@@ -66,7 +66,7 @@ const HeroSection = () => {
   return (
     <section
       id="hero"
-      className="relative -mx-6 md:-mx-12 lg:-mx-16 -mt-12 px-6 md:px-12 lg:px-16 flex items-end pb-16 md:pb-20 overflow-hidden bg-[hsl(35,30%,90%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white"
+      className="relative -mx-6 md:-mx-12 lg:-mx-16 -mt-12 px-6 md:px-12 lg:px-16 flex items-end pb-16 md:pb-20 overflow-hidden bg-[hsl(34,35%,85%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white"
       style={{ minHeight: "100dvh" }}
     >
       {/* Fine grid — light mode */}
@@ -83,7 +83,7 @@ const HeroSection = () => {
       />
       {/* Grain */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-30 dark:opacity-50 mix-blend-overlay"
+        className="pointer-events-none absolute inset-0 opacity-50 dark:opacity-50 mix-blend-overlay"
         aria-hidden="true"
         style={{ backgroundImage: grainSvg, backgroundRepeat: "repeat", backgroundSize: "128px 128px" }}
       />
@@ -91,7 +91,7 @@ const HeroSection = () => {
       <div
         className="pointer-events-none absolute inset-x-0 bottom-0 h-32 dark:hidden"
         aria-hidden="true"
-        style={{ background: "linear-gradient(to top, hsl(35, 30%, 90%), transparent)" }}
+        style={{ background: "linear-gradient(to top, hsl(34, 35%, 85%), transparent)" }}
       />
       {/* Bottom fade — dark */}
       <div
