@@ -28,7 +28,7 @@ const SiteNav = ({ variant = "dark" }: SiteNavProps) => {
     ? "text-white/70 hover:text-white"
     : "text-muted-foreground hover:text-foreground";
   const navBg = scrolled
-    ? "bg-background/80 backdrop-blur-md border-b border-border/50"
+    ? "bg-background/80 backdrop-blur-md"
     : "backdrop-blur-sm";
 
   return (
