@@ -2,10 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { Eye } from "lucide-react";
 import SiteNav from "@/components/SiteNav";
 import Footer from "@/components/Footer";
 import ActivityMap from "@/components/ActivityMap";
 import { CleveNote, fetchNotes } from "@/lib/cleve";
+import { fetchBatchArticleViews } from "@/lib/articleViews";
 import { contentColumnClassName, pageShellClassName } from "@/lib/layout";
 import { monoLabel, heading, linkPrimary } from "@/lib/styles";
 
@@ -35,6 +37,13 @@ const Blog = ({ initialNotes }: BlogProps) => {
     queryKey: ["cleve-notes"],
     queryFn: fetchNotes,
     initialData: initialNotes,
+  });
+
+  const articleIds = notes?.map((n) => n.id) ?? [];
+  const { data: viewsMap } = useQuery({
+    queryKey: ["article-views-batch", articleIds.join(",")],
+    queryFn: () => fetchBatchArticleViews(articleIds),
+    enabled: articleIds.length > 0,
   });
 
   return (
@@ -88,9 +97,15 @@ const Blog = ({ initialNotes }: BlogProps) => {
                     <h2 className={`text-lg font-medium text-foreground group-hover:text-foreground/70 transition-colors ${heading}`}>
                       {note.title || "Untitled"}
                     </h2>
-                    <p className="font-mono text-xs text-muted-foreground">
-                      {formatNoteDate(note.createdAt)}
-                    </p>
+                    <div className="flex items-center gap-3 font-mono text-xs text-muted-foreground">
+                      <span>{formatNoteDate(note.createdAt)}</span>
+                      {viewsMap && viewsMap[note.id] > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Eye className="h-3 w-3" />
+                          {viewsMap[note.id].toLocaleString()}
+                        </span>
+                      )}
+                    </div>
                   </Link>
                 </li>
               ))}

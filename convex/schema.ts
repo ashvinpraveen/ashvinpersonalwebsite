@@ -2,6 +2,10 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  articleViews: defineTable({
+    articleId: v.string(),
+    views: v.number(),
+  }).index("by_articleId", ["articleId"]),
   postcards: defineTable({
     name: v.string(),
     location: v.string(),
