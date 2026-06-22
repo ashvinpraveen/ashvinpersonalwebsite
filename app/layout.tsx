@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import Providers from "./providers";
-import PageGrid from "@/components/PageGrid";
 import "@/index.css";
 import { createMetadata, homeDescription, homeTitle } from "@/lib/seo";
 
@@ -31,7 +30,6 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <PageGrid />
         <Providers>{children}</Providers>
       </body>
     </html>
