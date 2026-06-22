@@ -162,12 +162,10 @@ const HeroSection = () => {
               Read my writing
             </a>
             <a
-              href="https://cal.com/ashvinpraveen"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/text"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full backdrop-blur-md bg-foreground/[0.08] dark:bg-white/10 text-sm font-medium text-foreground/80 dark:text-white/80 hover:bg-foreground/[0.12] dark:hover:bg-white/15 hover:text-foreground dark:hover:text-white transition-colors"
             >
-              Book a call
+              Text me
             </a>
           </motion.div>
           <motion.div
