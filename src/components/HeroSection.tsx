@@ -66,7 +66,7 @@ const HeroSection = () => {
   return (
     <section
       id="hero"
-      className="relative -mx-6 md:-mx-12 lg:-mx-16 -mt-12 px-6 md:px-12 lg:px-16 flex items-center justify-center overflow-hidden bg-[hsl(35,30%,90%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white pt-24 pb-16 md:pt-32 md:pb-20"
+      className="relative w-full flex items-center justify-center overflow-hidden bg-[hsl(35,30%,90%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white px-6 md:px-12 lg:px-16 pt-24 pb-16 md:pt-32 md:pb-20"
       style={{ minHeight: "100dvh" }}
     >
       {/* Fine grid — light mode */}
