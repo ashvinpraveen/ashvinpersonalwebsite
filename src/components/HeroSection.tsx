@@ -48,6 +48,10 @@ const socials = [
   },
 ];
 
+const gridLightSvg = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='60' height='60' fill='none' stroke='rgba(0,0,0,0.06)' stroke-width='0.5'/%3E%3C/svg%3E")`;
+const gridDarkSvg = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='60' height='60' fill='none' stroke='rgba(255,255,255,0.06)' stroke-width='0.5'/%3E%3C/svg%3E")`;
+const grainSvg = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
+
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
   visible: (i: number) => ({
@@ -61,10 +65,36 @@ const HeroSection = () => {
   return (
     <section
       id="hero"
-      className="relative w-full flex items-center justify-center pt-20 pb-12 md:pt-24 md:pb-16"
-      style={{ minHeight: "85dvh" }}
+      className="relative w-full flex items-center justify-center overflow-hidden bg-[hsl(35,30%,90%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white px-6 md:px-12 lg:px-16 pt-24 pb-16 md:pt-32 md:pb-20"
+      style={{ minHeight: "100dvh" }}
     >
-      <div className="relative w-full grid gap-10 md:grid-cols-[1fr_16rem] lg:grid-cols-[1fr_18rem] md:items-center">
+      <div
+        className="pointer-events-none absolute inset-0 dark:hidden"
+        aria-hidden="true"
+        style={{ backgroundImage: gridLightSvg, backgroundRepeat: "repeat", backgroundSize: "60px 60px" }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 hidden dark:block"
+        aria-hidden="true"
+        style={{ backgroundImage: gridDarkSvg, backgroundRepeat: "repeat", backgroundSize: "60px 60px" }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-30 dark:opacity-50 mix-blend-overlay"
+        aria-hidden="true"
+        style={{ backgroundImage: grainSvg, backgroundRepeat: "repeat", backgroundSize: "128px 128px" }}
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-32 dark:hidden"
+        aria-hidden="true"
+        style={{ background: "linear-gradient(to top, hsl(35, 30%, 90%), transparent)" }}
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-32 hidden dark:block"
+        aria-hidden="true"
+        style={{ background: "linear-gradient(to top, hsl(30, 15%, 12%), transparent)" }}
+      />
+
+      <div className="relative w-full max-w-4xl mx-auto grid gap-10 md:grid-cols-[1fr_18rem] lg:grid-cols-[1fr_20rem] md:items-center">
         <div className="md:hidden">
           <motion.img
             src="/ashvin-profile.png"
