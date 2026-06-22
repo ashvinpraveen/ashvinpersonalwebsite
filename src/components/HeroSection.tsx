@@ -66,7 +66,7 @@ const HeroSection = () => {
   return (
     <section
       id="hero"
-      className="relative -mx-6 md:-mx-12 lg:-mx-16 -mt-12 px-6 md:px-12 lg:px-16 flex items-end pb-16 md:pb-20 overflow-hidden bg-[hsl(35,30%,90%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white"
+      className="relative -mx-6 md:-mx-12 lg:-mx-16 -mt-12 px-6 md:px-12 lg:px-16 flex items-center justify-center overflow-hidden bg-[hsl(35,30%,90%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white pt-24 pb-16 md:pt-32 md:pb-20"
       style={{ minHeight: "100dvh" }}
     >
       {/* Fine grid — light mode */}
@@ -100,7 +100,7 @@ const HeroSection = () => {
         style={{ background: "linear-gradient(to top, hsl(30, 15%, 12%), transparent)" }}
       />
 
-      <div className="relative w-full grid gap-10 md:grid-cols-[minmax(0,1fr)_16rem] md:items-end">
+      <div className="relative w-full max-w-4xl mx-auto grid gap-10 md:grid-cols-[1fr_18rem] lg:grid-cols-[1fr_20rem] md:items-center">
         <div className="md:hidden">
           <motion.img
             src="/ashvin-profile.png"
@@ -205,7 +205,7 @@ const HeroSection = () => {
             ))}
           </motion.div>
         </div>
-        <div className="hidden md:flex flex-col gap-4 pb-2">
+        <div className="hidden md:flex flex-col gap-4">
           <motion.img
             src="/ashvin-profile.png"
             alt="Ashvin Praveen"
