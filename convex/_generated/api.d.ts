@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as articleViews from "../articleViews.js";
 import type * as http from "../http.js";
 import type * as postcards from "../postcards.js";
 
@@ -18,6 +19,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  articleViews: typeof articleViews;
   http: typeof http;
   postcards: typeof postcards;
 }>;
