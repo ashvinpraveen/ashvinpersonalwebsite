@@ -66,8 +66,8 @@ const HeroSection = () => {
   return (
     <section
       id="hero"
-      className="relative w-full flex items-center justify-center overflow-hidden bg-[hsl(35,30%,90%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white px-6 md:px-12 lg:px-16 pt-24 pb-16 md:pt-32 md:pb-20"
-      style={{ minHeight: "100dvh" }}
+      className="relative w-full flex items-center justify-center overflow-hidden rounded-2xl bg-[hsl(35,30%,90%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white px-6 md:px-10 pt-20 pb-12 md:pt-24 md:pb-16"
+      style={{ minHeight: "85dvh" }}
     >
       {/* Fine grid — light mode */}
       <div
@@ -100,7 +100,7 @@ const HeroSection = () => {
         style={{ background: "linear-gradient(to top, hsl(30, 15%, 12%), transparent)" }}
       />
 
-      <div className="relative w-full max-w-4xl mx-auto grid gap-10 md:grid-cols-[1fr_18rem] lg:grid-cols-[1fr_20rem] md:items-center">
+      <div className="relative w-full grid gap-10 md:grid-cols-[1fr_16rem] lg:grid-cols-[1fr_18rem] md:items-center">
         <div className="md:hidden">
           <motion.img
             src="/ashvin-profile.png"
