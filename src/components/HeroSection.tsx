@@ -65,7 +65,7 @@ const HeroSection = () => {
   return (
     <section
       id="hero"
-      className="relative w-full flex items-center justify-center overflow-hidden bg-[hsl(35,30%,90%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white px-6 md:px-12 lg:px-16 pt-24 pb-16 md:pt-32 md:pb-20"
+      className="relative w-full flex items-center justify-center overflow-hidden bg-[hsl(35,30%,90%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white px-6 md:px-12 lg:px-16 pt-16 pb-20 md:pt-24 md:pb-28"
       style={{ minHeight: "100dvh" }}
     >
       <div
