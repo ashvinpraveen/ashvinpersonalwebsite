@@ -41,6 +41,9 @@ const SiteNav = ({ variant = "dark" }: SiteNavProps) => {
           <Link href="/postcards" className={`transition-colors ${linkClass}`}>
             Postcards
           </Link>
+          <Link href="/resources" className={`transition-colors ${linkClass}`}>
+            Resources
+          </Link>
           <Link href="/blog" className={`transition-colors ${linkClass}`}>
             Writing
           </Link>

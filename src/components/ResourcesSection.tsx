@@ -1,49 +1,15 @@
 import SectionBlock from "@/components/SectionBlock";
-import { cardCompact, arrowHover } from "@/lib/styles";
-
-const resources = [
-{
-    label: "Paul Graham's essays",
-    href: "http://paulgraham.com/essays.html",
-    description: "Still the clearest thinking on building.",
-  },
-  {
-    label: "Lenny's Newsletter",
-    href: "https://www.lennysnewsletter.com",
-    description: "Product and growth, practically written.",
-  },
-  {
-    label: "Malaysian.ai",
-    href: "https://www.malaysian.ai/",
-    description: "The home of AI builders in Malaysia. If you're building here, start here.",
-  },
-  {
-    label: "How to Start a Startup (YC)",
-    href: "https://www.youtube.com/playlist?list=PL5q_lef6zVkaTY_cT1k7qFNF2TidHCe-1",
-    description: "Stanford lectures from YC partners. Free MBA in 20 hours.",
-  },
-  {
-    label: "Stratechery",
-    href: "https://stratechery.com",
-    description: "Ben Thompson on tech strategy. Deep and consistent.",
-  },
-  {
-    label: "Antler",
-    href: "https://www.antler.co",
-    description: "The VC that backed Cleve. Great for day-zero founders.",
-  },
-  {
-    label: "The Almanack of Naval Ravikant",
-    href: "https://www.navalmanack.com",
-    description: "Wealth, leverage, and clear thinking. Free to read.",
-  },
-];
+import Link from "next/link";
+import { resources } from "@/lib/resources";
+import { cardCompact, arrowHover, linkPrimary } from "@/lib/styles";
 
 const ResourcesSection = () => {
+  const featuredResources = resources.slice(0, 4);
+
   return (
     <SectionBlock id="resources" label="Resources">
       <div className="grid gap-3 md:grid-cols-2">
-        {resources.map((resource) => (
+        {featuredResources.map((resource) => (
           <a
             key={resource.href}
             href={resource.href}
@@ -65,6 +31,9 @@ const ResourcesSection = () => {
           </a>
         ))}
       </div>
+      <Link href="/resources" className={`mt-5 inline-flex font-mono text-xs ${linkPrimary}`}>
+        See all resources →
+      </Link>
     </SectionBlock>
   );
 };
