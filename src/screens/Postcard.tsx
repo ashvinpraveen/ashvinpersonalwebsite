@@ -622,7 +622,7 @@ const Postcard = () => {
   return (
     <>
       <SiteNav />
-      <main className={`${pageShellClassName} pb-28 pt-24`}>
+      <main className={`${pageShellClassName} pt-24`}>
         <div className={contentColumnClassName}>
           <section className="space-y-12">
             <div className="max-w-2xl space-y-3">

@@ -51,7 +51,7 @@ const BlogPost = ({ id, initialNote }: BlogPostProps) => {
   return (
     <>
       <SiteNav />
-      <main className={`${pageShellClassName} pb-20 pt-24`}>
+      <main className={`${pageShellClassName} pt-24`}>
         <div className={contentColumnClassName}>
           <Link
             href="/blog"

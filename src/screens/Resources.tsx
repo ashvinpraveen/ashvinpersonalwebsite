@@ -8,7 +8,7 @@ const Resources = () => {
   return (
     <>
       <SiteNav />
-      <main className={`${pageShellClassName} pb-20 pt-24`}>
+      <main className={`${pageShellClassName} pt-24`}>
         <div className={contentColumnClassName}>
           <p className={`${monoLabel} mb-3`}>Resources</p>
           <h1 className={`mb-4 text-3xl font-bold md:text-4xl ${heading}`}>

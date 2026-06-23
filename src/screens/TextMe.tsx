@@ -34,7 +34,7 @@ const TextMe = () => {
   return (
     <>
       <SiteNav />
-      <main className={`${pageShellClassName} pb-20 pt-24`}>
+      <main className={`${pageShellClassName} pt-24`}>
         <div className={`${contentColumnClassName} max-w-lg`}>
           <h1
             className={`text-3xl font-semibold tracking-tight text-foreground md:text-4xl mb-2 ${heading}`}

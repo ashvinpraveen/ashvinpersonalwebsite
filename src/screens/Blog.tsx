@@ -49,7 +49,7 @@ const Blog = ({ initialNotes }: BlogProps) => {
   return (
     <>
       <SiteNav />
-      <main className={`${pageShellClassName} pb-20 pt-24`}>
+      <main className={`${pageShellClassName} pt-24`}>
         <div className={contentColumnClassName}>
           <h1 className={`text-3xl md:text-4xl font-bold mb-3 ${heading}`}>Writing</h1>
           <p className="text-base text-muted-foreground mb-10 max-w-md">

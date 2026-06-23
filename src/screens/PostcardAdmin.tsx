@@ -118,7 +118,7 @@ const PostcardAdmin = () => {
   return (
     <>
       <SiteNav />
-      <main className={`${pageShellClassName} pb-28 pt-24`}>
+      <main className={`${pageShellClassName} pt-24`}>
         <div className={contentColumnClassName}>
           <section className="space-y-12">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
