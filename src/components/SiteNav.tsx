@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
-import { pageShellClassName } from "@/lib/layout";
 
 type SiteNavProps = {
   variant?: "light" | "dark";
@@ -33,7 +32,7 @@ const SiteNav = ({ variant = "dark" }: SiteNavProps) => {
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navBg}`}>
-      <div className={`${pageShellClassName} flex items-center justify-between h-12`}>
+      <div className="flex h-12 w-full items-center justify-between px-6 md:px-12 lg:px-16">
         <Link href="/" className={`font-mono text-base font-bold tracking-widest transition-colors ${logoClass}`}>
           AP
         </Link>
