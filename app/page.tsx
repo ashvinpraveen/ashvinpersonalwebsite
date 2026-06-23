@@ -1,3 +1,4 @@
+import JsonLd from "@/components/JsonLd";
 import Index from "@/screens/Index";
 import { homeDescription } from "@/lib/seo";
 
@@ -40,11 +41,7 @@ const homeJsonLd = [
 export default function HomePage() {
   return (
     <>
-      <script
-        id="home-json-ld"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
-      />
+      <JsonLd id="home-json-ld" data={homeJsonLd} />
       <Index />
     </>
   );

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import JsonLd from "@/components/JsonLd";
 import Postcard from "@/screens/Postcard";
 import { absoluteUrl, createMetadata } from "@/lib/seo";
 
@@ -25,11 +26,7 @@ export default function PostcardsPage() {
 
   return (
     <>
-      <script
-        id="postcard-json-ld"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(postcardJsonLd) }}
-      />
+      <JsonLd id="postcard-json-ld" data={postcardJsonLd} />
       <Postcard />
     </>
   );

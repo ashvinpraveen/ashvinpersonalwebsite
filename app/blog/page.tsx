@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import JsonLd from "@/components/JsonLd";
 import Blog from "@/screens/Blog";
 import { fetchNotes } from "@/lib/cleve";
 import { absoluteUrl, createMetadata } from "@/lib/seo";
@@ -39,11 +40,7 @@ export default async function BlogPage() {
 
   return (
     <>
-      <script
-        id="blog-json-ld"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }}
-      />
+      <JsonLd id="blog-json-ld" data={blogJsonLd} />
       <Blog initialNotes={notes} />
     </>
   );

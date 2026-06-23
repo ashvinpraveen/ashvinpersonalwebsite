@@ -1,5 +1,5 @@
 import { httpRouter } from "convex/server";
-import { env, httpAction } from "./_generated/server";
+import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
 
 const http = httpRouter();
@@ -38,7 +38,8 @@ type RichTextNode = {
 };
 
 const CLEVE_CONVEX_URL = "https://earnest-chicken-856.convex.cloud";
-const CLEVE_PUBLIC_PROFILE_SLUG = env.CLEVE_PUBLIC_PROFILE_SLUG ?? "ashvinpraveen";
+const CLEVE_PUBLIC_PROFILE_SLUG =
+  process.env.CLEVE_PUBLIC_PROFILE_SLUG ?? "ashvinpraveen";
 
 const jsonResponse = (body: unknown, init?: ResponseInit) => {
   const headers = new Headers(init?.headers);

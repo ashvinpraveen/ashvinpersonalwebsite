@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import JsonLd from "@/components/JsonLd";
 import BlogPost from "@/screens/BlogPost";
 import { fetchNote } from "@/lib/cleve";
 import { absoluteUrl, createMetadata, excerpt } from "@/lib/seo";
@@ -66,11 +67,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   return (
     <>
       {postJsonLd && (
-        <script
-          id="blog-post-json-ld"
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(postJsonLd) }}
-        />
+        <JsonLd id="blog-post-json-ld" data={postJsonLd} />
       )}
       <BlogPost id={id} initialNote={note} />
     </>

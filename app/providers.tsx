@@ -4,7 +4,7 @@ import { ReactNode, useMemo, useState } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -30,7 +30,7 @@ export default function Providers({ children }: { children: ReactNode }) {
     <PostHogProvider>
       <MaybeConvexProvider>
         <QueryClientProvider client={queryClient}>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <ThemeProvider>
             <TooltipProvider>
               <Analytics />
               <Toaster />

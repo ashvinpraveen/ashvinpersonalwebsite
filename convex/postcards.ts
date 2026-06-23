@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { env, mutation, query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 
@@ -31,12 +31,12 @@ const normalizeClientId = (value: string | undefined) =>
   value?.trim().slice(0, MAX_CLIENT_ID_LENGTH) ?? "";
 
 const isAdmin = (adminSecret: string) => {
-  const expectedSecret = env.POSTCARD_ADMIN_SECRET;
+  const expectedSecret = process.env.POSTCARD_ADMIN_SECRET;
   return Boolean(expectedSecret && adminSecret === expectedSecret);
 };
 
 const requireAdmin = (adminSecret: string) => {
-  if (!env.POSTCARD_ADMIN_SECRET) {
+  if (!process.env.POSTCARD_ADMIN_SECRET) {
     throw new Error("Postcard admin secret is not configured.");
   }
   if (!isAdmin(adminSecret)) {
