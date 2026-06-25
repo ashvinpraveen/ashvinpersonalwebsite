@@ -81,24 +81,22 @@ function ChatWidgetInner() {
       });
       setMessage("");
     } catch (error) {
-      const description =
-        error instanceof Error ? error.message : "AI Ashvin could not reply.";
-      toast.error("Message not sent", { description });
+      console.error(error);
+      toast.error("Message not sent", {
+        description: "AI Ashvin is having trouble right now. Please try again in a minute.",
+      });
     } finally {
       setIsSending(false);
     }
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-3 sm:bottom-6 sm:right-6">
+    <div className="fixed bottom-3 right-3 z-50 flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2 sm:bottom-5 sm:right-5">
       {isOpen ? (
         <section className="w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-border bg-card/95 shadow-2xl backdrop-blur">
-          <header className="flex items-center justify-between px-4 pb-2 pt-4">
+          <header className="flex items-center justify-between px-3 pb-1 pt-3">
             <div>
               <p className="text-sm font-semibold">Chat with AI Ashvin</p>
-              <p className="text-xs text-muted-foreground">
-                Anonymous, rate-limited, and lightly opinionated.
-              </p>
             </div>
             <Button
               type="button"
@@ -113,7 +111,7 @@ function ChatWidgetInner() {
 
           <div
             ref={messageListRef}
-            className="flex max-h-80 min-h-48 flex-col gap-3 overflow-y-auto px-4 py-4"
+            className="flex max-h-80 min-h-44 flex-col gap-2 overflow-y-auto px-3 py-3"
           >
             {!hasConversation ? (
               <div className="rounded-md bg-muted/60 p-3 text-sm leading-relaxed text-muted-foreground">
@@ -142,14 +140,20 @@ function ChatWidgetInner() {
             ) : null}
           </div>
 
-          <form onSubmit={handleSubmit} className="p-4 pt-2">
-            <div className="relative rounded-3xl bg-muted/70 p-3 pr-14 shadow-inner">
+          <form onSubmit={handleSubmit} className="p-3 pt-1">
+            <div className="relative rounded-3xl bg-muted/70 p-2.5 pr-14 shadow-inner">
               <Textarea
                 ref={inputRef}
                 value={message}
                 onChange={(event) => setMessage(event.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    event.currentTarget.form?.requestSubmit();
+                  }
+                }}
                 placeholder="Ask AI Ashvin something..."
-                className="min-h-24 resize-none border-0 bg-transparent p-0 pr-1 text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="min-h-20 resize-none border-0 bg-transparent p-0 pr-1 text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <Button
                 type="submit"
@@ -165,18 +169,15 @@ function ChatWidgetInner() {
         </section>
       ) : null}
 
-      <Button
+      <button
         type="button"
-        size="lg"
-        variant="ghost"
         className="ashvin-pet-launcher"
-        style={{ width: "7rem", height: "8rem", padding: 0 }}
         onClick={() => setIsOpen((value) => !value)}
         aria-expanded={isOpen}
         aria-label={isOpen ? "Hide AI Ashvin chat" : "Open AI Ashvin chat"}
       >
         <GeneratedAshvinPet />
-      </Button>
+      </button>
     </div>
   );
 }

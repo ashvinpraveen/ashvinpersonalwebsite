@@ -104,7 +104,7 @@ export const send = action({
     });
     const recentMessages = await ctx.runQuery(internal.chat.getRecentMessages, { threadId });
 
-    const model = env.GOOGLE_AI_MODEL ?? "gemini-3-flash";
+    const model = env.GOOGLE_AI_MODEL ?? "gemini-2.5-flash";
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(env.GOOGLE_AI_API_KEY)}`,
       {
