@@ -9,7 +9,6 @@ import WritingSection from "@/components/WritingSection";
 
 import ResourcesSection from "@/components/ResourcesSection";
 import ContactSection from "@/components/ContactSection";
-import ChatWidget from "@/components/ChatWidget";
 import { pageShellClassName } from "@/lib/layout";
 
 const Index = () => {
@@ -26,7 +25,6 @@ const Index = () => {
         <ContactSection />
         <Footer />
       </main>
-      <ChatWidget />
     </>
   );
 };

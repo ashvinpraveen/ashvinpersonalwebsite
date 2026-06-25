@@ -2,7 +2,8 @@
 
 import { type CSSProperties, type FormEvent, useEffect, useRef, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { ArrowUp, History, MessageSquarePlus, Minus, PanelRightOpen, Plus, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { ArrowUp, Compass, History, MessageSquarePlus, Minus, PanelRightOpen, Plus, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const CLIENT_ID_KEY = "ashvin-chat-client-id";
+const MODEL_PROVIDER_KEY = "ashvin-chat-model-provider";
 const MAX_MESSAGE_LENGTH = 900;
 const MAX_IMAGE_ATTACHMENTS = 3;
 const MAX_IMAGE_DIMENSION = 1024;
@@ -21,6 +23,23 @@ const SUGGESTED_PROMPTS = [
   "Tell me about Cleve",
   "What should I read first?",
 ];
+const SITE_ROUTES = [
+  { path: "/", label: "Home" },
+  { path: "/blog", label: "Writing" },
+  { path: "/resources", label: "Resources" },
+  { path: "/text", label: "Text me" },
+  { path: "/postcard", label: "Postcard" },
+  { path: "/postcards", label: "Postcards" },
+] as const;
+const SECTION_LABELS: Record<string, string> = {
+  hero: "Hero",
+  projects: "Projects",
+  about: "About",
+  writing: "Writing",
+  involvement: "Involvement",
+  resources: "Resources",
+  contact: "Contact",
+};
 
 type AttachedImage = {
   id: string;
@@ -34,6 +53,46 @@ type MobileViewport = {
   top: number;
 };
 
+type PageContext = {
+  url: string;
+  path: string;
+  title: string;
+  visibleText: string;
+  sections: Array<{
+    id: string;
+    label: string;
+  }>;
+  links: Array<{
+    label: string;
+    href: string;
+  }>;
+};
+
+type ChatToolCall =
+  | {
+      name: "navigate_site";
+      args: {
+        path: string;
+        reason?: string;
+      };
+    }
+  | {
+      name: "scroll_to_section";
+      args: {
+        sectionId: string;
+        reason?: string;
+      };
+    }
+  | {
+      name: "highlight_section";
+      args: {
+        sectionId: string;
+        reason?: string;
+      };
+    };
+
+type ModelProvider = "ilmu" | "gemini";
+
 function getOrCreateClientId() {
   const existingClientId = window.localStorage.getItem(CLIENT_ID_KEY);
   if (existingClientId) return existingClientId;
@@ -44,6 +103,57 @@ function getOrCreateClientId() {
       : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   window.localStorage.setItem(CLIENT_ID_KEY, clientId);
   return clientId;
+}
+
+function getStoredModelProvider(): ModelProvider {
+  const storedProvider = window.localStorage.getItem(MODEL_PROVIDER_KEY);
+  return storedProvider === "gemini" ? "gemini" : "ilmu";
+}
+
+function getRouteLabel(path: string) {
+  if (path.startsWith("/blog/")) return "Blog post";
+  return SITE_ROUTES.find((route) => route.path === path)?.label ?? "This page";
+}
+
+function normalizeText(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function collectPageContext(path: string): PageContext {
+  const sections = Array.from(document.querySelectorAll<HTMLElement>("main section[id]"))
+    .map((section) => ({
+      id: section.id,
+      label:
+        section.getAttribute("aria-label") ||
+        section.querySelector("h1, h2, h3")?.textContent?.trim() ||
+        SECTION_LABELS[section.id] ||
+        section.id,
+    }))
+    .filter((section) => section.id && section.label)
+    .slice(0, 12);
+  const links = Array.from(document.querySelectorAll<HTMLAnchorElement>("main a[href]"))
+    .map((link) => ({
+      label: normalizeText(link.textContent ?? "").slice(0, 80),
+      href: link.getAttribute("href") ?? "",
+    }))
+    .filter((link) => link.label && link.href)
+    .slice(0, 12);
+  const mainText = normalizeText(document.querySelector("main")?.textContent ?? "");
+  const pageHeading = normalizeText(document.querySelector("h1")?.textContent ?? "");
+  const title = pageHeading || getRouteLabel(path);
+
+  return {
+    url: window.location.href,
+    path,
+    title,
+    visibleText: mainText.slice(0, 900),
+    sections,
+    links,
+  };
+}
+
+function isSafeSitePath(path: string) {
+  return SITE_ROUTES.some((route) => route.path === path);
 }
 
 function canvasToDataUrl(canvas: HTMLCanvasElement, mimeType: string) {
@@ -138,15 +248,19 @@ function ChatMarkdown({ children }: { children: string }) {
 }
 
 function ChatWidgetInner() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [activeThreadId, setActiveThreadId] = useState<Id<"chatThreads"> | undefined>();
   const [clientId, setClientId] = useState("");
   const [message, setMessage] = useState("");
+  const [modelProvider, setModelProvider] = useState<ModelProvider>("ilmu");
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [mobileViewport, setMobileViewport] = useState<MobileViewport | null>(null);
+  const [pageContext, setPageContext] = useState<PageContext | null>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -161,10 +275,22 @@ function ChatWidgetInner() {
   const messages = chat?.messages ?? [];
   const threads = chat?.threads ?? [];
   const hasConversation = messages.length > 0;
+  const isAdminRoute = pathname?.startsWith("/admin") ?? false;
 
   useEffect(() => {
     setClientId(getOrCreateClientId());
+    setModelProvider(getStoredModelProvider());
   }, []);
+
+  useEffect(() => {
+    const updatePageContext = () => {
+      setPageContext(collectPageContext(pathname || window.location.pathname));
+    };
+
+    updatePageContext();
+    const timeoutId = window.setTimeout(updatePageContext, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [pathname, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -234,6 +360,58 @@ function ChatWidgetInner() {
         "--chat-mobile-top": `${mobileViewport.top}px`,
       } as CSSProperties)
     : undefined;
+  const contextPillText = pageContext
+    ? `${getRouteLabel(pageContext.path)} · ${pageContext.title}`
+    : "Reading this page";
+
+  function scrollToSection(sectionId: string) {
+    const section = document.getElementById(sectionId);
+    if (!section) return false;
+
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    return true;
+  }
+
+  function highlightSection(sectionId: string) {
+    const section = document.getElementById(sectionId);
+    if (!section) return false;
+
+    section.classList.add("chat-section-highlight");
+    window.setTimeout(() => {
+      section.classList.remove("chat-section-highlight");
+    }, 1800);
+    return true;
+  }
+
+  function applyToolCalls(toolCalls: ChatToolCall[]) {
+    for (const toolCall of toolCalls) {
+      if (toolCall.name === "navigate_site" && isSafeSitePath(toolCall.args.path)) {
+        router.push(toolCall.args.path);
+        continue;
+      }
+
+      if (toolCall.name === "scroll_to_section") {
+        const didScroll = scrollToSection(toolCall.args.sectionId);
+        if (!didScroll) {
+          router.push(`/#${toolCall.args.sectionId}`);
+          window.setTimeout(() => {
+            scrollToSection(toolCall.args.sectionId);
+          }, 450);
+        }
+        continue;
+      }
+
+      if (toolCall.name === "highlight_section") {
+        const didHighlight = highlightSection(toolCall.args.sectionId);
+        if (!didHighlight) {
+          router.push(`/#${toolCall.args.sectionId}`);
+          window.setTimeout(() => {
+            highlightSection(toolCall.args.sectionId);
+          }, 450);
+        }
+      }
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -244,15 +422,20 @@ function ChatWidgetInner() {
 
     setIsSending(true);
     try {
-      await sendMessage({
+      const latestPageContext = collectPageContext(pathname || window.location.pathname);
+      setPageContext(latestPageContext);
+      const result = await sendMessage({
         clientId,
         threadId: activeThreadId,
         body: body || "Please look at the attached image.",
+        modelProvider,
+        pageContext: latestPageContext,
         images: attachedImages.map((image) => ({
           data: image.data,
           mimeType: image.mimeType,
         })),
       });
+      applyToolCalls(result.toolCalls ?? []);
       setMessage("");
       setAttachedImages([]);
     } catch (error) {
@@ -319,6 +502,8 @@ function ChatWidgetInner() {
       });
     }
   }
+
+  if (isAdminRoute) return null;
 
   return (
     <div
@@ -394,6 +579,13 @@ function ChatWidgetInner() {
               </Button>
             </div>
           </header>
+
+          <div className="px-3 pb-2">
+            <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-muted/70 px-2.5 py-1 text-[11px] text-muted-foreground">
+              <Compass aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{contextPillText}</span>
+            </div>
+          </div>
 
           {isHistoryOpen ? (
             <div className="mx-3 mb-2 rounded-md border border-border bg-background/60 p-1.5">
@@ -544,6 +736,23 @@ function ChatWidgetInner() {
                     </div>
                   ))}
                 </div>
+                <label className="sr-only" htmlFor="chat-model-provider">
+                  Model
+                </label>
+                <select
+                  id="chat-model-provider"
+                  value={modelProvider}
+                  aria-label="Model"
+                  className="h-8 shrink-0 rounded-full border-0 bg-background/50 px-2 text-xs text-muted-foreground outline-none transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                  onChange={(event) => {
+                    const nextProvider = event.target.value === "gemini" ? "gemini" : "ilmu";
+                    setModelProvider(nextProvider);
+                    window.localStorage.setItem(MODEL_PROVIDER_KEY, nextProvider);
+                  }}
+                >
+                  <option value="ilmu">Ilmu</option>
+                  <option value="gemini">Gemini</option>
+                </select>
                 <Button
                   type="submit"
                   size="icon"

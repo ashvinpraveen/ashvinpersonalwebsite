@@ -6,6 +6,8 @@ const app = defineApp({
     CLEVE_PUBLIC_PROFILE_SLUG: v.optional(v.string()),
     GOOGLE_AI_API_KEY: v.optional(v.string()),
     GOOGLE_AI_MODEL: v.optional(v.string()),
+    ILMU_API_KEY: v.optional(v.string()),
+    ILMU_MODEL: v.optional(v.string()),
     POSTCARD_ADMIN_SECRET: v.optional(v.string()),
   },
 });

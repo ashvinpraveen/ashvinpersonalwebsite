@@ -9,6 +9,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import PostHogProvider from "@/components/PostHogProvider";
+import ChatWidget from "@/components/ChatWidget";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
@@ -36,6 +37,7 @@ export default function Providers({ children }: { children: ReactNode }) {
               <Toaster />
               <Sonner />
               {children}
+              <ChatWidget />
             </TooltipProvider>
           </ThemeProvider>
         </QueryClientProvider>
