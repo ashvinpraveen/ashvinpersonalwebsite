@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ArrowUp, History, MessageSquarePlus, Minus, PanelRightOpen, Plus, X } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -92,6 +94,41 @@ function GeneratedAshvinPet({ compact = false }: { compact?: boolean }) {
       className={cn("ashvin-pet", compact && "ashvin-pet--compact")}
       draggable={false}
     />
+  );
+}
+
+function ChatMarkdown({ children }: { children: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        a: ({ children, href, ...props }) => (
+          <a
+            className="underline underline-offset-2"
+            href={href}
+            rel="noreferrer"
+            target="_blank"
+            {...props}
+          >
+            {children}
+          </a>
+        ),
+        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+        ul: ({ children }) => (
+          <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0">{children}</ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0">{children}</ol>
+        ),
+        code: ({ children }) => (
+          <code className="rounded bg-background/70 px-1 py-0.5 text-[0.85em]">
+            {children}
+          </code>
+        ),
+      }}
+    >
+      {children}
+    </ReactMarkdown>
   );
 }
 
@@ -248,17 +285,17 @@ function ChatWidgetInner() {
         isSidePanelOpen
           ? "bottom-0 right-0 top-0 hidden sm:flex"
           : isOpen
-            ? "inset-x-3 bottom-3 top-12 max-w-none sm:inset-auto sm:bottom-8 sm:right-5 sm:top-auto sm:max-w-[calc(100vw-1.5rem)]"
+            ? "inset-0 max-w-none sm:inset-auto sm:bottom-8 sm:right-5 sm:top-auto sm:max-w-[calc(100vw-1.5rem)]"
           : "bottom-6 right-3 sm:bottom-8 sm:right-5",
       )}
     >
       {isOpen ? (
         <section
           className={cn(
-            "chat-panel-enter flex flex-col overflow-hidden border border-border bg-card/75 shadow-2xl backdrop-blur-xl",
+            "chat-panel-enter flex flex-col overflow-hidden bg-card/95 shadow-2xl backdrop-blur-xl sm:border sm:border-border sm:bg-card/75",
             isSidePanelOpen
               ? "h-dvh w-[18rem] rounded-none border-y-0 border-r-0"
-              : "h-full w-full rounded-lg sm:h-auto sm:w-[min(15rem,calc(100vw-1.5rem))]",
+              : "h-dvh w-full rounded-none sm:h-auto sm:w-[min(15rem,calc(100vw-1.5rem))] sm:rounded-lg",
           )}
         >
           <header className="flex items-center justify-between gap-2 px-3 pb-1 pt-3">
@@ -367,7 +404,11 @@ function ChatWidgetInner() {
                       : "mr-auto bg-muted text-foreground",
                   )}
                 >
-                  {item.body}
+                  {item.author === "ashvin" ? (
+                    <ChatMarkdown>{item.body}</ChatMarkdown>
+                  ) : (
+                    item.body
+                  )}
                 </div>
               ))
             )}
