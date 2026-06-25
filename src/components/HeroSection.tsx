@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { pageShellClassName } from "@/lib/layout";
 import { heading } from "@/lib/styles";
 
 const socials = [
@@ -65,7 +66,7 @@ const HeroSection = () => {
   return (
     <section
       id="hero"
-      className="relative w-full flex items-center justify-center overflow-hidden bg-[hsl(35,30%,90%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white px-6 md:px-12 lg:px-16 pt-16 pb-20 md:pt-24 md:pb-28"
+      className="relative w-full flex items-center justify-center overflow-hidden bg-[hsl(35,30%,90%)] dark:bg-[hsl(30,15%,12%)] text-foreground dark:text-white pt-16 pb-20 md:pt-24 md:pb-28"
       style={{ minHeight: "100dvh" }}
     >
       <div
@@ -94,7 +95,7 @@ const HeroSection = () => {
         style={{ background: "linear-gradient(to top, hsl(30, 15%, 12%), transparent)" }}
       />
 
-      <div className="relative w-full max-w-4xl mx-auto grid gap-10 md:grid-cols-[1fr_18rem] lg:grid-cols-[1fr_20rem] md:items-center">
+      <div className={`${pageShellClassName} relative grid gap-10 md:grid-cols-[1fr_18rem] lg:grid-cols-[1fr_20rem] md:items-center`}>
         <div className="md:hidden">
           <motion.img
             src="/ashvin-profile.png"
@@ -113,7 +114,7 @@ const HeroSection = () => {
             animate="visible"
             custom={0}
           >
-            Ashvin Praveen
+            Designing products that augment human capabilities
           </motion.h1>
           <motion.p
             className="font-mono text-sm mb-6 flex items-center gap-2"

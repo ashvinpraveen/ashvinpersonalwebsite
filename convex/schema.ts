@@ -25,4 +25,26 @@ export default defineSchema({
   })
     .index("by_postcardId_and_clientId", ["postcardId", "clientId"])
     .index("by_postcardId", ["postcardId"]),
+  chatThreads: defineTable({
+    clientId: v.string(),
+    status: v.union(v.literal("open"), v.literal("closed")),
+    lastMessageAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_clientId", ["clientId"])
+    .index("by_status_and_lastMessageAt", ["status", "lastMessageAt"]),
+  chatMessages: defineTable({
+    threadId: v.id("chatThreads"),
+    author: v.union(v.literal("visitor"), v.literal("ashvin")),
+    body: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_threadId_and_createdAt", ["threadId", "createdAt"])
+    .index("by_createdAt", ["createdAt"]),
+  chatRateLimits: defineTable({
+    key: v.string(),
+    windowStart: v.number(),
+    count: v.number(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 });

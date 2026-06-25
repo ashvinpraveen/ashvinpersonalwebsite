@@ -29,20 +29,14 @@ const Resources = () => {
                     {category}
                   </h2>
                   <div className="grid gap-3 md:grid-cols-2">
-                    {categoryResources.map((resource) => (
-                      <a
-                        key={resource.href}
-                        href={resource.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`group flex min-h-40 flex-col justify-between gap-5 ${cardCompact}`}
-                      >
+                    {categoryResources.map((resource) => {
+                      const resourceContent = (
                         <div>
                           <div className="mb-3 flex items-center justify-between gap-3">
                             <span className="font-mono text-xs text-muted-foreground">
                               {resource.format}
                             </span>
-                            <span className={arrowHover}>→</span>
+                            {resource.href ? <span className={arrowHover}>→</span> : null}
                           </div>
                           <h3 className="text-base font-semibold text-foreground transition-colors group-hover:text-foreground/70">
                             {resource.label}
@@ -51,8 +45,31 @@ const Resources = () => {
                             {resource.description}
                           </p>
                         </div>
-                      </a>
-                    ))}
+                      );
+
+                      if (resource.href) {
+                        return (
+                          <a
+                            key={resource.label}
+                            href={resource.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`group flex min-h-40 flex-col justify-between gap-5 ${cardCompact}`}
+                          >
+                            {resourceContent}
+                          </a>
+                        );
+                      }
+
+                      return (
+                        <article
+                          key={resource.label}
+                          className={`group flex min-h-40 flex-col justify-between gap-5 ${cardCompact}`}
+                        >
+                          {resourceContent}
+                        </article>
+                      );
+                    })}
                   </div>
                 </section>
               );

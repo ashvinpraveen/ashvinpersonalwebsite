@@ -26,6 +26,8 @@ import type { DataModel } from "./dataModel.js";
  */
 type Env = {
   readonly CLEVE_PUBLIC_PROFILE_SLUG: string | undefined;
+  readonly GOOGLE_AI_API_KEY: string | undefined;
+  readonly GOOGLE_AI_MODEL: string | undefined;
   readonly POSTCARD_ADMIN_SECRET: string | undefined;
 };
 

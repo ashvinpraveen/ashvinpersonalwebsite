@@ -24,7 +24,7 @@ export default function ResourcesPage() {
     mainEntity: resources.map((resource) => ({
       "@type": "CreativeWork",
       name: resource.label,
-      url: resource.href,
+      ...(resource.href ? { url: resource.href } : {}),
       description: resource.description,
     })),
   };

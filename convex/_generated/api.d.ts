@@ -9,6 +9,8 @@
  */
 
 import type * as articleViews from "../articleViews.js";
+import type * as chat from "../chat.js";
+import type * as chatAi from "../chatAi.js";
 import type * as http from "../http.js";
 import type * as postcards from "../postcards.js";
 
@@ -20,6 +22,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   articleViews: typeof articleViews;
+  chat: typeof chat;
+  chatAi: typeof chatAi;
   http: typeof http;
   postcards: typeof postcards;
 }>;
