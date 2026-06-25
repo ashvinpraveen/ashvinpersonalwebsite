@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useAction, useQuery } from "convex/react";
-import { Send, X } from "lucide-react";
+import { ArrowUp, Minus, PanelRightOpen, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,11 @@ import { cn } from "@/lib/utils";
 
 const CLIENT_ID_KEY = "ashvin-chat-client-id";
 const MAX_MESSAGE_LENGTH = 900;
+const SUGGESTED_PROMPTS = [
+  "What are you building?",
+  "Tell me about Cleve",
+  "What should I read first?",
+];
 
 function getOrCreateClientId() {
   const existingClientId = window.localStorage.getItem(CLIENT_ID_KEY);
@@ -38,6 +43,7 @@ function GeneratedAshvinPet({ compact = false }: { compact?: boolean }) {
 
 function ChatWidgetInner() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [clientId, setClientId] = useState("");
   const [message, setMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -90,28 +96,92 @@ function ChatWidgetInner() {
     }
   }
 
+  function closeChat() {
+    setIsOpen(false);
+    setIsSidePanelOpen(false);
+  }
+
   return (
-    <div className="fixed bottom-3 right-3 z-50 flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2 sm:bottom-5 sm:right-5">
+    <div
+      className={cn(
+        "fixed z-50 flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2",
+        isSidePanelOpen
+          ? "bottom-0 right-0 top-0 hidden sm:flex"
+          : "bottom-6 right-3 sm:bottom-8 sm:right-5",
+      )}
+    >
       {isOpen ? (
-        <section className="w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-border bg-card/95 shadow-2xl backdrop-blur">
+        <section
+          className={cn(
+            "chat-panel-enter overflow-hidden border border-border bg-card/95 shadow-2xl backdrop-blur",
+            isSidePanelOpen
+              ? "flex h-dvh w-[24rem] flex-col rounded-none border-y-0 border-r-0"
+              : "w-[min(20rem,calc(100vw-1.5rem))] rounded-lg",
+          )}
+        >
           <header className="flex items-center justify-between px-3 pb-1 pt-3">
             <div>
               <p className="text-sm font-semibold">Chat with AI Ashvin</p>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Close chat"
-              onClick={() => setIsOpen(false)}
-            >
-              <X aria-hidden="true" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="hidden sm:inline-flex"
+                aria-label="Open full side chat"
+                onClick={() => setIsSidePanelOpen((value) => !value)}
+              >
+                <PanelRightOpen aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Minimize chat"
+                onClick={() => {
+                  setIsOpen(false);
+                  setIsSidePanelOpen(false);
+                }}
+              >
+                <Minus aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Close chat"
+                onClick={closeChat}
+              >
+                <X aria-hidden="true" />
+              </Button>
+            </div>
           </header>
+
+          <div className="flex flex-wrap gap-1.5 px-3 pb-2 pt-2">
+            {SUGGESTED_PROMPTS.map((prompt) => (
+              <button
+                key={prompt}
+                type="button"
+                className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                onClick={() => {
+                  setMessage(prompt);
+                  inputRef.current?.focus();
+                }}
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
 
           <div
             ref={messageListRef}
-            className="flex max-h-80 min-h-44 flex-col gap-2 overflow-y-auto px-3 py-3"
+            className={cn(
+              "flex flex-col gap-2 overflow-y-auto px-3 py-3",
+              isSidePanelOpen
+                ? "min-h-0 flex-1"
+                : "h-[24rem] max-h-[min(24rem,calc(100vh-13rem))]",
+            )}
           >
             {!hasConversation ? (
               <div className="rounded-md bg-muted/60 p-3 text-sm leading-relaxed text-muted-foreground">
@@ -141,7 +211,7 @@ function ChatWidgetInner() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-3 pt-1">
-            <div className="relative rounded-3xl bg-muted/70 p-2.5 pr-14 shadow-inner">
+            <div className="relative rounded-3xl bg-muted/70 p-2.5 pr-14">
               <Textarea
                 ref={inputRef}
                 value={message}
@@ -152,7 +222,7 @@ function ChatWidgetInner() {
                     event.currentTarget.form?.requestSubmit();
                   }
                 }}
-                placeholder="Ask AI Ashvin something..."
+                placeholder="Ask me anything"
                 className="min-h-20 resize-none border-0 bg-transparent p-0 pr-1 text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <Button
@@ -162,7 +232,7 @@ function ChatWidgetInner() {
                 className="absolute bottom-3 right-3 rounded-full"
                 disabled={!message.trim() || isSending || !clientId}
               >
-                <Send aria-hidden="true" />
+                <ArrowUp aria-hidden="true" />
               </Button>
             </div>
           </form>
@@ -171,8 +241,11 @@ function ChatWidgetInner() {
 
       <button
         type="button"
-        className="ashvin-pet-launcher"
-        onClick={() => setIsOpen((value) => !value)}
+        className={cn("ashvin-pet-launcher", isSidePanelOpen && "hidden")}
+        onClick={() => {
+          setIsSidePanelOpen(false);
+          setIsOpen((value) => !value);
+        }}
         aria-expanded={isOpen}
         aria-label={isOpen ? "Hide AI Ashvin chat" : "Open AI Ashvin chat"}
       >

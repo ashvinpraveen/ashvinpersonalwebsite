@@ -2,7 +2,27 @@ import SiteNav from "@/components/SiteNav";
 import Footer from "@/components/Footer";
 import { contentColumnClassName, pageShellClassName } from "@/lib/layout";
 import { arrowHover, cardCompact, heading, monoLabel } from "@/lib/styles";
-import { resourceCategories, resources } from "@/lib/resources";
+import { resources, type Resource } from "@/lib/resources";
+
+type ResourceSection = {
+  title: string;
+  categories: Resource["category"][];
+};
+
+const resourceSections: ResourceSection[] = [
+  {
+    title: "Resources",
+    categories: ["Startups", "AI and building", "Writing and thinking", "Malaysia"],
+  },
+  {
+    title: "What's in my laptop",
+    categories: ["What's in my laptop"],
+  },
+  {
+    title: "What's in my bag",
+    categories: ["What's in my bag"],
+  },
+];
 
 const Resources = () => {
   return (
@@ -20,16 +40,18 @@ const Resources = () => {
           </p>
 
           <div className="space-y-10">
-            {resourceCategories.map((category) => {
-              const categoryResources = resources.filter((resource) => resource.category === category);
+            {resourceSections.map((section) => {
+              const sectionResources = resources.filter((resource) =>
+                section.categories.includes(resource.category),
+              );
 
               return (
-                <section key={category} aria-labelledby={`${category}-resources`} className="space-y-3">
-                  <h2 id={`${category}-resources`} className="font-mono text-sm font-medium text-foreground">
-                    {category}
+                <section key={section.title} aria-labelledby={`${section.title}-resources`} className="space-y-4">
+                  <h2 id={`${section.title}-resources`} className={`text-2xl font-semibold md:text-3xl ${heading}`}>
+                    {section.title}
                   </h2>
                   <div className="grid gap-3 md:grid-cols-2">
-                    {categoryResources.map((resource) => {
+                    {sectionResources.map((resource) => {
                       const resourceContent = (
                         <div>
                           <div className="mb-3 flex items-center justify-between gap-3">
@@ -74,13 +96,6 @@ const Resources = () => {
                 </section>
               );
             })}
-          </div>
-
-          <div className="mt-12 border-t border-border pt-8">
-            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-              This is deliberately incomplete. I want it to become a useful shelf, not a
-              performative bookshelf.
-            </p>
           </div>
 
           <Footer />
