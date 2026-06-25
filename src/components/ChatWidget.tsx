@@ -138,6 +138,25 @@ function ChatWidgetInner() {
     }
   }, [activeThreadId, chat?.thread?._id]);
 
+  useEffect(() => {
+    if (!isSidePanelOpen) return;
+
+    const mediaQuery = window.matchMedia("(min-width: 640px)");
+    if (!mediaQuery.matches) return;
+
+    const previousPaddingRight = document.body.style.paddingRight;
+    const previousTransition = document.body.style.transition;
+    document.body.style.paddingRight = "18rem";
+    document.body.style.transition = previousTransition
+      ? `${previousTransition}, padding-right 180ms ease`
+      : "padding-right 180ms ease";
+
+    return () => {
+      document.body.style.paddingRight = previousPaddingRight;
+      document.body.style.transition = previousTransition;
+    };
+  }, [isSidePanelOpen]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!clientId || isSending) return;
@@ -228,6 +247,8 @@ function ChatWidgetInner() {
         "fixed z-50 flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2",
         isSidePanelOpen
           ? "bottom-0 right-0 top-0 hidden sm:flex"
+          : isOpen
+            ? "inset-x-3 bottom-3 top-12 max-w-none sm:inset-auto sm:bottom-8 sm:right-5 sm:top-auto sm:max-w-[calc(100vw-1.5rem)]"
           : "bottom-6 right-3 sm:bottom-8 sm:right-5",
       )}
     >
@@ -237,7 +258,7 @@ function ChatWidgetInner() {
             "chat-panel-enter flex flex-col overflow-hidden border border-border bg-card/75 shadow-2xl backdrop-blur-xl",
             isSidePanelOpen
               ? "h-dvh w-[18rem] rounded-none border-y-0 border-r-0"
-              : "w-[min(15rem,calc(100vw-1.5rem))] rounded-lg",
+              : "h-full w-full rounded-lg sm:h-auto sm:w-[min(15rem,calc(100vw-1.5rem))]",
           )}
         >
           <header className="flex items-center justify-between gap-2 px-3 pb-1 pt-3">
@@ -327,7 +348,7 @@ function ChatWidgetInner() {
               "flex min-h-0 flex-col gap-2 overflow-y-auto px-3 py-3",
               isSidePanelOpen
                 ? "flex-1"
-                : "h-[18rem] max-h-[min(18rem,calc(80dvh-10rem))]",
+                : "flex-1 sm:h-[12rem] sm:max-h-[min(12rem,calc(70dvh-10rem))] sm:flex-none",
             )}
           >
             {!hasConversation ? (
@@ -453,7 +474,7 @@ function ChatWidgetInner() {
 
       <button
         type="button"
-        className={cn("ashvin-pet-launcher", isSidePanelOpen && "hidden")}
+        className={cn("ashvin-pet-launcher", (isOpen || isSidePanelOpen) && "hidden sm:block", isSidePanelOpen && "sm:hidden")}
         onClick={() => {
           setIsSidePanelOpen(false);
           setIsOpen((value) => !value);
