@@ -117,6 +117,7 @@ function toGeminiContents(
 export const send = action({
   args: {
     clientId: v.string(),
+    threadId: v.optional(v.id("chatThreads")),
     body: v.string(),
     images: v.optional(
       v.array(
@@ -134,6 +135,7 @@ export const send = action({
 
     const threadId = await ctx.runMutation(internal.chat.reserveVisitorMessage, {
       clientId: args.clientId,
+      threadId: args.threadId,
       body: args.body,
     });
     const recentMessages = await ctx.runQuery(internal.chat.getRecentMessages, { threadId });

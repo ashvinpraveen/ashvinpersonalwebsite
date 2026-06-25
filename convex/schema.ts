@@ -28,10 +28,12 @@ export default defineSchema({
   chatThreads: defineTable({
     clientId: v.string(),
     status: v.union(v.literal("open"), v.literal("closed")),
+    title: v.optional(v.string()),
     lastMessageAt: v.number(),
     createdAt: v.number(),
   })
     .index("by_clientId", ["clientId"])
+    .index("by_clientId_and_lastMessageAt", ["clientId", "lastMessageAt"])
     .index("by_status_and_lastMessageAt", ["status", "lastMessageAt"]),
   chatMessages: defineTable({
     threadId: v.id("chatThreads"),

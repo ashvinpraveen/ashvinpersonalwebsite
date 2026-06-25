@@ -1,11 +1,11 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import type { QueryCtx } from "./_generated/server";
 
 const MAX_CLIENT_ID_LENGTH = 80;
 const MAX_MESSAGE_LENGTH = 900;
 const MESSAGE_LIST_LIMIT = 80;
+const THREAD_LIST_LIMIT = 12;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_MAX_MESSAGES = 10;
 
@@ -15,26 +15,27 @@ const normalizeClientId = (value: string) =>
 const normalizeMessage = (value: string) =>
   value.trim().replace(/\r\n/g, "\n").slice(0, MAX_MESSAGE_LENGTH);
 
-async function findThreadByClientId(
-  ctx: QueryCtx,
-  clientId: string,
-) {
-  return await ctx.db
-    .query("chatThreads")
-    .withIndex("by_clientId", (q) => q.eq("clientId", clientId))
-    .unique();
-}
-
 export const getForClient = query({
   args: {
     clientId: v.string(),
+    threadId: v.optional(v.id("chatThreads")),
   },
   handler: async (ctx, args) => {
     const clientId = normalizeClientId(args.clientId);
     if (!clientId) return null;
 
-    const thread = await findThreadByClientId(ctx, clientId);
-    if (!thread) return null;
+    const threads = await ctx.db
+      .query("chatThreads")
+      .withIndex("by_clientId_and_lastMessageAt", (q) => q.eq("clientId", clientId))
+      .order("desc")
+      .take(THREAD_LIST_LIMIT);
+
+    const requestedThread = args.threadId ? await ctx.db.get(args.threadId) : null;
+    const thread =
+      requestedThread?.clientId === clientId
+        ? requestedThread
+        : threads[0] ?? null;
+    if (!thread) return { thread: null, threads, messages: [] };
 
     const messages = await ctx.db
       .query("chatMessages")
@@ -42,13 +43,34 @@ export const getForClient = query({
       .order("asc")
       .take(MESSAGE_LIST_LIMIT);
 
-    return { thread, messages };
+    return { thread, threads, messages };
+  },
+});
+
+export const startNewForClient = mutation({
+  args: {
+    clientId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const clientId = normalizeClientId(args.clientId);
+    if (!clientId) {
+      throw new Error("Could not start chat.");
+    }
+
+    const now = Date.now();
+    return await ctx.db.insert("chatThreads", {
+      clientId,
+      status: "open",
+      lastMessageAt: now,
+      createdAt: now,
+    });
   },
 });
 
 export const reserveVisitorMessage = internalMutation({
   args: {
     clientId: v.string(),
+    threadId: v.optional(v.id("chatThreads")),
     body: v.string(),
   },
   handler: async (ctx, args) => {
@@ -99,23 +121,23 @@ export const reserveVisitorMessage = internalMutation({
       });
     }
 
-    const existingThread = await ctx.db
-      .query("chatThreads")
-      .withIndex("by_clientId", (q) => q.eq("clientId", clientId))
-      .unique();
+    const existingThread = args.threadId ? await ctx.db.get(args.threadId) : null;
 
     const threadId: Id<"chatThreads"> =
-      existingThread?._id ??
-      (await ctx.db.insert("chatThreads", {
-        clientId,
-        status: "open",
-        lastMessageAt: now,
-        createdAt: now,
-      }));
+      existingThread?.clientId === clientId
+        ? existingThread._id
+        : await ctx.db.insert("chatThreads", {
+            clientId,
+            status: "open",
+            title: body.slice(0, 60),
+            lastMessageAt: now,
+            createdAt: now,
+          });
 
-    if (existingThread) {
+    if (existingThread?.clientId === clientId) {
       await ctx.db.patch(threadId, {
         status: "open",
+        title: existingThread.title ?? body.slice(0, 60),
         lastMessageAt: now,
       });
     }

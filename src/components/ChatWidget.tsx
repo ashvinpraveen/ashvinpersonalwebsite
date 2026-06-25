@@ -1,10 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { useAction, useQuery } from "convex/react";
-import { ArrowUp, Minus, PanelRightOpen, Plus, X } from "lucide-react";
+import { useAction, useMutation, useQuery } from "convex/react";
+import { ArrowUp, History, MessageSquarePlus, Minus, PanelRightOpen, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -97,6 +98,8 @@ function GeneratedAshvinPet({ compact = false }: { compact?: boolean }) {
 function ChatWidgetInner() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [activeThreadId, setActiveThreadId] = useState<Id<"chatThreads"> | undefined>();
   const [clientId, setClientId] = useState("");
   const [message, setMessage] = useState("");
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
@@ -107,11 +110,13 @@ function ChatWidgetInner() {
 
   const chat = useQuery(
     api.chat.getForClient,
-    clientId ? { clientId } : "skip",
+    clientId ? { clientId, threadId: activeThreadId } : "skip",
   );
   const sendMessage = useAction(api.chatAi.send);
+  const startNewChat = useMutation(api.chat.startNewForClient);
 
   const messages = chat?.messages ?? [];
+  const threads = chat?.threads ?? [];
   const hasConversation = messages.length > 0;
 
   useEffect(() => {
@@ -127,6 +132,12 @@ function ChatWidgetInner() {
     inputRef.current?.focus();
   }, [isOpen, messages.length]);
 
+  useEffect(() => {
+    if (!activeThreadId && chat?.thread?._id) {
+      setActiveThreadId(chat.thread._id);
+    }
+  }, [activeThreadId, chat?.thread?._id]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!clientId || isSending) return;
@@ -138,6 +149,7 @@ function ChatWidgetInner() {
     try {
       await sendMessage({
         clientId,
+        threadId: activeThreadId,
         body: body || "Please look at the attached image.",
         images: attachedImages.map((image) => ({
           data: image.data,
@@ -156,9 +168,22 @@ function ChatWidgetInner() {
     }
   }
 
-  function closeChat() {
-    setIsOpen(false);
-    setIsSidePanelOpen(false);
+  async function handleNewChat() {
+    if (!clientId) return;
+
+    try {
+      const threadId = await startNewChat({ clientId });
+      setActiveThreadId(threadId);
+      setMessage("");
+      setAttachedImages([]);
+      setIsHistoryOpen(false);
+      inputRef.current?.focus();
+    } catch (error) {
+      console.error(error);
+      toast.error("Could not start chat", {
+        description: "Try again in a moment.",
+      });
+    }
   }
 
   async function handleImageSelection(files: FileList | null) {
@@ -202,29 +227,51 @@ function ChatWidgetInner() {
       className={cn(
         "fixed z-50 flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2",
         isSidePanelOpen
-          ? "bottom-8 right-5 hidden sm:flex"
+          ? "bottom-0 right-0 top-0 hidden sm:flex"
           : "bottom-6 right-3 sm:bottom-8 sm:right-5",
       )}
     >
       {isOpen ? (
         <section
           className={cn(
-            "chat-panel-enter flex max-h-[80dvh] flex-col overflow-hidden border border-border bg-card/75 shadow-2xl backdrop-blur-xl",
+            "chat-panel-enter flex flex-col overflow-hidden border border-border bg-card/75 shadow-2xl backdrop-blur-xl",
             isSidePanelOpen
-              ? "h-[80dvh] w-[18rem] rounded-lg"
+              ? "h-dvh w-[18rem] rounded-none border-y-0 border-r-0"
               : "w-[min(15rem,calc(100vw-1.5rem))] rounded-lg",
           )}
         >
-          <header className="flex items-center justify-between px-3 pb-1 pt-3">
+          <header className="flex items-center justify-between gap-2 px-3 pb-1 pt-3">
             <div>
-              <p className="text-sm font-semibold">Chat with AI Ashvin</p>
+              <p className="text-sm font-semibold">Chat</p>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="hidden sm:inline-flex"
+                className="h-8 w-8"
+                aria-label="New chat"
+                onClick={() => {
+                  void handleNewChat();
+                }}
+              >
+                <MessageSquarePlus aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                aria-label="Chat history"
+                onClick={() => setIsHistoryOpen((value) => !value)}
+              >
+                <History aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="hidden h-8 w-8 sm:inline-flex"
                 aria-label="Open full side chat"
                 onClick={() => setIsSidePanelOpen((value) => !value)}
               >
@@ -234,41 +281,45 @@ function ChatWidgetInner() {
                 type="button"
                 variant="ghost"
                 size="icon"
+                className="h-8 w-8"
                 aria-label="Minimize chat"
                 onClick={() => {
                   setIsOpen(false);
                   setIsSidePanelOpen(false);
+                  setIsHistoryOpen(false);
                 }}
               >
                 <Minus aria-hidden="true" />
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="Close chat"
-                onClick={closeChat}
-              >
-                <X aria-hidden="true" />
-              </Button>
             </div>
           </header>
 
-          <div className="flex flex-wrap gap-1.5 px-3 pb-2 pt-2">
-            {SUGGESTED_PROMPTS.map((prompt) => (
-              <button
-                key={prompt}
-                type="button"
-                className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                onClick={() => {
-                  setMessage(prompt);
-                  inputRef.current?.focus();
-                }}
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
+          {isHistoryOpen ? (
+            <div className="mx-3 mb-2 rounded-md border border-border bg-background/60 p-1.5">
+              {threads.length > 0 ? (
+                <div className="space-y-1">
+                  {threads.map((thread) => (
+                    <button
+                      key={thread._id}
+                      type="button"
+                      className={cn(
+                        "block w-full truncate rounded px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+                        thread._id === chat?.thread?._id && "bg-muted text-foreground",
+                      )}
+                      onClick={() => {
+                        setActiveThreadId(thread._id);
+                        setIsHistoryOpen(false);
+                      }}
+                    >
+                      {thread.title ?? "New chat"}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="px-2 py-1 text-xs text-muted-foreground">No chats yet.</p>
+              )}
+            </div>
+          ) : null}
 
           <div
             ref={messageListRef}
@@ -308,6 +359,21 @@ function ChatWidgetInner() {
 
           <form onSubmit={handleSubmit} className="p-3 pt-1">
             <div className="overflow-hidden rounded-3xl bg-muted/70">
+              <div className="flex flex-wrap gap-1.5 px-3 pt-3">
+                {SUGGESTED_PROMPTS.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    className="rounded-full bg-background/50 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    onClick={() => {
+                      setMessage(prompt);
+                      inputRef.current?.focus();
+                    }}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
               <Textarea
                 ref={inputRef}
                 value={message}
