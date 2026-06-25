@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type FormEvent, useEffect, useRef, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ArrowUp, History, MessageSquarePlus, Minus, PanelRightOpen, Plus, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -27,6 +27,11 @@ type AttachedImage = {
   data: string;
   mimeType: "image/jpeg" | "image/png" | "image/webp";
   name: string;
+};
+
+type MobileViewport = {
+  height: number;
+  top: number;
 };
 
 function getOrCreateClientId() {
@@ -141,6 +146,7 @@ function ChatWidgetInner() {
   const [message, setMessage] = useState("");
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [mobileViewport, setMobileViewport] = useState<MobileViewport | null>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -193,6 +199,41 @@ function ChatWidgetInner() {
       document.body.style.transition = previousTransition;
     };
   }, [isSidePanelOpen]);
+
+  useEffect(() => {
+    if (!isOpen || isSidePanelOpen) {
+      setMobileViewport(null);
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const updateMobileViewport = () => {
+      setMobileViewport({
+        height: Math.round(viewport.height),
+        top: Math.round(viewport.offsetTop),
+      });
+    };
+
+    updateMobileViewport();
+    viewport.addEventListener("resize", updateMobileViewport);
+    viewport.addEventListener("scroll", updateMobileViewport);
+    window.addEventListener("orientationchange", updateMobileViewport);
+
+    return () => {
+      viewport.removeEventListener("resize", updateMobileViewport);
+      viewport.removeEventListener("scroll", updateMobileViewport);
+      window.removeEventListener("orientationchange", updateMobileViewport);
+    };
+  }, [isOpen, isSidePanelOpen]);
+
+  const mobileViewportStyle = mobileViewport
+    ? ({
+        "--chat-mobile-height": `${mobileViewport.height}px`,
+        "--chat-mobile-top": `${mobileViewport.top}px`,
+      } as CSSProperties)
+    : undefined;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -285,9 +326,10 @@ function ChatWidgetInner() {
         isSidePanelOpen
           ? "bottom-0 right-0 top-0 hidden sm:flex"
           : isOpen
-            ? "inset-0 max-w-none sm:inset-auto sm:bottom-8 sm:right-5 sm:top-auto sm:max-w-[calc(100vw-1.5rem)]"
+            ? "left-0 right-0 top-[var(--chat-mobile-top,0px)] h-[var(--chat-mobile-height,100dvh)] max-w-none sm:inset-auto sm:bottom-8 sm:right-5 sm:top-auto sm:h-auto sm:max-w-[calc(100vw-1.5rem)]"
           : "bottom-6 right-3 sm:bottom-8 sm:right-5",
       )}
+      style={mobileViewportStyle}
     >
       {isOpen ? (
         <section
@@ -295,7 +337,7 @@ function ChatWidgetInner() {
             "chat-panel-enter flex flex-col overflow-hidden bg-card/95 shadow-2xl backdrop-blur-xl sm:border sm:border-border sm:bg-card/75",
             isSidePanelOpen
               ? "h-dvh w-[18rem] rounded-none border-y-0 border-r-0"
-              : "h-dvh w-full rounded-none sm:h-auto sm:w-[min(15rem,calc(100vw-1.5rem))] sm:rounded-lg",
+              : "h-full w-full rounded-none sm:h-auto sm:w-[min(15rem,calc(100vw-1.5rem))] sm:rounded-lg",
           )}
         >
           <header className="flex items-center justify-between gap-2 px-3 pb-1 pt-3">
@@ -419,7 +461,10 @@ function ChatWidgetInner() {
             ) : null}
           </div>
 
-          <form onSubmit={handleSubmit} className="p-3 pt-1">
+          <form
+            onSubmit={handleSubmit}
+            className="p-3 pt-1 [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))] sm:p-3 sm:pt-1"
+          >
             <div className="overflow-hidden rounded-3xl bg-muted/70">
               <div className="flex flex-wrap gap-1.5 px-3 pt-3">
                 {SUGGESTED_PROMPTS.map((prompt) => (
