@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useAction, useQuery } from "convex/react";
-import { ArrowUp, Minus, PanelRightOpen, X } from "lucide-react";
+import { ArrowUp, Minus, PanelRightOpen, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,20 @@ import { cn } from "@/lib/utils";
 
 const CLIENT_ID_KEY = "ashvin-chat-client-id";
 const MAX_MESSAGE_LENGTH = 900;
+const MAX_IMAGE_ATTACHMENTS = 3;
+const MAX_IMAGE_DIMENSION = 1024;
 const SUGGESTED_PROMPTS = [
   "What are you building?",
   "Tell me about Cleve",
   "What should I read first?",
 ];
+
+type AttachedImage = {
+  id: string;
+  data: string;
+  mimeType: "image/jpeg" | "image/png" | "image/webp";
+  name: string;
+};
 
 function getOrCreateClientId() {
   const existingClientId = window.localStorage.getItem(CLIENT_ID_KEY);
@@ -27,6 +36,50 @@ function getOrCreateClientId() {
       : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   window.localStorage.setItem(CLIENT_ID_KEY, clientId);
   return clientId;
+}
+
+function canvasToDataUrl(canvas: HTMLCanvasElement, mimeType: string) {
+  if (mimeType === "image/png") {
+    return canvas.toDataURL("image/png");
+  }
+
+  return canvas.toDataURL("image/jpeg", 0.78);
+}
+
+async function compressImage(file: File): Promise<AttachedImage> {
+  const sourceUrl = URL.createObjectURL(file);
+
+  try {
+    const image = new Image();
+    image.src = sourceUrl;
+    await image.decode();
+
+    const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Could not prepare image.");
+    }
+    context.drawImage(image, 0, 0, width, height);
+
+    const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg";
+    return {
+      id:
+        typeof window.crypto?.randomUUID === "function"
+          ? window.crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      data: canvasToDataUrl(canvas, mimeType).split(",")[1] ?? "",
+      mimeType,
+      name: file.name,
+    };
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
 }
 
 function GeneratedAshvinPet({ compact = false }: { compact?: boolean }) {
@@ -46,9 +99,11 @@ function ChatWidgetInner() {
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [clientId, setClientId] = useState("");
   const [message, setMessage] = useState("");
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isSending, setIsSending] = useState(false);
   const messageListRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const chat = useQuery(
     api.chat.getForClient,
@@ -77,15 +132,20 @@ function ChatWidgetInner() {
     if (!clientId || isSending) return;
 
     const body = message.trim();
-    if (!body) return;
+    if (!body && attachedImages.length === 0) return;
 
     setIsSending(true);
     try {
       await sendMessage({
         clientId,
-        body,
+        body: body || "Please look at the attached image.",
+        images: attachedImages.map((image) => ({
+          data: image.data,
+          mimeType: image.mimeType,
+        })),
       });
       setMessage("");
+      setAttachedImages([]);
     } catch (error) {
       console.error(error);
       toast.error("Message not sent", {
@@ -101,22 +161,58 @@ function ChatWidgetInner() {
     setIsSidePanelOpen(false);
   }
 
+  async function handleImageSelection(files: FileList | null) {
+    if (!files?.length) return;
+
+    const openSlots = MAX_IMAGE_ATTACHMENTS - attachedImages.length;
+    if (openSlots <= 0) {
+      toast.error("Only 3 images", {
+        description: "Remove an image before attaching another one.",
+      });
+      return;
+    }
+
+    const imageFiles = Array.from(files)
+      .filter((file) => file.type.startsWith("image/"))
+      .slice(0, openSlots);
+
+    if (imageFiles.length === 0) {
+      toast.error("Images only", {
+        description: "Attach a PNG, JPG, or similar image file.",
+      });
+      return;
+    }
+
+    try {
+      const compressedImages = await Promise.all(imageFiles.map(compressImage));
+      setAttachedImages((currentImages) => [
+        ...currentImages,
+        ...compressedImages.filter((image) => image.data),
+      ].slice(0, MAX_IMAGE_ATTACHMENTS));
+    } catch (error) {
+      console.error(error);
+      toast.error("Image not attached", {
+        description: "That image could not be prepared. Try another one.",
+      });
+    }
+  }
+
   return (
     <div
       className={cn(
         "fixed z-50 flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2",
         isSidePanelOpen
-          ? "bottom-0 right-0 top-0 hidden sm:flex"
+          ? "bottom-8 right-5 hidden sm:flex"
           : "bottom-6 right-3 sm:bottom-8 sm:right-5",
       )}
     >
       {isOpen ? (
         <section
           className={cn(
-            "chat-panel-enter overflow-hidden border border-border bg-card/95 shadow-2xl backdrop-blur",
+            "chat-panel-enter flex max-h-[80dvh] flex-col overflow-hidden border border-border bg-card/75 shadow-2xl backdrop-blur-xl",
             isSidePanelOpen
-              ? "flex h-dvh w-[24rem] flex-col rounded-none border-y-0 border-r-0"
-              : "w-[min(20rem,calc(100vw-1.5rem))] rounded-lg",
+              ? "h-[80dvh] w-[18rem] rounded-lg"
+              : "w-[min(15rem,calc(100vw-1.5rem))] rounded-lg",
           )}
         >
           <header className="flex items-center justify-between px-3 pb-1 pt-3">
@@ -177,10 +273,10 @@ function ChatWidgetInner() {
           <div
             ref={messageListRef}
             className={cn(
-              "flex flex-col gap-2 overflow-y-auto px-3 py-3",
+              "flex min-h-0 flex-col gap-2 overflow-y-auto px-3 py-3",
               isSidePanelOpen
-                ? "min-h-0 flex-1"
-                : "h-[24rem] max-h-[min(24rem,calc(100vh-13rem))]",
+                ? "flex-1"
+                : "h-[18rem] max-h-[min(18rem,calc(80dvh-10rem))]",
             )}
           >
             {!hasConversation ? (
@@ -211,7 +307,7 @@ function ChatWidgetInner() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-3 pt-1">
-            <div className="relative rounded-3xl bg-muted/70 p-2.5 pr-14">
+            <div className="overflow-hidden rounded-3xl bg-muted/70">
               <Textarea
                 ref={inputRef}
                 value={message}
@@ -223,17 +319,67 @@ function ChatWidgetInner() {
                   }
                 }}
                 placeholder="Ask me anything"
-                className="min-h-20 resize-none border-0 bg-transparent p-0 pr-1 text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="min-h-20 resize-none border-0 bg-transparent px-3 py-3 text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
               />
-              <Button
-                type="submit"
-                size="icon"
-                aria-label="Send message"
-                className="absolute bottom-3 right-3 rounded-full"
-                disabled={!message.trim() || isSending || !clientId}
-              >
-                <ArrowUp aria-hidden="true" />
-              </Button>
+              <div className="flex min-h-12 items-center justify-between gap-2 px-2.5 pb-2.5">
+                <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => {
+                      void handleImageSelection(event.target.files);
+                      event.target.value = "";
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Attach images"
+                    className="h-8 w-8 shrink-0 rounded-full"
+                    disabled={attachedImages.length >= MAX_IMAGE_ATTACHMENTS}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Plus aria-hidden="true" />
+                  </Button>
+                  {attachedImages.map((image) => (
+                    <div
+                      key={image.id}
+                      className="group relative h-8 w-8 shrink-0 overflow-hidden rounded-md border border-border bg-background/70"
+                    >
+                      <img
+                        src={`data:${image.mimeType};base64,${image.data}`}
+                        alt={image.name}
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        aria-label={`Remove ${image.name}`}
+                        className="absolute inset-0 flex items-center justify-center bg-foreground/45 text-background opacity-0 transition-opacity group-hover:opacity-100"
+                        onClick={() => {
+                          setAttachedImages((currentImages) =>
+                            currentImages.filter((currentImage) => currentImage.id !== image.id),
+                          );
+                        }}
+                      >
+                        <X aria-hidden="true" className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  type="submit"
+                  size="icon"
+                  aria-label="Send message"
+                  className="h-8 w-8 shrink-0 rounded-full"
+                  disabled={(!message.trim() && attachedImages.length === 0) || isSending || !clientId}
+                >
+                  <ArrowUp aria-hidden="true" />
+                </Button>
+              </div>
             </div>
           </form>
         </section>

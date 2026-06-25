@@ -34,7 +34,15 @@ Website context from llms.txt:
 
 type GeminiContent = {
   role: "user" | "model";
-  parts: Array<{ text: string }>;
+  parts: Array<
+    | { text: string }
+    | {
+        inlineData: {
+          mimeType: string;
+          data: string;
+        };
+      }
+  >;
 };
 
 type GeminiResponse = {
@@ -81,17 +89,43 @@ function toGeminiContents(
     author: "visitor" | "ashvin";
     body: string;
   }>,
+  images: Array<{
+    data: string;
+    mimeType: string;
+  }>,
 ): GeminiContent[] {
-  return messages.map((message) => ({
+  const contents: GeminiContent[] = messages.map((message) => ({
     role: message.author === "ashvin" ? "model" : "user",
     parts: [{ text: message.body }],
   }));
+
+  if (images.length > 0) {
+    const lastVisitorMessage = [...contents].reverse().find((message) => message.role === "user");
+    lastVisitorMessage?.parts.push(
+      ...images.map((image) => ({
+        inlineData: {
+          mimeType: image.mimeType,
+          data: image.data,
+        },
+      })),
+    );
+  }
+
+  return contents;
 }
 
 export const send = action({
   args: {
     clientId: v.string(),
     body: v.string(),
+    images: v.optional(
+      v.array(
+        v.object({
+          data: v.string(),
+          mimeType: v.union(v.literal("image/jpeg"), v.literal("image/png"), v.literal("image/webp")),
+        }),
+      ),
+    ),
   },
   handler: async (ctx, args): Promise<{ reply: string }> => {
     if (!env.GOOGLE_AI_API_KEY) {
@@ -103,6 +137,7 @@ export const send = action({
       body: args.body,
     });
     const recentMessages = await ctx.runQuery(internal.chat.getRecentMessages, { threadId });
+    const images = (args.images ?? []).slice(0, 3).filter((image) => image.data);
 
     const model = env.GOOGLE_AI_MODEL ?? "gemini-2.5-flash";
     const response = await fetch(
@@ -116,7 +151,7 @@ export const send = action({
           systemInstruction: {
             parts: [{ text: SYSTEM_PROMPT }],
           },
-          contents: toGeminiContents(recentMessages),
+          contents: toGeminiContents(recentMessages, images),
           generationConfig: {
             maxOutputTokens: 420,
             temperature: 0.7,
