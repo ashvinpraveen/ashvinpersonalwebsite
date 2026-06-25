@@ -61,6 +61,10 @@ type GeminiErrorResponse = {
   };
 };
 
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+const FALLBACK_GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
+const RETRYABLE_GEMINI_STATUSES = new Set([408, 409, 429, 500, 502, 503, 504]);
+
 function extractGeminiText(payload: GeminiResponse) {
   const text = payload.candidates?.[0]?.content?.parts
     ?.map((part) => part.text)
@@ -82,6 +86,23 @@ async function readGeminiError(response: Response) {
   }
 
   return response.statusText || "Unknown error";
+}
+
+function geminiModelSequence(primaryModel: string) {
+  return [primaryModel, ...FALLBACK_GEMINI_MODELS].filter(
+    (model, index, models) => model && models.indexOf(model) === index,
+  );
+}
+
+function shouldTryFallback(status: number, detail: string) {
+  const normalizedDetail = detail.toLowerCase();
+  return (
+    RETRYABLE_GEMINI_STATUSES.has(status) ||
+    status === 404 ||
+    normalizedDetail.includes("high demand") ||
+    normalizedDetail.includes("overloaded") ||
+    normalizedDetail.includes("temporarily unavailable")
+  );
 }
 
 function toGeminiContents(
@@ -129,7 +150,8 @@ export const send = action({
     ),
   },
   handler: async (ctx, args): Promise<{ reply: string }> => {
-    if (!env.GOOGLE_AI_API_KEY) {
+    const apiKey = env.GOOGLE_AI_API_KEY;
+    if (!apiKey) {
       throw new Error("AI chat is not configured yet.");
     }
 
@@ -141,40 +163,53 @@ export const send = action({
     const recentMessages = await ctx.runQuery(internal.chat.getRecentMessages, { threadId });
     const images = (args.images ?? []).slice(0, 3).filter((image) => image.data);
 
-    const model = env.GOOGLE_AI_MODEL ?? "gemini-2.5-flash";
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(env.GOOGLE_AI_API_KEY)}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: SYSTEM_PROMPT }],
-          },
-          contents: toGeminiContents(recentMessages, images),
-          generationConfig: {
-            maxOutputTokens: 420,
-            temperature: 0.7,
-          },
-        }),
+    const contents = toGeminiContents(recentMessages, images);
+    const requestBody = JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: SYSTEM_PROMPT }],
       },
-    );
+      contents,
+      generationConfig: {
+        maxOutputTokens: 420,
+        temperature: 0.7,
+      },
+    });
+    const models = geminiModelSequence(env.GOOGLE_AI_MODEL ?? DEFAULT_GEMINI_MODEL);
+    let lastErrorDetail = "The model provider did not return a usable response.";
 
-    if (!response.ok) {
+    for (const model of models) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: requestBody,
+        },
+      );
+
+      if (response.ok) {
+        const payload = (await response.json()) as GeminiResponse;
+        const reply = extractGeminiText(payload);
+
+        await ctx.runMutation(internal.chat.addAshvinMessage, {
+          threadId,
+          body: reply,
+        });
+
+        return { reply };
+      }
+
       const detail = await readGeminiError(response);
-      throw new Error(`AI Ashvin could not reply right now. ${detail}`);
+      lastErrorDetail = detail;
+      console.warn(`Gemini model ${model} failed with ${response.status}: ${detail}`);
+
+      if (!shouldTryFallback(response.status, detail)) {
+        break;
+      }
     }
 
-    const payload = (await response.json()) as GeminiResponse;
-    const reply = extractGeminiText(payload);
-
-    await ctx.runMutation(internal.chat.addAshvinMessage, {
-      threadId,
-      body: reply,
-    });
-
-    return { reply };
+    throw new Error(`AI Ashvin could not reply right now. ${lastErrorDetail}`);
   },
 });

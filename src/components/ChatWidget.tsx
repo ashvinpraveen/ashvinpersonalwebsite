@@ -256,9 +256,10 @@ function ChatWidgetInner() {
       setMessage("");
       setAttachedImages([]);
     } catch (error) {
-      console.error(error);
+      const description = error instanceof Error ? error.message : "Please try again in a minute.";
+      console.warn("AI Ashvin message failed:", description);
       toast.error("Message not sent", {
-        description: "AI Ashvin is having trouble right now. Please try again in a minute.",
+        description,
       });
     } finally {
       setIsSending(false);
