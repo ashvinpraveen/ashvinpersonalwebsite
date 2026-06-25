@@ -119,7 +119,7 @@ type ModelProvider = "ilmu" | "gemini";
 
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 const FALLBACK_GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
-const DEFAULT_ILMU_MODEL = "nemo-super";
+const DEFAULT_ILMU_MODEL = "ilmu-mini-v3.3";
 const ILMU_BASE_URL = "https://api.ilmu.ai/v1";
 const RETRYABLE_GEMINI_STATUSES = new Set([408, 409, 429, 500, 502, 503, 504]);
 const SAFE_SITE_PATHS = ["/", "/blog", "/resources", "/text", "/postcard", "/postcards"] as const;
