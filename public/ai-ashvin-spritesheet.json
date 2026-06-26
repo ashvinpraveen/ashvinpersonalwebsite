@@ -1,0 +1,65 @@
+{
+  "image": "/ai-ashvin-spritesheet.png",
+  "frame": {
+    "width": 256,
+    "height": 367
+  },
+  "poses": [
+    {
+      "name": "idle",
+      "x": 0,
+      "y": 0,
+      "width": 256,
+      "height": 367
+    },
+    {
+      "name": "working",
+      "x": 256,
+      "y": 0,
+      "width": 256,
+      "height": 367
+    },
+    {
+      "name": "running",
+      "x": 512,
+      "y": 0,
+      "width": 256,
+      "height": 367
+    },
+    {
+      "name": "talk",
+      "x": 768,
+      "y": 0,
+      "width": 256,
+      "height": 367
+    },
+    {
+      "name": "thinking",
+      "x": 1024,
+      "y": 0,
+      "width": 256,
+      "height": 367
+    },
+    {
+      "name": "journaling",
+      "x": 1280,
+      "y": 0,
+      "width": 256,
+      "height": 367
+    },
+    {
+      "name": "filmmaking",
+      "x": 1536,
+      "y": 0,
+      "width": 256,
+      "height": 367
+    },
+    {
+      "name": "laptop",
+      "x": 1792,
+      "y": 0,
+      "width": 256,
+      "height": 367
+    }
+  ]
+}

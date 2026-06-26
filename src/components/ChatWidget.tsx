@@ -1,9 +1,9 @@
 "use client";
 
-import { type CSSProperties, type FormEvent, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type FormEvent, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowUp, Compass, History, MessageSquarePlus, Minus, PanelRightOpen, Plus, X } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Compass, History, Maximize2, MessageSquarePlus, Minimize2, Minus, Plus, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
@@ -18,11 +18,10 @@ const MODEL_PROVIDER_KEY = "ashvin-chat-model-provider";
 const MAX_MESSAGE_LENGTH = 900;
 const MAX_IMAGE_ATTACHMENTS = 3;
 const MAX_IMAGE_DIMENSION = 1024;
-const SUGGESTED_PROMPTS = [
-  "What are you building?",
-  "Tell me about Cleve",
-  "What should I read first?",
-];
+const DEFAULT_SIDE_PANEL_WIDTH = 320;
+const MIN_SIDE_PANEL_WIDTH = 280;
+const MAX_SIDE_PANEL_WIDTH = 520;
+const COMPACT_PAGE_WIDTH = 768;
 const SITE_ROUTES = [
   { path: "/", label: "Home" },
   { path: "/blog", label: "Writing" },
@@ -92,6 +91,23 @@ type ChatToolCall =
     };
 
 type ModelProvider = "ilmu" | "gemini";
+type AshvinPetPose = "idle" | "working" | "running" | "talk" | "thinking" | "journaling" | "filmmaking" | "laptop";
+
+const MODEL_OPTIONS: Array<{ label: string; value: ModelProvider }> = [
+  { label: "Ilmu", value: "ilmu" },
+  { label: "Gemini", value: "gemini" },
+];
+const ASHVIN_PET_POSE_INDEX: Record<AshvinPetPose, number> = {
+  idle: 0,
+  working: 1,
+  running: 2,
+  talk: 3,
+  thinking: 4,
+  journaling: 5,
+  filmmaking: 6,
+  laptop: 7,
+};
+const ASHVIN_PET_POSE_COUNT = Object.keys(ASHVIN_PET_POSE_INDEX).length;
 
 function getOrCreateClientId() {
   const existingClientId = window.localStorage.getItem(CLIENT_ID_KEY);
@@ -113,6 +129,19 @@ function getStoredModelProvider(): ModelProvider {
 function getRouteLabel(path: string) {
   if (path.startsWith("/blog/")) return "Blog post";
   return SITE_ROUTES.find((route) => route.path === path)?.label ?? "This page";
+}
+
+function getAshvinPetSpritePosition(pose: AshvinPetPose) {
+  return `${(ASHVIN_PET_POSE_INDEX[pose] / (ASHVIN_PET_POSE_COUNT - 1)) * 100}%`;
+}
+
+function getAshvinPetPose(pathname: string | null, isOpen: boolean, isSending: boolean): AshvinPetPose {
+  if (isSending) return "thinking";
+  if (isOpen) return "laptop";
+  if (pathname?.startsWith("/blog")) return "journaling";
+  if (pathname === "/resources") return "working";
+  if (pathname === "/text" || pathname === "/postcard" || pathname === "/postcards") return "talk";
+  return "idle";
 }
 
 function normalizeText(value: string) {
@@ -154,6 +183,10 @@ function collectPageContext(path: string): PageContext {
 
 function isSafeSitePath(path: string) {
   return SITE_ROUTES.some((route) => route.path === path);
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function canvasToDataUrl(canvas: HTMLCanvasElement, mimeType: string) {
@@ -200,14 +233,17 @@ async function compressImage(file: File): Promise<AttachedImage> {
   }
 }
 
-function GeneratedAshvinPet({ compact = false }: { compact?: boolean }) {
+function GeneratedAshvinPet({ compact = false, pose = "idle" }: { compact?: boolean; pose?: AshvinPetPose }) {
   return (
-    <img
-      src="/ai-ashvin-pet.png"
-      alt=""
+    <span
       aria-hidden="true"
       className={cn("ashvin-pet", compact && "ashvin-pet--compact")}
-      draggable={false}
+      style={
+        {
+          "--ashvin-pet-position": getAshvinPetSpritePosition(pose),
+          "--ashvin-pet-hover-position": getAshvinPetSpritePosition("running"),
+        } as CSSProperties
+      }
     />
   );
 }
@@ -257,13 +293,16 @@ function ChatWidgetInner() {
   const [clientId, setClientId] = useState("");
   const [message, setMessage] = useState("");
   const [modelProvider, setModelProvider] = useState<ModelProvider>("ilmu");
+  const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [mobileViewport, setMobileViewport] = useState<MobileViewport | null>(null);
   const [pageContext, setPageContext] = useState<PageContext | null>(null);
+  const [sidePanelWidth, setSidePanelWidth] = useState(DEFAULT_SIDE_PANEL_WIDTH);
   const messageListRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
 
   const chat = useQuery(
     api.chat.getForClient,
@@ -276,6 +315,7 @@ function ChatWidgetInner() {
   const threads = chat?.threads ?? [];
   const hasConversation = messages.length > 0;
   const isAdminRoute = pathname?.startsWith("/admin") ?? false;
+  const petPose = getAshvinPetPose(pathname, isOpen || isSidePanelOpen, isSending);
 
   useEffect(() => {
     setClientId(getOrCreateClientId());
@@ -308,6 +348,30 @@ function ChatWidgetInner() {
   }, [activeThreadId, chat?.thread?._id]);
 
   useEffect(() => {
+    if (!isModelMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!modelMenuRef.current?.contains(event.target as Node)) {
+        setIsModelMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsModelMenuOpen(false);
+        inputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isModelMenuOpen]);
+
+  useEffect(() => {
     if (!isSidePanelOpen) return;
 
     const mediaQuery = window.matchMedia("(min-width: 640px)");
@@ -315,7 +379,6 @@ function ChatWidgetInner() {
 
     const previousPaddingRight = document.body.style.paddingRight;
     const previousTransition = document.body.style.transition;
-    document.body.style.paddingRight = "18rem";
     document.body.style.transition = previousTransition
       ? `${previousTransition}, padding-right 180ms ease`
       : "padding-right 180ms ease";
@@ -325,6 +388,49 @@ function ChatWidgetInner() {
       document.body.style.transition = previousTransition;
     };
   }, [isSidePanelOpen]);
+
+  useEffect(() => {
+    if (!isSidePanelOpen) return;
+
+    const mediaQuery = window.matchMedia("(min-width: 640px)");
+    if (!mediaQuery.matches) return;
+
+    document.body.style.paddingRight = `${sidePanelWidth}px`;
+  }, [isSidePanelOpen, sidePanelWidth]);
+
+  useEffect(() => {
+    const clearChatLayout = () => {
+      delete document.body.dataset.chatLayout;
+      document.body.style.removeProperty("--chat-main-width");
+      document.body.style.removeProperty("--chat-side-width");
+    };
+
+    if (!isSidePanelOpen) {
+      clearChatLayout();
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(min-width: 640px)");
+    if (!mediaQuery.matches) {
+      clearChatLayout();
+      return;
+    }
+
+    const updateChatLayout = () => {
+      const mainWidth = window.innerWidth - sidePanelWidth;
+      document.body.style.setProperty("--chat-main-width", `${mainWidth}px`);
+      document.body.style.setProperty("--chat-side-width", `${sidePanelWidth}px`);
+      document.body.dataset.chatLayout = mainWidth < COMPACT_PAGE_WIDTH ? "compact" : "wide";
+    };
+
+    updateChatLayout();
+    window.addEventListener("resize", updateChatLayout);
+
+    return () => {
+      window.removeEventListener("resize", updateChatLayout);
+      clearChatLayout();
+    };
+  }, [isSidePanelOpen, sidePanelWidth]);
 
   useEffect(() => {
     if (!isOpen || isSidePanelOpen) {
@@ -360,6 +466,10 @@ function ChatWidgetInner() {
         "--chat-mobile-top": `${mobileViewport.top}px`,
       } as CSSProperties)
     : undefined;
+  const widgetStyle = {
+    ...mobileViewportStyle,
+    "--chat-side-width": `${sidePanelWidth}px`,
+  } as CSSProperties;
   const contextPillText = pageContext
     ? `${getRouteLabel(pageContext.path)} · ${pageContext.title}`
     : "Reading this page";
@@ -411,6 +521,28 @@ function ChatWidgetInner() {
         }
       }
     }
+  }
+
+  function handleSideResizeStart(event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = sidePanelWidth;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      setSidePanelWidth(
+        clamp(startWidth + startX - moveEvent.clientX, MIN_SIDE_PANEL_WIDTH, MAX_SIDE_PANEL_WIDTH),
+      );
+    };
+    const handlePointerUp = () => {
+      document.body.style.userSelect = previousUserSelect;
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -503,6 +635,13 @@ function ChatWidgetInner() {
     }
   }
 
+  function handleModelProviderChange(nextProvider: ModelProvider) {
+    setModelProvider(nextProvider);
+    window.localStorage.setItem(MODEL_PROVIDER_KEY, nextProvider);
+    setIsModelMenuOpen(false);
+    inputRef.current?.focus();
+  }
+
   if (isAdminRoute) return null;
 
   return (
@@ -510,22 +649,29 @@ function ChatWidgetInner() {
       className={cn(
         "fixed z-50 flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2",
         isSidePanelOpen
-          ? "bottom-0 right-0 top-0 hidden sm:flex"
+          ? "bottom-0 right-0 top-0 hidden sm:flex sm:w-[var(--chat-side-width)]"
           : isOpen
             ? "left-0 right-0 top-[var(--chat-mobile-top,0px)] h-[var(--chat-mobile-height,100dvh)] max-w-none sm:inset-auto sm:bottom-8 sm:right-5 sm:top-auto sm:h-auto sm:max-w-[calc(100vw-1.5rem)]"
           : "bottom-6 right-3 sm:bottom-8 sm:right-5",
       )}
-      style={mobileViewportStyle}
+      style={widgetStyle}
     >
       {isOpen ? (
         <section
           className={cn(
-            "chat-panel-enter flex flex-col overflow-hidden bg-card/95 shadow-2xl backdrop-blur-xl sm:border sm:border-border sm:bg-card/75",
+            "chat-panel-enter relative flex flex-col overflow-hidden bg-card/95 backdrop-blur-xl sm:border sm:border-border sm:bg-card/75",
             isSidePanelOpen
-              ? "h-dvh w-[18rem] rounded-none border-y-0 border-r-0"
-              : "h-full w-full rounded-none sm:h-auto sm:w-[min(15rem,calc(100vw-1.5rem))] sm:rounded-lg",
+              ? "h-dvh w-full rounded-none border-y-0 border-r-0 shadow-none"
+              : "h-full w-full rounded-none shadow-2xl sm:h-auto sm:w-[min(15rem,calc(100vw-1.5rem))] sm:rounded-lg",
           )}
         >
+          {isSidePanelOpen ? (
+            <div
+              aria-hidden="true"
+              className="absolute left-0 top-0 hidden h-full w-2 cursor-col-resize touch-none sm:block"
+              onPointerDown={handleSideResizeStart}
+            />
+          ) : null}
           <header className="flex items-center justify-between gap-2 px-3 pb-1 pt-3">
             <div>
               <p className="text-sm font-semibold">Chat</p>
@@ -558,10 +704,14 @@ function ChatWidgetInner() {
                 variant="ghost"
                 size="icon"
                 className="hidden h-8 w-8 sm:inline-flex"
-                aria-label="Open full side chat"
+                aria-label={isSidePanelOpen ? "Contract chat" : "Expand chat"}
                 onClick={() => setIsSidePanelOpen((value) => !value)}
               >
-                <PanelRightOpen aria-hidden="true" />
+                {isSidePanelOpen ? (
+                  <Minimize2 aria-hidden="true" />
+                ) : (
+                  <Maximize2 aria-hidden="true" />
+                )}
               </Button>
               <Button
                 type="button"
@@ -579,13 +729,6 @@ function ChatWidgetInner() {
               </Button>
             </div>
           </header>
-
-          <div className="px-3 pb-2">
-            <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-muted/70 px-2.5 py-1 text-[11px] text-muted-foreground">
-              <Compass aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{contextPillText}</span>
-            </div>
-          </div>
 
           {isHistoryOpen ? (
             <div className="mx-3 mb-2 rounded-md border border-border bg-background/60 p-1.5">
@@ -617,7 +760,7 @@ function ChatWidgetInner() {
           <div
             ref={messageListRef}
             className={cn(
-              "flex min-h-0 flex-col gap-2 overflow-y-auto px-3 py-3",
+              "flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain px-3 py-3",
               isSidePanelOpen
                 ? "flex-1"
                 : "flex-1 sm:h-[12rem] sm:max-h-[min(12rem,calc(70dvh-10rem))] sm:flex-none",
@@ -633,10 +776,10 @@ function ChatWidgetInner() {
                 <div
                   key={item._id}
                   className={cn(
-                    "max-w-[82%] rounded-lg px-3 py-2 text-sm leading-relaxed",
+                    "text-sm leading-relaxed",
                     item.author === "visitor"
-                      ? "ml-auto bg-primary text-primary-foreground"
-                      : "mr-auto bg-muted text-foreground",
+                      ? "ml-auto max-w-[82%] rounded-lg bg-primary px-3 py-2 text-primary-foreground"
+                      : "mr-auto w-full max-w-none px-0 py-1 text-foreground",
                   )}
                 >
                   {item.author === "ashvin" ? (
@@ -648,7 +791,7 @@ function ChatWidgetInner() {
               ))
             )}
             {isSending ? (
-              <div className="mr-auto max-w-[82%] rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+              <div className="mr-auto w-full max-w-none px-0 py-1 text-sm text-muted-foreground">
                 Thinking...
               </div>
             ) : null}
@@ -659,20 +802,11 @@ function ChatWidgetInner() {
             className="p-3 pt-1 [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))] sm:p-3 sm:pt-1"
           >
             <div className="overflow-hidden rounded-3xl bg-muted/70">
-              <div className="flex flex-wrap gap-1.5 px-3 pt-3">
-                {SUGGESTED_PROMPTS.map((prompt) => (
-                  <button
-                    key={prompt}
-                    type="button"
-                    className="rounded-full bg-background/50 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                    onClick={() => {
-                      setMessage(prompt);
-                      inputRef.current?.focus();
-                    }}
-                  >
-                    {prompt}
-                  </button>
-                ))}
+              <div className="px-3 pt-3">
+                <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-background/50 px-2.5 py-1 text-[11px] text-muted-foreground">
+                  <Compass aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{contextPillText}</span>
+                </div>
               </div>
               <Textarea
                 ref={inputRef}
@@ -736,23 +870,53 @@ function ChatWidgetInner() {
                     </div>
                   ))}
                 </div>
-                <label className="sr-only" htmlFor="chat-model-provider">
-                  Model
-                </label>
-                <select
-                  id="chat-model-provider"
-                  value={modelProvider}
-                  aria-label="Model"
-                  className="h-8 shrink-0 rounded-full border-0 bg-background/50 px-2 text-xs text-muted-foreground outline-none transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                  onChange={(event) => {
-                    const nextProvider = event.target.value === "gemini" ? "gemini" : "ilmu";
-                    setModelProvider(nextProvider);
-                    window.localStorage.setItem(MODEL_PROVIDER_KEY, nextProvider);
-                  }}
-                >
-                  <option value="ilmu">Ilmu</option>
-                  <option value="gemini">Gemini</option>
-                </select>
+                <div ref={modelMenuRef} className="relative shrink-0">
+                  <button
+                    type="button"
+                    aria-label="Model"
+                    aria-haspopup="listbox"
+                    aria-expanded={isModelMenuOpen}
+                    className="flex h-8 min-w-20 items-center justify-between gap-2 rounded-full bg-background/50 px-3 text-xs text-muted-foreground outline-none transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => setIsModelMenuOpen((value) => !value)}
+                  >
+                    <span>{MODEL_OPTIONS.find((option) => option.value === modelProvider)?.label}</span>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={cn(
+                        "h-3.5 w-3.5 transition-transform",
+                        isModelMenuOpen && "rotate-180",
+                      )}
+                    />
+                  </button>
+                  {isModelMenuOpen ? (
+                    <div
+                      role="listbox"
+                      aria-label="Model"
+                      className="absolute bottom-full right-0 z-10 mb-1 w-28 overflow-hidden rounded-lg border border-border bg-card/95 p-1 shadow-lg backdrop-blur-xl"
+                    >
+                      {MODEL_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          role="option"
+                          aria-selected={modelProvider === option.value}
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs transition-colors",
+                            modelProvider === option.value
+                              ? "text-foreground"
+                              : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                          )}
+                          onClick={() => handleModelProviderChange(option.value)}
+                        >
+                          <span>{option.label}</span>
+                          {modelProvider === option.value ? (
+                            <Check aria-hidden="true" className="h-3.5 w-3.5" />
+                          ) : null}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
                 <Button
                   type="submit"
                   size="icon"
@@ -778,7 +942,7 @@ function ChatWidgetInner() {
         aria-expanded={isOpen}
         aria-label={isOpen ? "Hide AI Ashvin chat" : "Open AI Ashvin chat"}
       >
-        <GeneratedAshvinPet />
+        <GeneratedAshvinPet pose={petPose} />
       </button>
     </div>
   );

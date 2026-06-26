@@ -43,7 +43,7 @@ const SiteNav = ({ variant = "dark" }: SiteNavProps) => {
     : "bg-background/95 text-foreground";
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navBg}`}>
+    <nav className={`site-nav fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navBg}`}>
       <div className="flex h-12 w-full items-center justify-between px-3 md:px-4 lg:px-6">
         <Link href="/" className={`text-sm font-semibold tracking-tight transition-colors sm:text-base ${logoClass}`}>
           Ashvin Praveen
