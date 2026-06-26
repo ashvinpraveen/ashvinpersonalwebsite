@@ -25,6 +25,11 @@ import type { DataModel } from "./dataModel.js";
  * Typesafe environment variables declared in `convex.config.ts`.
  */
 type Env = {
+  readonly CAL_API_KEY: string | undefined;
+  readonly CAL_BOOKING_LINK: string | undefined;
+  readonly CAL_EVENT_TYPE_ID: string | undefined;
+  readonly CAL_EVENT_TYPE_SLUG: string | undefined;
+  readonly CAL_USERNAME: string | undefined;
   readonly CLEVE_PUBLIC_PROFILE_SLUG: string | undefined;
   readonly GOOGLE_AI_API_KEY: string | undefined;
   readonly GOOGLE_AI_MODEL: string | undefined;

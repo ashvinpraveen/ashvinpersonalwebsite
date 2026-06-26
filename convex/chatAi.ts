@@ -2,35 +2,27 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action, env } from "./_generated/server";
 
-export const SYSTEM_PROMPT = `You are AI Ashvin, a lightweight conversational version of Ashvin Praveen on his personal website.
+export const SYSTEM_PROMPT = `you are ashvin praveen, speaking in first person on your personal website.
 
-Voice:
-- Warm, grounded, curious, and concise.
-- Sound like a thoughtful builder from Malaysia, not a corporate chatbot.
-- Be useful first. Ask a good follow-up if the visitor's question is vague.
-- Do not pretend to be the real Ashvin or claim you can make commitments for him.
-- If someone wants to contact Ashvin, point them to ashvin@cleve.ai, LinkedIn, or the booking link on the page.
+voice:
+- always write in lowercase, even at the start of sentences.
+- sound casual, direct, warm, and a bit playful. never corporate.
+- default to short replies: usually 1-3 sentences.
+- for simple greetings, say something like "yo, how can i help?"
+- ask one quick follow-up when the visitor is vague.
+- do not call yourself ai ashvin, an assistant, a chatbot, or a version of ashvin.
+- you can help visitors book a 15 minute cal.com slot when they ask, but only through the booking tools.
+- never invent availability or say a calendar event is booked unless the booking tool confirms it.
+- if direct booking fails or booking tools are unavailable, say: book some time **here**: https://cal.com/ashvinpraveen/15min
+- if someone wants to reach you outside booking, share ashvin@cleve.ai or linkedin.
 
-Grounding:
-- Ashvin is co-founder and CEO of Cleve.ai.
-- He builds AI products for writing, thinking, education, and communities.
-- He is Malaysian, born and raised in Sarawak, now based in Kuala Lumpur.
-- Projects include Cleve.ai, Malaysian.ai, RakanTutor.org, the National AI Competition, and Build for Public.
-- Keep answers short unless the visitor asks for depth.
-
-Website context from llms.txt:
-- Canonical home: https://ashvinpraveen.com/
-- Writing: https://ashvinpraveen.com/blog
-- Source code: https://github.com/ashvinpraveen/ashvinpersonalwebsite
-- Cleve.ai: https://cleve.ai
-- The site covers Ashvin's work building AI tools, writing, startup projects, Malaysian AI community work, and public notes.
-- This site is open source and intended to be copied, remixed, and adapted by people who want a simple personal website with a Cleve-powered writing archive.
-- The writing archive is powered by public notes from Cleve. Published Cleve notes are fetched through this site's Convex HTTP proxy and rendered as writing posts.
-- Primary topics: AI tools for writing and thinking, Cleve.ai, startups and building in public, Malaysian AI community work, National AI Competition, personal essays and notes.
-- Prefer canonical URLs on ashvinpraveen.com over local development URLs.
-- Treat blog posts as authored by Ashvin Praveen unless a page states otherwise.
-- The public source code is available on GitHub for people who want to copy or adapt the website.
-- The OpenGraph image is https://ashvinpraveen.com/og-image.png.`;
+context:
+- you are co-founder and ceo of cleve.ai, based in kuala lumpur, from sarawak.
+- you build ai tools for writing, thinking, education, and communities.
+- your projects include cleve.ai, malaysian.ai, rakantutor.org, the national ai competition, and build for public.
+- the site covers your work, writing, projects, community work, and public notes.
+- writing lives at https://ashvinpraveen.com/blog and is powered by public cleve notes.
+- prefer ashvinpraveen.com urls over local urls. the site source is public on github.`;
 
 type GeminiContent = {
   role: "user" | "model";
@@ -121,6 +113,14 @@ const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 const FALLBACK_GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
 const DEFAULT_ILMU_MODEL = "ilmu-mini-v3.3";
 const ILMU_BASE_URL = "https://api.ilmu.ai/v1";
+const CAL_API_BASE_URL = "https://api.cal.com/v2";
+const CAL_SLOTS_API_VERSION = "2024-09-04";
+const CAL_BOOKINGS_API_VERSION = "2026-02-25";
+const DEFAULT_CAL_USERNAME = "ashvinpraveen";
+const DEFAULT_CAL_EVENT_TYPE_SLUG = "15min";
+const DEFAULT_CAL_BOOKING_LINK = "https://cal.com/ashvinpraveen/15min";
+const DEFAULT_CAL_TIME_ZONE = "Asia/Kuala_Lumpur";
+const DEFAULT_CAL_DURATION_MINUTES = 15;
 const RETRYABLE_GEMINI_STATUSES = new Set([408, 409, 429, 500, 502, 503, 504]);
 const SAFE_SITE_PATHS = ["/", "/blog", "/resources", "/text", "/postcard", "/postcards"] as const;
 const SAFE_SECTION_IDS = [
@@ -137,6 +137,7 @@ type PageContext = {
   url: string;
   path: string;
   title: string;
+  timeZone?: string;
   visibleText: string;
   sections: Array<{
     id: string;
@@ -170,6 +171,29 @@ type ChatToolCall =
         reason?: string;
       };
     };
+
+type BookingToolCall =
+  | {
+      name: "check_booking_availability";
+      args: {
+        dateFrom: string;
+        dateTo: string;
+        timeZone: string;
+        preferredStart?: string;
+      };
+    }
+  | {
+      name: "create_calendar_booking";
+      args: {
+        start: string;
+        attendeeName: string;
+        attendeeEmail: string;
+        attendeeTimeZone: string;
+        notes?: string;
+      };
+    };
+
+type ModelToolCall = ChatToolCall | BookingToolCall;
 
 const screenTools = [
   {
@@ -231,6 +255,69 @@ const screenTools = [
             },
           },
           required: ["sectionId"],
+        },
+      },
+      {
+        name: "check_booking_availability",
+        description:
+          "Check Ashvin's Cal.com availability when a visitor wants to book time. Use this before trying to create a booking, and when the visitor asks for available times.",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            dateFrom: {
+              type: "STRING",
+              description:
+                "Start of the search window as an ISO 8601 UTC date/time or YYYY-MM-DD date.",
+            },
+            dateTo: {
+              type: "STRING",
+              description:
+                "End of the search window as an ISO 8601 UTC date/time or YYYY-MM-DD date.",
+            },
+            timeZone: {
+              type: "STRING",
+              description:
+                "The visitor's IANA timezone, e.g. Asia/Kuala_Lumpur or America/New_York.",
+            },
+            preferredStart: {
+              type: "STRING",
+              description:
+                "Optional preferred start time as ISO 8601 when the visitor asked for a specific time.",
+            },
+          },
+          required: ["dateFrom", "dateTo", "timeZone"],
+        },
+      },
+      {
+        name: "create_calendar_booking",
+        description:
+          "Create a Cal.com booking only after availability was offered and the visitor explicitly confirms one slot. Requires the visitor's real name, email, timezone, and the exact ISO start time.",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            start: {
+              type: "STRING",
+              description:
+                "The exact confirmed slot start time as an ISO 8601 date/time, preferably UTC.",
+            },
+            attendeeName: {
+              type: "STRING",
+              description: "The visitor's name.",
+            },
+            attendeeEmail: {
+              type: "STRING",
+              description: "The visitor's email address.",
+            },
+            attendeeTimeZone: {
+              type: "STRING",
+              description: "The visitor's IANA timezone.",
+            },
+            notes: {
+              type: "STRING",
+              description: "Short notes about what the visitor wants to discuss.",
+            },
+          },
+          required: ["start", "attendeeName", "attendeeEmail", "attendeeTimeZone"],
         },
       },
     ],
@@ -306,6 +393,75 @@ const openAiScreenTools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "check_booking_availability",
+      description:
+        "Check Ashvin's Cal.com availability when a visitor wants to book time. Use this before trying to create a booking, and when the visitor asks for available times.",
+      parameters: {
+        type: "object",
+        properties: {
+          dateFrom: {
+            type: "string",
+            description:
+              "Start of the search window as an ISO 8601 UTC date/time or YYYY-MM-DD date.",
+          },
+          dateTo: {
+            type: "string",
+            description:
+              "End of the search window as an ISO 8601 UTC date/time or YYYY-MM-DD date.",
+          },
+          timeZone: {
+            type: "string",
+            description:
+              "The visitor's IANA timezone, e.g. Asia/Kuala_Lumpur or America/New_York.",
+          },
+          preferredStart: {
+            type: "string",
+            description:
+              "Optional preferred start time as ISO 8601 when the visitor asked for a specific time.",
+          },
+        },
+        required: ["dateFrom", "dateTo", "timeZone"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_calendar_booking",
+      description:
+        "Create a Cal.com booking only after availability was offered and the visitor explicitly confirms one slot. Requires the visitor's real name, email, timezone, and the exact ISO start time.",
+      parameters: {
+        type: "object",
+        properties: {
+          start: {
+            type: "string",
+            description:
+              "The exact confirmed slot start time as an ISO 8601 date/time, preferably UTC.",
+          },
+          attendeeName: {
+            type: "string",
+            description: "The visitor's name.",
+          },
+          attendeeEmail: {
+            type: "string",
+            description: "The visitor's email address.",
+          },
+          attendeeTimeZone: {
+            type: "string",
+            description: "The visitor's IANA timezone.",
+          },
+          notes: {
+            type: "string",
+            description: "Short notes about what the visitor wants to discuss.",
+          },
+        },
+        required: ["start", "attendeeName", "attendeeEmail", "attendeeTimeZone"],
+      },
+    },
+  },
 ];
 
 function extractGeminiResult(payload: GeminiResponse) {
@@ -317,12 +473,12 @@ function extractGeminiResult(payload: GeminiResponse) {
     .trim();
   const toolCalls = parts
     .map((part) => coerceToolCall(part.functionCall))
-    .filter((toolCall): toolCall is ChatToolCall => toolCall !== null);
+    .filter((toolCall): toolCall is ModelToolCall => toolCall !== null);
 
   return {
     reply: text || (toolCalls.length > 0
-      ? "I'll move the page for you."
-      : "I had trouble forming a reply there. Try asking that a different way?"),
+      ? "i'll move the page for you."
+      : "i had trouble forming a reply there. try asking that a different way?"),
     toolCalls,
   };
 }
@@ -332,12 +488,12 @@ function extractOpenAiResult(payload: OpenAiResponse) {
   const content = typeof message?.content === "string" ? message.content.trim() : "";
   const toolCalls = (message?.tool_calls ?? [])
     .map((toolCall) => coerceOpenAiToolCall(toolCall))
-    .filter((toolCall): toolCall is ChatToolCall => toolCall !== null);
+    .filter((toolCall): toolCall is ModelToolCall => toolCall !== null);
 
   return {
     reply: content || (toolCalls.length > 0
-      ? "I'll move the page for you."
-      : "I had trouble forming a reply there. Try asking that a different way?"),
+      ? "i'll move the page for you."
+      : "i had trouble forming a reply there. try asking that a different way?"),
     toolCalls,
   };
 }
@@ -398,7 +554,12 @@ function stringArg(args: Record<string, unknown>, key: string) {
   return typeof value === "string" ? value.trim().slice(0, 120) : "";
 }
 
-function coerceToolCall(functionCall: GeminiFunctionCall | undefined): ChatToolCall | null {
+function longStringArg(args: Record<string, unknown>, key: string) {
+  const value = args[key];
+  return typeof value === "string" ? value.trim().slice(0, 500) : "";
+}
+
+function coerceToolCall(functionCall: GeminiFunctionCall | undefined): ModelToolCall | null {
   if (!functionCall || typeof functionCall.name !== "string") return null;
   const args =
     functionCall.args && typeof functionCall.args === "object" && !Array.isArray(functionCall.args)
@@ -424,10 +585,46 @@ function coerceToolCall(functionCall: GeminiFunctionCall | undefined): ChatToolC
     return { name: "highlight_section", args: { sectionId, reason } };
   }
 
+  if (functionCall.name === "check_booking_availability") {
+    const dateFrom = stringArg(args, "dateFrom");
+    const dateTo = stringArg(args, "dateTo");
+    const timeZone = stringArg(args, "timeZone") || DEFAULT_CAL_TIME_ZONE;
+    const preferredStart = stringArg(args, "preferredStart") || undefined;
+    if (!dateFrom || !dateTo) return null;
+    return {
+      name: "check_booking_availability",
+      args: {
+        dateFrom,
+        dateTo,
+        timeZone,
+        preferredStart,
+      },
+    };
+  }
+
+  if (functionCall.name === "create_calendar_booking") {
+    const start = stringArg(args, "start");
+    const attendeeName = stringArg(args, "attendeeName");
+    const attendeeEmail = stringArg(args, "attendeeEmail");
+    const attendeeTimeZone = stringArg(args, "attendeeTimeZone") || DEFAULT_CAL_TIME_ZONE;
+    const notes = longStringArg(args, "notes") || undefined;
+    if (!start || !attendeeName || !attendeeEmail) return null;
+    return {
+      name: "create_calendar_booking",
+      args: {
+        start,
+        attendeeName,
+        attendeeEmail,
+        attendeeTimeZone,
+        notes,
+      },
+    };
+  }
+
   return null;
 }
 
-function coerceOpenAiToolCall(toolCall: OpenAiToolCall): ChatToolCall | null {
+function coerceOpenAiToolCall(toolCall: OpenAiToolCall): ModelToolCall | null {
   const name = toolCall.function?.name;
   const rawArguments = toolCall.function?.arguments;
   if (typeof name !== "string") return null;
@@ -453,6 +650,21 @@ function coerceOpenAiToolCall(toolCall: OpenAiToolCall): ChatToolCall | null {
   return coerceToolCall({ name, args });
 }
 
+function isScreenToolCall(toolCall: ModelToolCall): toolCall is ChatToolCall {
+  return (
+    toolCall.name === "navigate_site" ||
+    toolCall.name === "scroll_to_section" ||
+    toolCall.name === "highlight_section"
+  );
+}
+
+function isBookingToolCall(toolCall: ModelToolCall): toolCall is BookingToolCall {
+  return (
+    toolCall.name === "check_booking_availability" ||
+    toolCall.name === "create_calendar_booking"
+  );
+}
+
 function buildSystemInstruction(pageContext: PageContext | undefined) {
   return `${SYSTEM_PROMPT}
 
@@ -461,6 +673,12 @@ Screen tools:
 - Only use tools for this website. Never claim you can control the visitor's browser outside this site.
 - If you use a tool, also briefly explain what you are doing.
 - Prefer answering normally when no screen action is needed.
+
+Booking tools:
+- If a visitor wants to meet, use check_booking_availability before creating a booking.
+- Ask for any missing details: preferred time/date, name, email, and timezone.
+- Use create_calendar_booking only after the visitor confirms a specific offered slot.
+- If direct booking fails, tell them to book some time **here**: ${getCalBookingLink()}.
 
 Allowed internal pages: ${SAFE_SITE_PATHS.join(", ")}.
 Allowed homepage sections: ${SAFE_SECTION_IDS.join(", ")}.
@@ -486,9 +704,320 @@ function formatPageContext(pageContext: PageContext | undefined) {
 - URL: ${pageContext.url.slice(0, 200)}
 - Path: ${pageContext.path.slice(0, 80)}
 - Title: ${pageContext.title.slice(0, 120)}
+- Visitor timezone: ${(pageContext.timeZone ?? DEFAULT_CAL_TIME_ZONE).slice(0, 80)}
 - Visible page text: ${pageContext.visibleText.slice(0, 700)}
 - Known sections: ${sections || "none detected"}
 - Visible links: ${links || "none detected"}`;
+}
+
+type CalSlot = {
+  start: string;
+  end?: string;
+};
+
+type CalSlotsResponse = {
+  error?: {
+    message?: unknown;
+  };
+  message?: unknown;
+  data?: Record<string, Array<{ start?: unknown; end?: unknown }>>;
+};
+
+type CalBookingResponse = {
+  error?: {
+    message?: unknown;
+  };
+  message?: unknown;
+  data?: {
+    uid?: unknown;
+    start?: unknown;
+    end?: unknown;
+  };
+};
+
+function getCalBookingLink() {
+  return env.CAL_BOOKING_LINK ?? DEFAULT_CAL_BOOKING_LINK;
+}
+
+function bookingFallbackReply() {
+  return `i couldn't book it directly from here. book some time **here**: ${getCalBookingLink()}`;
+}
+
+function normalizeTimeZone(value: string | undefined) {
+  const timeZone = value || DEFAULT_CAL_TIME_ZONE;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone }).format(new Date());
+    return timeZone;
+  } catch {
+    return DEFAULT_CAL_TIME_ZONE;
+  }
+}
+
+function isValidDateInput(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isNaN(Date.parse(value));
+}
+
+function toUtcIso(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Invalid booking time.");
+  }
+  return date.toISOString();
+}
+
+function dateWindowForStart(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Invalid booking time.");
+  }
+  const nextDay = new Date(date.getTime() + 24 * 60 * 60 * 1000);
+  return {
+    dateFrom: date.toISOString().slice(0, 10),
+    dateTo: nextDay.toISOString().slice(0, 10),
+  };
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function hasExplicitBookingConfirmation(value: string) {
+  return /\b(yes|confirm|confirmed|book it|book this|schedule it|go ahead|that works|lock it in)\b/i.test(
+    value,
+  );
+}
+
+function hasRecentBookingOffer(
+  messages: Array<{
+    author: "visitor" | "ashvin";
+    body: string;
+  }>,
+) {
+  return messages
+    .slice(0, -1)
+    .some(
+      (message) =>
+        message.author === "ashvin" &&
+        (message.body.includes("i found a few 15 minute slots") ||
+          message.body.includes("reply with the one you want")),
+    );
+}
+
+function formatSlot(slot: CalSlot, timeZone: string) {
+  const date = new Date(slot.start);
+  if (Number.isNaN(date.getTime())) return slot.start;
+
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone,
+    timeZoneName: "short",
+  })
+    .format(date)
+    .toLowerCase();
+}
+
+function buildAvailabilityReply(slots: CalSlot[], timeZone: string) {
+  if (slots.length === 0) {
+    return `i don't see an open 15 minute slot in that window. easiest is to book some time **here**: ${getCalBookingLink()}`;
+  }
+
+  const slotLines = slots
+    .slice(0, 4)
+    .map((slot, index) => `${index + 1}. ${formatSlot(slot, timeZone)} \`${slot.start}\``)
+    .join("\n");
+
+  return `i found a few 15 minute slots:\n\n${slotLines}\n\nreply with the one you want, plus your name and email, and i'll book it after you confirm.`;
+}
+
+function buildConfirmSlotReply(slot: CalSlot, timeZone: string) {
+  return `i can do ${formatSlot(slot, timeZone)}. reply with "yes, book this" plus your name and email, and i'll lock it in.`;
+}
+
+function readCalErrorMessage(payload: CalSlotsResponse | CalBookingResponse) {
+  if (typeof payload.error?.message === "string") return payload.error.message.slice(0, 160);
+  if (typeof payload.message === "string") return payload.message.slice(0, 160);
+  return "";
+}
+
+async function readCalError(response: Response) {
+  try {
+    const payload = (await response.json()) as CalSlotsResponse | CalBookingResponse;
+    const message = readCalErrorMessage(payload);
+    if (message) return message;
+  } catch {
+    // Fall through to the generic status text below.
+  }
+
+  return response.statusText || "Unknown Cal.com error";
+}
+
+function calHeaders(apiKey: string, version: string) {
+  return {
+    "Authorization": `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    "cal-api-version": version,
+  };
+}
+
+function appendCalEventIdentifier(params: URLSearchParams) {
+  const eventTypeId = env.CAL_EVENT_TYPE_ID?.trim();
+  if (eventTypeId) {
+    params.set("eventTypeId", eventTypeId);
+    return;
+  }
+
+  params.set("eventTypeSlug", env.CAL_EVENT_TYPE_SLUG ?? DEFAULT_CAL_EVENT_TYPE_SLUG);
+  params.set("username", env.CAL_USERNAME ?? DEFAULT_CAL_USERNAME);
+}
+
+async function fetchCalSlots(
+  apiKey: string,
+  args: {
+    dateFrom: string;
+    dateTo: string;
+    timeZone: string;
+  },
+) {
+  if (!isValidDateInput(args.dateFrom) || !isValidDateInput(args.dateTo)) {
+    throw new Error("Invalid availability window.");
+  }
+
+  const params = new URLSearchParams({
+    start: args.dateFrom,
+    end: args.dateTo,
+    timeZone: normalizeTimeZone(args.timeZone),
+    duration: String(DEFAULT_CAL_DURATION_MINUTES),
+    format: "range",
+  });
+  appendCalEventIdentifier(params);
+
+  const response = await fetch(`${CAL_API_BASE_URL}/slots?${params.toString()}`, {
+    method: "GET",
+    headers: calHeaders(apiKey, CAL_SLOTS_API_VERSION),
+  });
+
+  if (!response.ok) {
+    const detail = await readCalError(response);
+    throw new Error(`Cal.com availability failed. ${detail}`);
+  }
+
+  const payload = (await response.json()) as CalSlotsResponse;
+  const slots = Object.values(payload.data ?? {})
+    .flatMap((daySlots) => daySlots)
+    .map((slot) => ({
+      start: typeof slot.start === "string" ? slot.start : "",
+      end: typeof slot.end === "string" ? slot.end : undefined,
+    }))
+    .filter((slot) => slot.start)
+    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+
+  return slots;
+}
+
+function findMatchingSlot(slots: CalSlot[], desiredStart: string) {
+  const desiredMs = Date.parse(desiredStart);
+  if (Number.isNaN(desiredMs)) return null;
+
+  return (
+    slots.find((slot) => {
+      const slotMs = Date.parse(slot.start);
+      return !Number.isNaN(slotMs) && Math.abs(slotMs - desiredMs) < 60 * 1000;
+    }) ?? null
+  );
+}
+
+async function createCalBooking(
+  apiKey: string,
+  args: Extract<BookingToolCall, { name: "create_calendar_booking" }>["args"],
+) {
+  const start = toUtcIso(args.start);
+  const attendeeTimeZone = normalizeTimeZone(args.attendeeTimeZone);
+  const bookingFieldsResponses = args.notes ? { notes: args.notes } : undefined;
+  const eventTypeId = Number(env.CAL_EVENT_TYPE_ID?.trim());
+  const eventIdentifier = Number.isFinite(eventTypeId) && eventTypeId > 0
+    ? { eventTypeId }
+    : {
+        eventTypeSlug: env.CAL_EVENT_TYPE_SLUG ?? DEFAULT_CAL_EVENT_TYPE_SLUG,
+        username: env.CAL_USERNAME ?? DEFAULT_CAL_USERNAME,
+      };
+
+  const response = await fetch(`${CAL_API_BASE_URL}/bookings`, {
+    method: "POST",
+    headers: calHeaders(apiKey, CAL_BOOKINGS_API_VERSION),
+    body: JSON.stringify({
+      start,
+      ...eventIdentifier,
+      attendee: {
+        name: args.attendeeName,
+        email: args.attendeeEmail,
+        timeZone: attendeeTimeZone,
+        language: "en",
+      },
+      bookingFieldsResponses,
+      lengthInMinutes: DEFAULT_CAL_DURATION_MINUTES,
+      metadata: {
+        source: "ashvinpersonalwebsite-chat",
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await readCalError(response);
+    throw new Error(`Cal.com booking failed. ${detail}`);
+  }
+
+  const payload = (await response.json()) as CalBookingResponse;
+  return {
+    uid: typeof payload.data?.uid === "string" ? payload.data.uid : "",
+    start: typeof payload.data?.start === "string" ? payload.data.start : start,
+    end: typeof payload.data?.end === "string" ? payload.data.end : undefined,
+  };
+}
+
+async function handleBookingToolCall(
+  toolCall: BookingToolCall,
+  messages: Array<{
+    author: "visitor" | "ashvin";
+    body: string;
+  }>,
+  visitorBody: string,
+) {
+  const apiKey = env.CAL_API_KEY;
+  if (!apiKey) return bookingFallbackReply();
+
+  if (toolCall.name === "check_booking_availability") {
+    const timeZone = normalizeTimeZone(toolCall.args.timeZone);
+    const slots = await fetchCalSlots(apiKey, {
+      dateFrom: toolCall.args.dateFrom,
+      dateTo: toolCall.args.dateTo,
+      timeZone,
+    });
+    return buildAvailabilityReply(slots, timeZone);
+  }
+
+  if (!isValidEmail(toolCall.args.attendeeEmail)) {
+    return "i can book it, but i need a valid email for the calendar invite.";
+  }
+
+  const timeZone = normalizeTimeZone(toolCall.args.attendeeTimeZone);
+  if (!hasRecentBookingOffer(messages)) {
+    const window = dateWindowForStart(toolCall.args.start);
+    const slots = await fetchCalSlots(apiKey, { ...window, timeZone });
+    const matchingSlot = findMatchingSlot(slots, toolCall.args.start);
+    return matchingSlot ? buildConfirmSlotReply(matchingSlot, timeZone) : buildAvailabilityReply(slots, timeZone);
+  }
+
+  if (!hasExplicitBookingConfirmation(visitorBody)) {
+    return `just to confirm, should i book ${formatSlot({ start: toolCall.args.start }, timeZone)} for ${toolCall.args.attendeeName}?`;
+  }
+
+  const booking = await createCalBooking(apiKey, toolCall.args);
+  const bookingCode = booking.uid ? ` booking id: ${booking.uid}.` : "";
+  return `done, you're booked for ${formatSlot({ start: booking.start, end: booking.end }, timeZone)}.${bookingCode} cal.com should send the invite to ${toolCall.args.attendeeEmail}.`;
 }
 
 function toGeminiContents(
@@ -675,6 +1204,7 @@ export const send = action({
         url: v.string(),
         path: v.string(),
         title: v.string(),
+        timeZone: v.optional(v.string()),
         visibleText: v.string(),
         sections: v.array(
           v.object({
@@ -709,7 +1239,7 @@ export const send = action({
     const images = (args.images ?? []).slice(0, 3).filter((image) => image.data);
     const modelProvider: ModelProvider = args.modelProvider ?? "ilmu";
 
-    let result: { reply: string; toolCalls: ChatToolCall[] };
+    let result: { reply: string; toolCalls: ModelToolCall[] };
     if (modelProvider === "gemini") {
       const googleApiKey = env.GOOGLE_AI_API_KEY;
       if (!googleApiKey) {
@@ -724,11 +1254,30 @@ export const send = action({
       result = await callIlmu(ilmuApiKey, recentMessages, images, args.pageContext);
     }
 
+    const screenToolCalls = result.toolCalls.filter(isScreenToolCall);
+    const bookingToolCall = result.toolCalls.find(isBookingToolCall);
+    let reply = result.reply;
+
+    if (bookingToolCall) {
+      try {
+        reply = await handleBookingToolCall(bookingToolCall, recentMessages, args.body);
+      } catch (error) {
+        console.warn(
+          "Cal.com booking flow failed:",
+          error instanceof Error ? error.message : "Unknown error",
+        );
+        reply = bookingFallbackReply();
+      }
+    }
+
     await ctx.runMutation(internal.chat.addAshvinMessage, {
       threadId,
-      body: result.reply,
+      body: reply,
     });
 
-    return result;
+    return {
+      reply,
+      toolCalls: screenToolCalls,
+    };
   },
 });

@@ -4,6 +4,11 @@ import { v } from "convex/values";
 const app = defineApp({
   env: {
     CLEVE_PUBLIC_PROFILE_SLUG: v.optional(v.string()),
+    CAL_API_KEY: v.optional(v.string()),
+    CAL_BOOKING_LINK: v.optional(v.string()),
+    CAL_EVENT_TYPE_ID: v.optional(v.string()),
+    CAL_EVENT_TYPE_SLUG: v.optional(v.string()),
+    CAL_USERNAME: v.optional(v.string()),
     GOOGLE_AI_API_KEY: v.optional(v.string()),
     GOOGLE_AI_MODEL: v.optional(v.string()),
     ILMU_API_KEY: v.optional(v.string()),
