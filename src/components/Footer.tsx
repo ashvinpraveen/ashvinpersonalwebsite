@@ -1,9 +1,7 @@
 import { linkSubtle } from "@/lib/styles";
 import { pageShellClassName } from "@/lib/layout";
-
-const gridLightSvg = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='60' height='60' fill='none' stroke='rgba(0,0,0,0.06)' stroke-width='0.5'/%3E%3C/svg%3E")`;
-const gridDarkSvg = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='60' height='60' fill='none' stroke='rgba(255,255,255,0.06)' stroke-width='0.5'/%3E%3C/svg%3E")`;
-const grainSvg = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
+import { PlanetaryGearSystem } from "@/components/HeroSection";
+import { cuttingMatGridDark, cuttingMatGridLight, grainSvg } from "@/lib/visuals";
 
 const Footer = () => {
   const year = new Date().getFullYear();
@@ -14,13 +12,13 @@ const Footer = () => {
       <div
         className="pointer-events-none absolute inset-0 dark:hidden"
         aria-hidden="true"
-        style={{ backgroundImage: gridLightSvg, backgroundRepeat: "repeat", backgroundSize: "60px 60px" }}
+        style={{ backgroundImage: cuttingMatGridLight, backgroundPosition: "right top" }}
       />
       {/* Grid — dark */}
       <div
         className="pointer-events-none absolute inset-0 hidden dark:block"
         aria-hidden="true"
-        style={{ backgroundImage: gridDarkSvg, backgroundRepeat: "repeat", backgroundSize: "60px 60px" }}
+        style={{ backgroundImage: cuttingMatGridDark, backgroundPosition: "right top" }}
       />
       {/* Grain */}
       <div
@@ -28,7 +26,7 @@ const Footer = () => {
         aria-hidden="true"
         style={{ backgroundImage: grainSvg, backgroundRepeat: "repeat", backgroundSize: "128px 128px" }}
       />
-      <div className={`${pageShellClassName} relative py-16 md:py-24`}>
+      <div className={`${pageShellClassName} relative pt-16 md:pt-24`}>
         <div className="grid gap-8 text-sm sm:grid-cols-2 md:grid-cols-4">
           <div className="space-y-3">
             <p className="font-semibold tracking-tight">Site</p>
@@ -77,6 +75,30 @@ const Footer = () => {
               </a>
               <span>© {year} Ashvin Praveen</span>
             </div>
+          </div>
+        </div>
+        <div className="relative left-1/2 mt-16 w-screen -translate-x-1/2 px-6 pb-16 md:mt-24 md:px-12 md:pb-24 lg:px-16">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-8 flex flex-col gap-4 border-t border-border/70 pt-6 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  Engineering schematic
+                </p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight md:text-2xl">
+                  Planetary gear train
+                </h2>
+              </div>
+              <div className="grid gap-x-6 gap-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground sm:grid-cols-2 md:text-right">
+                <span>Drawing AP-03</span>
+                <span>Scale visual</span>
+                <span>Animated section</span>
+                <span>Footer assembly</span>
+              </div>
+            </div>
+            <PlanetaryGearSystem
+              infoPlacement="side"
+              className="pointer-events-none h-full w-full overflow-visible text-foreground/18 dark:text-white/20 md:pointer-events-auto"
+            />
           </div>
         </div>
       </div>

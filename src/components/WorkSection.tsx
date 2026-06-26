@@ -3,6 +3,7 @@ import { cardCompact, textSecondary, heading } from "@/lib/styles";
 
 type ProjectItem = {
   name: string;
+  role: string;
   href: string;
   githubHref?: string;
   description: string;
@@ -14,6 +15,7 @@ type ProjectItem = {
 const projects: ProjectItem[] = [
   {
     name: "Cleve.ai",
+    role: "Co-founder & CEO",
     href: "https://cleve.ai",
     logo: "/logo-cleve.png",
     alt: "Cleve",
@@ -22,6 +24,7 @@ const projects: ProjectItem[] = [
   },
   {
     name: "National AI Competition (NAIC)",
+    role: "Director",
     logo: "/logo-naic.png",
     href: "https://rakantutor.org/naic",
     githubHref: "https://github.com/ashvinpraveen/rakantutor",
@@ -30,6 +33,7 @@ const projects: ProjectItem[] = [
   },
   {
     name: "Malaysian.ai",
+    role: "Committee member",
     logo: "/logo-malaysian-ai.png",
     href: "https://www.malaysian.ai/",
     githubHref: "https://github.com/ashvinpraveen/malaysianai",
@@ -37,6 +41,7 @@ const projects: ProjectItem[] = [
   },
   {
     name: "RakanTutor.org",
+    role: "Committee member",
     logo: null,
     initials: "RT",
     href: "https://rakantutor.org",
@@ -45,6 +50,7 @@ const projects: ProjectItem[] = [
   },
   {
     name: "Build for Public",
+    role: "Committee member",
     logo: null,
     initials: "BP",
     href: "https://buildforpublic.com",
@@ -67,7 +73,7 @@ const WorkSection = () => {
               className="absolute inset-0 z-10 rounded-2xl"
               aria-label={`View ${item.name}`}
             />
-            <div className="relative z-20 flex items-center gap-3 mb-2 pointer-events-none">
+            <div className="relative z-20 flex items-start gap-3 mb-2 pointer-events-none">
               {item.logo ? (
                 <img
                   src={item.logo}
@@ -79,9 +85,14 @@ const WorkSection = () => {
                   {item.initials}
                 </span>
               )}
-              <h3 className={`text-sm font-semibold ${heading}`}>
-                {item.name}
-              </h3>
+              <div className="min-w-0 pt-0.5">
+                <h3 className={`text-sm font-semibold ${heading}`}>
+                  {item.name}
+                </h3>
+                <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                  {item.role}
+                </p>
+              </div>
             </div>
             <p className={`relative z-20 text-sm leading-relaxed pointer-events-none ${textSecondary}`}>
               {item.description}

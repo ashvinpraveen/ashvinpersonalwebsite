@@ -85,7 +85,7 @@ function CountUpNumber({ suffix, value }: { suffix: string; value: number }) {
 
 const StatsSection = () => {
   return (
-    <section className="border-y border-border/70 bg-background/95">
+    <section className="bg-background/95">
       <div className={`${pageShellClassName} grid grid-cols-3 gap-3 py-8 md:gap-6 md:py-10`}>
         {stats.map((stat) => (
           <div key={stat.label} className="min-w-0">

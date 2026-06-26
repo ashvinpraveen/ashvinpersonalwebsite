@@ -4,6 +4,7 @@ import { type RefObject, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { pageShellClassName } from "@/lib/layout";
 import { heading } from "@/lib/styles";
+import { cuttingMatGridDark, cuttingMatGridLight, grainSvg } from "@/lib/visuals";
 
 const socials = [
   {
@@ -49,20 +50,6 @@ const socials = [
     iconDark: "/social-icons/GitHub_logo_white.svg",
   },
 ];
-
-const cuttingMatGridLight = [
-  "repeating-linear-gradient(to right, rgba(0,0,0,0.032) 0 1px, transparent 1px 8px)",
-  "repeating-linear-gradient(to bottom, rgba(0,0,0,0.032) 0 1px, transparent 1px 8px)",
-  "repeating-linear-gradient(to right, rgba(0,0,0,0.05) 0 1.25px, transparent 1.25px 80px)",
-  "repeating-linear-gradient(to bottom, rgba(0,0,0,0.05) 0 1.25px, transparent 1.25px 80px)",
-].join(", ");
-const cuttingMatGridDark = [
-  "repeating-linear-gradient(to right, rgba(255,255,255,0.032) 0 1px, transparent 1px 8px)",
-  "repeating-linear-gradient(to bottom, rgba(255,255,255,0.032) 0 1px, transparent 1px 8px)",
-  "repeating-linear-gradient(to right, rgba(255,255,255,0.055) 0 1.25px, transparent 1.25px 80px)",
-  "repeating-linear-gradient(to bottom, rgba(255,255,255,0.055) 0 1.25px, transparent 1.25px 80px)",
-].join(", ");
-const grainSvg = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
 
 const createGearPath = (cx: number, cy: number, pitchRadius: number, toothDepth: number, teeth: number) => {
   const points = Array.from({ length: teeth * 2 }, (_, index) => {
@@ -162,9 +149,62 @@ type GearLayerProps = {
   activeAccent: GearAccent | null;
   activateGear: (gear: Exclude<ActiveGear, null>) => void;
   clearGear: () => void;
+  className?: string;
+  animationState?: "running" | "paused";
+  viewBox?: string;
 };
 
 type GearInteractionProps = Pick<GearLayerProps, "activeGear" | "activateGear" | "clearGear">;
+
+const useGearAnimationControl = (
+  svgRef: RefObject<SVGSVGElement | null>,
+  isInteractionPaused: boolean,
+  enabled = true,
+) => {
+  const [isNearViewport, setIsNearViewport] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!enabled || !svg) return;
+
+    svg.pauseAnimations();
+
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncMotionPreference = () => setPrefersReducedMotion(motionQuery.matches);
+    syncMotionPreference();
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsNearViewport(entry.isIntersecting);
+      },
+      { rootMargin: "200px" },
+    );
+
+    observer.observe(svg);
+    motionQuery.addEventListener("change", syncMotionPreference);
+
+    return () => {
+      observer.disconnect();
+      motionQuery.removeEventListener("change", syncMotionPreference);
+    };
+  }, [enabled, svgRef]);
+
+  const shouldAnimate = enabled && isNearViewport && !prefersReducedMotion && !isInteractionPaused;
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!enabled || !svg) return;
+
+    if (shouldAnimate) {
+      svg.unpauseAnimations();
+    } else {
+      svg.pauseAnimations();
+    }
+  }, [enabled, shouldAnimate, svgRef]);
+
+  return shouldAnimate ? "running" : "paused";
+};
 
 const gearEvents = (gear: Exclude<ActiveGear, null>, activateGear: GearLayerProps["activateGear"], clearGear: GearLayerProps["clearGear"]) => ({
   onPointerEnter: () => activateGear(gear),
@@ -396,11 +436,12 @@ const ActiveGearOverlay = ({ activeGear, activeAccent }: Pick<GearLayerProps, "a
   );
 };
 
-const GearLayer = ({ svgRef, activeGear, activeAccent, activateGear, clearGear }: GearLayerProps) => (
+const GearLayer = ({ svgRef, activeGear, activeAccent, activateGear, clearGear, className, animationState, viewBox = "0 0 800 880" }: GearLayerProps) => (
   <motion.svg
     ref={svgRef}
-    className="pointer-events-none absolute right-[-160px] top-0 z-0 h-[55rem] w-[50rem] overflow-visible text-foreground/15 dark:text-white/18 md:pointer-events-auto"
-    viewBox="0 0 800 880"
+    className={className ?? "pointer-events-none absolute right-[-160px] top-0 z-0 h-[55rem] w-[50rem] overflow-visible text-foreground/15 dark:text-white/18 md:pointer-events-auto"}
+    data-animation-state={animationState}
+    viewBox={viewBox}
     fill="none"
     aria-hidden="true"
     initial={{ opacity: 0 }}
@@ -423,11 +464,114 @@ const GearLayer = ({ svgRef, activeGear, activeAccent, activateGear, clearGear }
   </motion.svg>
 );
 
-const GearTooltip = ({ activeLesson, activeAccent }: { activeLesson: GearLesson | null; activeAccent: GearAccent | null }) => (
+export const PlanetaryGearSystem = ({
+  className,
+  infoPlacement = "overlay",
+  showTooltip = true,
+}: {
+  className?: string;
+  infoPlacement?: "overlay" | "side";
+  showTooltip?: boolean;
+}) => {
+  const gearSvgRef = useRef<SVGSVGElement>(null);
+  const [activeGear, setActiveGear] = useState<ActiveGear>(null);
+  const activeLesson = activeGear ? gearLessons[activeGear] : null;
+  const activeAccent = activeGear ? gearAccents[activeGear] : null;
+
+  const animationState = useGearAnimationControl(gearSvgRef, activeGear !== null);
+
+  const activateGear = (gear: Exclude<ActiveGear, null>) => {
+    setActiveGear((current) => (current === gear ? current : gear));
+    gearSvgRef.current?.pauseAnimations();
+  };
+
+  const clearGear = () => {
+    setActiveGear(null);
+  };
+
+  const gearLayer = (
+    <GearLayer
+      svgRef={gearSvgRef}
+      activeGear={activeGear}
+      activeAccent={activeAccent}
+      activateGear={activateGear}
+      clearGear={clearGear}
+      className={className ?? "pointer-events-none h-full w-full overflow-visible text-foreground/15 dark:text-white/18 md:pointer-events-auto"}
+      animationState={animationState}
+      viewBox="60 -100 840 840"
+    />
+  );
+
+  if (infoPlacement === "side") {
+    return (
+      <div className="grid w-full gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.48fr)] lg:items-center">
+        <div className="relative mx-auto h-[18rem] w-[min(100%,34rem)] md:h-[25rem] md:w-[42rem]">
+          {gearLayer}
+        </div>
+        {showTooltip ? (
+          <GearInfoPanel activeLesson={activeLesson} activeAccent={activeAccent} />
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative h-full w-full">
+      {gearLayer}
+      {showTooltip ? (
+        <GearTooltip
+          activeLesson={activeLesson}
+          activeAccent={activeAccent}
+          className="left-1/2 top-4 -translate-x-1/2"
+        />
+      ) : null}
+    </div>
+  );
+};
+
+const GearInfoPanel = ({
+  activeLesson,
+  activeAccent,
+}: {
+  activeLesson: GearLesson | null;
+  activeAccent: GearAccent | null;
+}) => {
+  const accentColor = activeAccent?.color ?? "hsl(var(--foreground) / 0.46)";
+
+  return (
+    <div
+      className="min-h-[15rem] border-l border-border/70 pl-5 text-foreground dark:text-white"
+      style={{ borderColor: activeAccent ? `hsl(var(${activeAccent.token}) / 0.38)` : undefined }}
+    >
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: accentColor }}>
+        {activeLesson?.eyebrow ?? "Power train annotation"}
+      </p>
+      <p className="mt-3 text-lg font-semibold leading-snug">
+        {activeLesson?.title ?? "Planetary reduction stage with fixed ring geometry."}
+      </p>
+      <p className="mt-4 text-sm leading-relaxed text-foreground/70 dark:text-white/70">
+        {activeLesson?.body ?? "The sun, carrier, ring, and planets share one compact axis so fast input motion can become slower, stronger output motion."}
+      </p>
+      <p className="mt-4 font-mono text-xs leading-relaxed text-foreground/55 dark:text-white/60">
+        {activeLesson?.detail ?? "Reference: 90-tooth fixed ring, 72-tooth sun path, three 9-tooth planet gears, 2.25:1 visualized carrier ratio."}
+      </p>
+    </div>
+  );
+};
+
+const GearTooltip = ({
+  activeLesson,
+  activeAccent,
+  className,
+}: {
+  activeLesson: GearLesson | null;
+  activeAccent: GearAccent | null;
+  className?: string;
+}) => (
   <div
-    className={`pointer-events-none absolute bottom-20 right-4 z-40 w-[min(19.5rem,calc(100vw-2rem))] rounded-lg border p-4 text-foreground backdrop-blur-sm transition-opacity dark:text-white md:bottom-24 md:right-10 lg:bottom-28 ${
+    className={`pointer-events-none absolute z-40 w-[min(19.5rem,calc(100vw-2rem))] rounded-lg border p-4 text-foreground backdrop-blur-sm transition-opacity dark:text-white ${
       activeLesson ? "opacity-100" : "opacity-0"
-    }`}
+    } ${className ?? "bottom-20 right-4 md:bottom-24 md:right-10 lg:bottom-28"}`}
     style={{
       backgroundColor: "hsl(var(--background) / 0.98)",
       borderColor: activeAccent ? `hsl(var(${activeAccent.token}) / 0.28)` : undefined,
@@ -453,22 +597,13 @@ const HeroSection = () => {
   const [activeGear, setActiveGear] = useState<ActiveGear>(null);
   const activeLesson = activeGear ? gearLessons[activeGear] : null;
   const activeAccent = activeGear ? gearAccents[activeGear] : null;
+  const animationState = useGearAnimationControl(gearSvgRef, activeGear !== null, showGearLayer);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => setShowGearLayer(true), 900);
 
     return () => window.clearTimeout(timeoutId);
   }, []);
-
-  useEffect(() => {
-    if (!gearSvgRef.current || !showGearLayer) return;
-
-    if (activeGear) {
-      gearSvgRef.current.pauseAnimations();
-    } else {
-      gearSvgRef.current.unpauseAnimations();
-    }
-  }, [activeGear, showGearLayer]);
 
   const activateGear = (gear: Exclude<ActiveGear, null>) => {
     setActiveGear((current) => (current === gear ? current : gear));
@@ -477,7 +612,6 @@ const HeroSection = () => {
 
   const clearGear = () => {
     setActiveGear(null);
-    gearSvgRef.current?.unpauseAnimations();
   };
 
   return (
@@ -504,6 +638,7 @@ const HeroSection = () => {
             activeAccent={activeAccent}
             activateGear={activateGear}
             clearGear={clearGear}
+            animationState={animationState}
           />
           <GearTooltip activeLesson={activeLesson} activeAccent={activeAccent} />
         </>
