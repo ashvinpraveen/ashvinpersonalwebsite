@@ -79,20 +79,15 @@ const Footer = () => {
         </div>
         <div className="relative left-1/2 mt-16 w-screen -translate-x-1/2 px-6 pb-16 md:mt-24 md:px-12 md:pb-24 lg:px-16">
           <div className="mx-auto max-w-6xl">
-            <div className="mb-8 flex flex-col gap-4 border-t border-border/70 pt-6 md:flex-row md:items-end md:justify-between">
+            <div className="mb-8 flex flex-col gap-4 border-t border-border/35 pt-6 md:flex-row md:items-end md:justify-between">
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Engineering schematic
-                </p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight md:text-2xl">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/20 dark:text-white/20">
                   Planetary gear train
-                </h2>
+                </p>
               </div>
-              <div className="grid gap-x-6 gap-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground sm:grid-cols-2 md:text-right">
-                <span>Drawing AP-03</span>
-                <span>Scale visual</span>
+              <div className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/20 dark:text-white/20 md:justify-end">
+                <span>AP-03</span>
                 <span>Animated section</span>
-                <span>Footer assembly</span>
               </div>
             </div>
             <PlanetaryGearSystem

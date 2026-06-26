@@ -538,22 +538,26 @@ const GearInfoPanel = ({
 }) => {
   const accentColor = activeAccent?.color ?? "hsl(var(--foreground) / 0.46)";
 
+  if (!activeLesson) {
+    return <div className="min-h-[15rem] border-l border-border/30 pl-5" aria-hidden="true" />;
+  }
+
   return (
     <div
       className="min-h-[15rem] border-l border-border/70 pl-5 text-foreground dark:text-white"
       style={{ borderColor: activeAccent ? `hsl(var(${activeAccent.token}) / 0.38)` : undefined }}
     >
       <p className="font-mono text-[10px] uppercase tracking-[0.18em]" style={{ color: accentColor }}>
-        {activeLesson?.eyebrow ?? "Power train annotation"}
+        {activeLesson.eyebrow}
       </p>
       <p className="mt-3 text-lg font-semibold leading-snug">
-        {activeLesson?.title ?? "Planetary reduction stage with fixed ring geometry."}
+        {activeLesson.title}
       </p>
       <p className="mt-4 text-sm leading-relaxed text-foreground/70 dark:text-white/70">
-        {activeLesson?.body ?? "The sun, carrier, ring, and planets share one compact axis so fast input motion can become slower, stronger output motion."}
+        {activeLesson.body}
       </p>
       <p className="mt-4 font-mono text-xs leading-relaxed text-foreground/55 dark:text-white/60">
-        {activeLesson?.detail ?? "Reference: 90-tooth fixed ring, 72-tooth sun path, three 9-tooth planet gears, 2.25:1 visualized carrier ratio."}
+        {activeLesson.detail}
       </p>
     </div>
   );
