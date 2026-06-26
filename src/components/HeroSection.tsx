@@ -533,7 +533,7 @@ const HeroSection = () => {
             animate="visible"
             custom={0}
           >
-            Designing products that augment human capabilities
+            Designing fun products that augment human capabilities
           </motion.h1>
           <motion.p
             className="text-base text-foreground/70 dark:text-white/70 leading-relaxed"
