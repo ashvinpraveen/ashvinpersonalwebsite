@@ -51,6 +51,12 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        gear: {
+          sun: "hsl(var(--gear-sun))",
+          ring: "hsl(var(--gear-ring))",
+          carrier: "hsl(var(--gear-carrier))",
+          planet: "hsl(var(--gear-planet))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

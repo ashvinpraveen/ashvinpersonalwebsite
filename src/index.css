@@ -32,6 +32,11 @@
     --input: 35 20% 84%;
     --ring: 30 14% 25%;
 
+    --gear-sun: 38 92% 50%;
+    --gear-ring: 258 90% 66%;
+    --gear-carrier: 173 80% 40%;
+    --gear-planet: 350 89% 60%;
+
     --radius: 0.75rem;
 
     --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;

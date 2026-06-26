@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { pageShellClassName } from "@/lib/layout";
 import { heading } from "@/lib/styles";
@@ -76,13 +76,24 @@ const createGearPath = (cx: number, cy: number, pitchRadius: number, toothDepth:
 };
 
 const bigGearPath = createGearPath(480, 320, 320, 10, 72);
-const smallGearCenters = [
-  { x: 660, y: 631.769 },
-  { x: 120, y: 320 },
-  { x: 660, y: 8.231 },
+const ringGearPath = createGearPath(480, 320, 400, -10, 90);
+type PlanetGearId = `planet-${0 | 1 | 2}`;
+type PlanetGear = {
+  id: PlanetGearId;
+  x: number;
+  y: number;
+  path: string;
+};
+const planetGears: readonly PlanetGear[] = [
+  { id: "planet-0", x: 660, y: 631.769, path: createGearPath(660, 631.769, 40, 10, 9) },
+  { id: "planet-1", x: 120, y: 320, path: createGearPath(120, 320, 40, 10, 9) },
+  { id: "planet-2", x: 660, y: 8.231, path: createGearPath(660, 8.231, 40, 10, 9) },
 ] as const;
 const planetGearPhase = 70;
-type PlanetGearId = `planet-${0 | 1 | 2}`;
+const gearOrbitDuration = "22s";
+const carrierRotationDegrees = 360;
+const sunRotationDegrees = 810;
+const planetRotationRelativeToCarrierDegrees = -3600;
 type ActiveGear = "ring" | "sun" | "carrier" | PlanetGearId | null;
 type GearLesson = {
   title: string;
@@ -93,13 +104,14 @@ type GearLesson = {
 type GearAccent = {
   color: string;
   glow: string;
+  token: string;
 };
 
 const planetLesson = {
   eyebrow: "planet gears: load sharers",
   title: "These translate fast motor spin into stronger useful motion.",
-  body: "They roll between the fast sun and the fixed outer ring, forcing the carrier to turn more slowly.",
-  detail: "Three planets share tooth contact, so the gearbox handles more torque without becoming much wider.",
+  body: "Their centers orbit with the carrier while each little gear spins backward against the sun.",
+  detail: "The planets share tooth contact, so the gearbox handles more torque without becoming much wider.",
 };
 
 const gearLessons: Record<Exclude<ActiveGear, null>, GearLesson> = {
@@ -107,19 +119,19 @@ const gearLessons: Record<Exclude<ActiveGear, null>, GearLesson> = {
     eyebrow: "fixed ring: the reaction",
     title: "Hold one part still, and the gearbox has something to push against.",
     body: "In a real planetary gearbox this outer ring is bolted to the case. Without it, the gears mostly chase each other.",
-    detail: "Drill example: motor spins the sun, the case holds the ring, the carrier drives the chuck.",
+    detail: "This ring has 90 teeth. It is the stationary housing that lets speed become torque.",
   },
   sun: {
     eyebrow: "input: fast motor gear",
     title: "Start here: the motor usually spins this center gear.",
     body: "The problem is that motors like spinning fast, but drills and wheels need slower, stronger rotation.",
-    detail: "Power path: input sun -> planets -> output carrier, while the outer ring is held still.",
+    detail: "Here the sun turns 2.25 times for every one turn of the carrier output.",
   },
   carrier: {
     eyebrow: "output: slower stronger shaft",
     title: "This arm is the useful output.",
     body: "As the planets roll, their centers orbit. The carrier collects those orbiting centers into one smooth rotation.",
-    detail: "In a drill it drives the chuck. In cars or e-bikes it can drive the axle or the next gear stage.",
+    detail: "Power path: motor spins the sun, planets walk around it, carrier becomes the slower output.",
   },
   "planet-0": planetLesson,
   "planet-1": planetLesson,
@@ -127,12 +139,12 @@ const gearLessons: Record<Exclude<ActiveGear, null>, GearLesson> = {
 };
 
 const gearAccents: Record<Exclude<ActiveGear, null>, GearAccent> = {
-  ring: { color: "#8b5cf6", glow: "rgba(139, 92, 246, 0.2)" },
-  sun: { color: "#f59e0b", glow: "rgba(245, 158, 11, 0.2)" },
-  carrier: { color: "#14b8a6", glow: "rgba(20, 184, 166, 0.18)" },
-  "planet-0": { color: "#f43f5e", glow: "rgba(244, 63, 94, 0.18)" },
-  "planet-1": { color: "#f43f5e", glow: "rgba(244, 63, 94, 0.18)" },
-  "planet-2": { color: "#f43f5e", glow: "rgba(244, 63, 94, 0.18)" },
+  ring: { color: "hsl(var(--gear-ring))", glow: "hsl(var(--gear-ring) / 0.2)", token: "--gear-ring" },
+  sun: { color: "hsl(var(--gear-sun))", glow: "hsl(var(--gear-sun) / 0.2)", token: "--gear-sun" },
+  carrier: { color: "hsl(var(--gear-carrier))", glow: "hsl(var(--gear-carrier) / 0.18)", token: "--gear-carrier" },
+  "planet-0": { color: "hsl(var(--gear-planet))", glow: "hsl(var(--gear-planet) / 0.18)", token: "--gear-planet" },
+  "planet-1": { color: "hsl(var(--gear-planet))", glow: "hsl(var(--gear-planet) / 0.18)", token: "--gear-planet" },
+  "planet-2": { color: "hsl(var(--gear-planet))", glow: "hsl(var(--gear-planet) / 0.18)", token: "--gear-planet" },
 };
 
 const fadeUp = {
@@ -144,11 +156,320 @@ const fadeUp = {
   }),
 };
 
+type GearLayerProps = {
+  svgRef: RefObject<SVGSVGElement | null>;
+  activeGear: ActiveGear;
+  activeAccent: GearAccent | null;
+  activateGear: (gear: Exclude<ActiveGear, null>) => void;
+  clearGear: () => void;
+};
+
+type GearInteractionProps = Pick<GearLayerProps, "activeGear" | "activateGear" | "clearGear">;
+
+const gearEvents = (gear: Exclude<ActiveGear, null>, activateGear: GearLayerProps["activateGear"], clearGear: GearLayerProps["clearGear"]) => ({
+  onPointerEnter: () => activateGear(gear),
+  onPointerLeave: clearGear,
+  onMouseEnter: () => activateGear(gear),
+  onMouseLeave: clearGear,
+});
+
+const GearRotation = ({
+  from,
+  to,
+  cx = 480,
+  cy = 320,
+  additive,
+}: {
+  from: number;
+  to: number;
+  cx?: number;
+  cy?: number;
+  additive?: "sum";
+}) => (
+  <animateTransform
+    attributeName="transform"
+    type="rotate"
+    from={`${from} ${cx} ${cy}`}
+    to={`${to} ${cx} ${cy}`}
+    dur={gearOrbitDuration}
+    repeatCount="indefinite"
+    additive={additive}
+  />
+);
+
+const GearHoverCircle = ({
+  cx,
+  cy,
+  r,
+  strokeWidth,
+  gear,
+  activateGear,
+  clearGear,
+  pointerEvents = "stroke",
+}: {
+  cx: number;
+  cy: number;
+  r: number;
+  strokeWidth?: number;
+  gear: Exclude<ActiveGear, null>;
+  activateGear: GearLayerProps["activateGear"];
+  clearGear: GearLayerProps["clearGear"];
+  pointerEvents?: "all" | "stroke";
+}) => (
+  <circle
+    className="pointer-events-auto"
+    cx={cx}
+    cy={cy}
+    r={r}
+    stroke="transparent"
+    strokeWidth={strokeWidth}
+    fill="transparent"
+    pointerEvents={pointerEvents}
+    onPointerEnter={() => activateGear(gear)}
+    onPointerMove={() => activateGear(gear)}
+    onPointerLeave={clearGear}
+    onMouseEnter={() => activateGear(gear)}
+    onMouseMove={() => activateGear(gear)}
+    onMouseLeave={clearGear}
+  />
+);
+
+const GearHoverLine = ({
+  x1,
+  y1,
+  x2,
+  y2,
+  gear,
+  activateGear,
+  clearGear,
+}: {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  gear: Exclude<ActiveGear, null>;
+  activateGear: GearLayerProps["activateGear"];
+  clearGear: GearLayerProps["clearGear"];
+}) => (
+  <line
+    className="pointer-events-auto"
+    x1={x1}
+    y1={y1}
+    x2={x2}
+    y2={y2}
+    stroke="transparent"
+    strokeWidth="20"
+    pointerEvents="stroke"
+    onPointerEnter={() => activateGear(gear)}
+    onPointerMove={() => activateGear(gear)}
+    onPointerLeave={clearGear}
+    onMouseEnter={() => activateGear(gear)}
+    onMouseMove={() => activateGear(gear)}
+    onMouseLeave={clearGear}
+  />
+);
+
+const SunSpeedMarker = ({ active = false }: { active?: boolean }) => (
+  <g strokeWidth={active ? 2.2 : 1.8}>
+    <GearRotation from={0} to={sunRotationDegrees} />
+    <circle cx="480" cy="70" r="16" fill="hsl(var(--background))" opacity={active ? 0.98 : 0.74} />
+    <circle cx="480" cy="70" r="16" fill="none" opacity={active ? 1 : 0.8} />
+    <circle cx="480" cy="70" r="4" fill="currentColor" stroke="none" opacity={active ? 0.95 : 0.7} />
+  </g>
+);
+
+const FixedRingGear = ({ activeGear, activateGear, clearGear }: GearInteractionProps) => (
+  <g className="transition-colors" style={{ color: activeGear === "ring" ? gearAccents.ring.color : undefined }} {...gearEvents("ring", activateGear, clearGear)}>
+    <path d={ringGearPath} opacity="0.36" />
+    <circle cx="480" cy="320" r="400" strokeDasharray="4 11" strokeWidth="1.2" opacity="0.32" />
+    <GearHoverCircle cx={480} cy={320} r={400} strokeWidth={42} gear="ring" activateGear={activateGear} clearGear={clearGear} />
+  </g>
+);
+
+const RotatingSunGear = ({ activeGear, activateGear, clearGear }: GearInteractionProps) => (
+  <g className="transition-colors" style={{ color: activeGear === "sun" ? gearAccents.sun.color : undefined }} {...gearEvents("sun", activateGear, clearGear)}>
+    <path d={bigGearPath}>
+      <GearRotation from={0} to={sunRotationDegrees} />
+    </path>
+    <SunSpeedMarker />
+    <circle cx="480" cy="320" r="320" strokeDasharray="6 8" />
+    <GearHoverCircle cx={480} cy={320} r={320} strokeWidth={64} gear="sun" activateGear={activateGear} clearGear={clearGear} />
+  </g>
+);
+
+const PlanetGearShape = ({ gear }: { gear: PlanetGear }) => (
+  <>
+    <circle cx={gear.x} cy={gear.y} r="40" strokeDasharray="6 8" />
+    <path d={gear.path}>
+      <GearRotation from={planetGearPhase} to={planetGearPhase + planetRotationRelativeToCarrierDegrees} cx={gear.x} cy={gear.y} additive="sum" />
+    </path>
+  </>
+);
+
+const CarrierAssembly = ({ activeGear, activateGear, clearGear }: GearInteractionProps) => (
+  <g>
+    <GearRotation from={0} to={carrierRotationDegrees} />
+    <g
+      className="transition-colors"
+      style={{ color: activeGear === "carrier" ? gearAccents.carrier.color : undefined }}
+      opacity="0.34"
+      strokeWidth="1.1"
+      {...gearEvents("carrier", activateGear, clearGear)}
+    >
+      {planetGears.map((gear) => (
+        <g key={`carrier-${gear.id}`}>
+          <line x1="480" y1="320" x2={gear.x} y2={gear.y} />
+          <GearHoverLine x1={480} y1={320} x2={gear.x} y2={gear.y} gear="carrier" activateGear={activateGear} clearGear={clearGear} />
+        </g>
+      ))}
+      <circle cx="480" cy="320" r="20" />
+      <GearHoverCircle cx={480} cy={320} r={28} gear="carrier" activateGear={activateGear} clearGear={clearGear} pointerEvents="all" />
+      {planetGears.map((gear) => (
+        <circle key={`hub-${gear.id}`} cx={gear.x} cy={gear.y} r="7" />
+      ))}
+    </g>
+    {planetGears.map((gear) => (
+      <g
+        key={gear.id}
+        className="transition-colors"
+        style={{ color: activeGear === gear.id ? gearAccents[gear.id].color : undefined }}
+        {...gearEvents(gear.id, activateGear, clearGear)}
+      >
+        <PlanetGearShape gear={gear} />
+        <GearHoverCircle cx={gear.x} cy={gear.y} r={56} gear={gear.id} activateGear={activateGear} clearGear={clearGear} pointerEvents="all" />
+      </g>
+    ))}
+  </g>
+);
+
+const ActiveGearOverlay = ({ activeGear, activeAccent }: Pick<GearLayerProps, "activeGear" | "activeAccent">) => {
+  if (!activeGear || !activeAccent) return null;
+
+  return (
+    <g
+      className="pointer-events-none"
+      stroke={activeAccent.color}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      vectorEffect="non-scaling-stroke"
+      filter="url(#gear-accent-glow)"
+      style={{ color: activeAccent.color, filter: `drop-shadow(0 0 9px ${activeAccent.glow})` }}
+    >
+      {activeGear === "ring" && (
+        <g>
+          <path d={ringGearPath} strokeWidth="2.3" fill="none" />
+          <circle cx="480" cy="320" r="400" strokeDasharray="4 11" strokeWidth="2.6" fill="none" />
+        </g>
+      )}
+      {activeGear === "sun" && (
+        <g>
+          <path d={bigGearPath} strokeWidth="2.3" fill="none">
+            <GearRotation from={0} to={sunRotationDegrees} />
+          </path>
+          <SunSpeedMarker active />
+          <circle cx="480" cy="320" r="320" strokeDasharray="6 8" strokeWidth="1.9" fill="none" />
+        </g>
+      )}
+      {activeGear === "carrier" && (
+        <g fill="none">
+          <GearRotation from={0} to={carrierRotationDegrees} />
+          {planetGears.map((gear) => (
+            <line key={`active-carrier-${gear.id}`} x1="480" y1="320" x2={gear.x} y2={gear.y} strokeWidth="2.5" />
+          ))}
+          <circle cx="480" cy="320" r="20" strokeWidth="2.2" />
+          {planetGears.map((gear) => (
+            <circle key={`active-hub-${gear.id}`} cx={gear.x} cy={gear.y} r="7" strokeWidth="2.2" />
+          ))}
+        </g>
+      )}
+      {planetGears.map((gear) =>
+        activeGear === gear.id ? (
+          <g key={`active-${gear.id}`} fill="none">
+            <GearRotation from={0} to={carrierRotationDegrees} />
+            <circle cx={gear.x} cy={gear.y} r="40" strokeDasharray="6 8" strokeWidth="2" />
+            <path d={gear.path} strokeWidth="2.4">
+              <GearRotation from={planetGearPhase} to={planetGearPhase + planetRotationRelativeToCarrierDegrees} cx={gear.x} cy={gear.y} additive="sum" />
+            </path>
+          </g>
+        ) : null,
+      )}
+    </g>
+  );
+};
+
+const GearLayer = ({ svgRef, activeGear, activeAccent, activateGear, clearGear }: GearLayerProps) => (
+  <motion.svg
+    ref={svgRef}
+    className="pointer-events-auto absolute right-[-160px] top-0 z-10 h-[55rem] w-[50rem] overflow-visible text-foreground/15 dark:text-white/18"
+    viewBox="0 0 800 880"
+    fill="none"
+    aria-hidden="true"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] as const }}
+    onMouseLeave={clearGear}
+    onPointerLeave={clearGear}
+  >
+    <defs>
+      <filter id="gear-accent-glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="0" stdDeviation="5" floodColor={activeAccent?.color ?? "#ffffff"} floodOpacity="0.42" />
+      </filter>
+    </defs>
+    <g stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke">
+      <FixedRingGear activeGear={activeGear} activateGear={activateGear} clearGear={clearGear} />
+      <RotatingSunGear activeGear={activeGear} activateGear={activateGear} clearGear={clearGear} />
+      <CarrierAssembly activeGear={activeGear} activateGear={activateGear} clearGear={clearGear} />
+    </g>
+    <ActiveGearOverlay activeGear={activeGear} activeAccent={activeAccent} />
+  </motion.svg>
+);
+
+const GearTooltip = ({ activeLesson, activeAccent }: { activeLesson: GearLesson | null; activeAccent: GearAccent | null }) => (
+  <div
+    className={`pointer-events-none absolute bottom-20 right-4 z-40 w-[min(19.5rem,calc(100vw-2rem))] rounded-lg border p-4 text-foreground backdrop-blur-sm transition-opacity dark:text-white md:bottom-24 md:right-10 lg:bottom-28 ${
+      activeLesson ? "opacity-100" : "opacity-0"
+    }`}
+    style={{
+      backgroundColor: "hsl(var(--background) / 0.98)",
+      borderColor: activeAccent ? `hsl(var(${activeAccent.token}) / 0.28)` : undefined,
+    }}
+    aria-hidden="true"
+  >
+    {activeLesson && (
+      <>
+        <p className="font-mono text-[10px] uppercase tracking-wider" style={{ color: activeAccent?.color }}>
+          {activeLesson.eyebrow}
+        </p>
+        <p className="mt-1 text-sm font-semibold leading-snug">{activeLesson.title}</p>
+        <p className="mt-2 text-xs leading-relaxed text-foreground/70 dark:text-white/70">{activeLesson.body}</p>
+        <p className="mt-2 font-mono text-[11px] leading-relaxed text-foreground/55 dark:text-white/60">{activeLesson.detail}</p>
+      </>
+    )}
+  </div>
+);
+
 const HeroSection = () => {
   const gearSvgRef = useRef<SVGSVGElement>(null);
+  const [showGearLayer, setShowGearLayer] = useState(false);
   const [activeGear, setActiveGear] = useState<ActiveGear>(null);
   const activeLesson = activeGear ? gearLessons[activeGear] : null;
   const activeAccent = activeGear ? gearAccents[activeGear] : null;
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setShowGearLayer(true), 900);
+
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  useEffect(() => {
+    if (!gearSvgRef.current || !showGearLayer) return;
+
+    if (activeGear) {
+      gearSvgRef.current.pauseAnimations();
+    } else {
+      gearSvgRef.current.unpauseAnimations();
+    }
+  }, [activeGear, showGearLayer]);
 
   const activateGear = (gear: Exclude<ActiveGear, null>) => {
     setActiveGear((current) => (current === gear ? current : gear));
@@ -176,252 +497,25 @@ const HeroSection = () => {
         aria-hidden="true"
         style={{ backgroundImage: cuttingMatGridDark, backgroundPosition: "right top" }}
       />
-      <svg
-        ref={gearSvgRef}
-        className={`pointer-events-auto absolute right-[-160px] top-0 h-[55rem] w-[50rem] overflow-visible text-foreground/15 transition-[z-index] dark:text-white/18 ${
-          activeGear ? "z-40" : "z-30"
-        }`}
-        viewBox="0 0 800 880"
-        fill="none"
-        aria-hidden="true"
-        onMouseLeave={clearGear}
-        onPointerLeave={clearGear}
-      >
-        <defs>
-          <filter id="gear-accent-glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="0" stdDeviation="5" floodColor={activeAccent?.color ?? "#ffffff"} floodOpacity="0.42" />
-          </filter>
-        </defs>
-        <g stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke">
-          <g
-            className="transition-colors"
-            style={{ color: activeGear === "ring" ? gearAccents.ring.color : undefined }}
-            onPointerEnter={() => activateGear("ring")}
-            onPointerLeave={clearGear}
-            onMouseEnter={() => activateGear("ring")}
-            onMouseLeave={clearGear}
-          >
-            <circle cx="480" cy="320" r="400" strokeDasharray="4 11" strokeWidth="1.2" opacity="0.32" />
-            <circle
-              className="pointer-events-auto"
-              cx="480"
-              cy="320"
-              r="400"
-              stroke="transparent"
-              strokeWidth="42"
-              fill="none"
-              pointerEvents="stroke"
-              onPointerEnter={() => activateGear("ring")}
-              onPointerMove={() => activateGear("ring")}
-              onPointerLeave={clearGear}
-              onMouseEnter={() => activateGear("ring")}
-              onMouseMove={() => activateGear("ring")}
-              onMouseLeave={clearGear}
-            />
-          </g>
-          <g
-            className="transition-colors"
-            style={{ color: activeGear === "sun" ? gearAccents.sun.color : undefined }}
-            onPointerEnter={() => activateGear("sun")}
-            onPointerLeave={clearGear}
-            onMouseEnter={() => activateGear("sun")}
-            onMouseLeave={clearGear}
-          >
-            <path d={bigGearPath} />
-            <circle cx="480" cy="320" r="320" strokeDasharray="6 8" />
-            <circle
-              className="pointer-events-auto"
-              cx="480"
-              cy="320"
-              r="320"
-              stroke="transparent"
-              strokeWidth="64"
-              fill="none"
-              pointerEvents="stroke"
-              onPointerEnter={() => activateGear("sun")}
-              onPointerMove={() => activateGear("sun")}
-              onPointerLeave={clearGear}
-              onMouseEnter={() => activateGear("sun")}
-              onMouseMove={() => activateGear("sun")}
-              onMouseLeave={clearGear}
-            />
-          </g>
-          <g>
-            <animateTransform attributeName="transform" type="rotate" from="0 480 320" to="360 480 320" dur="22s" repeatCount="indefinite" />
-            <g
-              className="transition-colors"
-              style={{ color: activeGear === "carrier" ? gearAccents.carrier.color : undefined }}
-              opacity="0.34"
-              strokeWidth="1.1"
-              onPointerEnter={() => activateGear("carrier")}
-              onPointerLeave={clearGear}
-              onMouseEnter={() => activateGear("carrier")}
-              onMouseLeave={clearGear}
-            >
-              {smallGearCenters.map((center) => (
-                <g key={`carrier-${center.x}-${center.y}`}>
-                  <line x1="480" y1="320" x2={center.x} y2={center.y} />
-                  <line
-                    className="pointer-events-auto"
-                    x1="480"
-                    y1="320"
-                    x2={center.x}
-                    y2={center.y}
-                    stroke="transparent"
-                    strokeWidth="20"
-                    pointerEvents="stroke"
-                    onPointerEnter={() => activateGear("carrier")}
-                    onPointerMove={() => activateGear("carrier")}
-                    onPointerLeave={clearGear}
-                    onMouseEnter={() => activateGear("carrier")}
-                    onMouseMove={() => activateGear("carrier")}
-                    onMouseLeave={clearGear}
-                  />
-                </g>
-              ))}
-              <circle cx="480" cy="320" r="20" />
-              <circle
-                className="pointer-events-auto"
-                cx="480"
-                cy="320"
-                r="28"
-                stroke="transparent"
-                fill="transparent"
-                pointerEvents="all"
-                onPointerEnter={() => activateGear("carrier")}
-                onPointerMove={() => activateGear("carrier")}
-                onPointerLeave={clearGear}
-                onMouseEnter={() => activateGear("carrier")}
-                onMouseMove={() => activateGear("carrier")}
-                onMouseLeave={clearGear}
-              />
-              {smallGearCenters.map((center) => (
-                <circle key={`hub-${center.x}-${center.y}`} cx={center.x} cy={center.y} r="7" />
-              ))}
-            </g>
-            {smallGearCenters.map((center, index) => (
-              <g
-                key={`${center.x}-${center.y}`}
-                className="transition-colors"
-                style={{ color: activeGear === (`planet-${index}` as PlanetGearId) ? gearAccents[`planet-${index}` as PlanetGearId].color : undefined }}
-                onPointerEnter={() => activateGear(`planet-${index}` as PlanetGearId)}
-                onPointerLeave={clearGear}
-                onMouseEnter={() => activateGear(`planet-${index}` as PlanetGearId)}
-                onMouseLeave={clearGear}
-              >
-                <circle cx={center.x} cy={center.y} r="40" strokeDasharray="6 8" />
-                <path d={createGearPath(center.x, center.y, 40, 10, 9)}>
-                  <animateTransform
-                    attributeName="transform"
-                    type="rotate"
-                    from={`${planetGearPhase} ${center.x} ${center.y}`}
-                    to={`${planetGearPhase + 3240} ${center.x} ${center.y}`}
-                    dur="22s"
-                    repeatCount="indefinite"
-                    additive="sum"
-                  />
-                </path>
-                <circle
-                  className="pointer-events-auto"
-                  cx={center.x}
-                  cy={center.y}
-                  r="56"
-                  stroke="transparent"
-                  fill="transparent"
-                  pointerEvents="all"
-                  onPointerEnter={() => activateGear(`planet-${index}` as PlanetGearId)}
-                  onPointerMove={() => activateGear(`planet-${index}` as PlanetGearId)}
-                  onPointerLeave={clearGear}
-                  onMouseEnter={() => activateGear(`planet-${index}` as PlanetGearId)}
-                  onMouseMove={() => activateGear(`planet-${index}` as PlanetGearId)}
-                  onMouseLeave={clearGear}
-                />
-              </g>
-            ))}
-          </g>
-        </g>
-        {activeAccent && (
-          <g
-            className="pointer-events-none"
-            stroke={activeAccent.color}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-            filter="url(#gear-accent-glow)"
-            style={{ filter: `drop-shadow(0 0 9px ${activeAccent.glow})` }}
-          >
-            {activeGear === "ring" && <circle cx="480" cy="320" r="400" strokeDasharray="4 11" strokeWidth="2.6" fill="none" />}
-            {activeGear === "sun" && (
-              <g>
-                <path d={bigGearPath} strokeWidth="2.3" fill="none" />
-                <circle cx="480" cy="320" r="320" strokeDasharray="6 8" strokeWidth="1.9" fill="none" />
-              </g>
-            )}
-            {activeGear === "carrier" && (
-              <g fill="none">
-                <animateTransform attributeName="transform" type="rotate" from="0 480 320" to="360 480 320" dur="22s" repeatCount="indefinite" />
-                {smallGearCenters.map((center) => (
-                  <line key={`active-carrier-${center.x}-${center.y}`} x1="480" y1="320" x2={center.x} y2={center.y} strokeWidth="2.5" />
-                ))}
-                <circle cx="480" cy="320" r="20" strokeWidth="2.2" />
-                {smallGearCenters.map((center) => (
-                  <circle key={`active-hub-${center.x}-${center.y}`} cx={center.x} cy={center.y} r="7" strokeWidth="2.2" />
-                ))}
-              </g>
-            )}
-            {smallGearCenters.map((center, index) => {
-              const planetId = `planet-${index}` as PlanetGearId;
-
-              return activeGear === planetId ? (
-                <g key={`active-${planetId}`} fill="none">
-                  <animateTransform attributeName="transform" type="rotate" from="0 480 320" to="360 480 320" dur="22s" repeatCount="indefinite" />
-                  <circle cx={center.x} cy={center.y} r="40" strokeDasharray="6 8" strokeWidth="2" />
-                  <path d={createGearPath(center.x, center.y, 40, 10, 9)} strokeWidth="2.4">
-                    <animateTransform
-                      attributeName="transform"
-                      type="rotate"
-                      from={`${planetGearPhase} ${center.x} ${center.y}`}
-                      to={`${planetGearPhase + 3240} ${center.x} ${center.y}`}
-                      dur="22s"
-                      repeatCount="indefinite"
-                      additive="sum"
-                    />
-                  </path>
-                </g>
-              ) : null;
-            })}
-          </g>
-        )}
-      </svg>
-      <div
-        className={`pointer-events-none absolute bottom-20 right-4 z-50 w-[min(19.5rem,calc(100vw-2rem))] rounded-lg border p-4 text-foreground shadow-sm backdrop-blur-sm transition-opacity dark:text-white md:bottom-24 md:right-10 lg:bottom-28 ${
-          activeLesson ? "opacity-100" : "opacity-0"
-        }`}
-        style={{
-          backgroundColor: "hsl(var(--background) / 0.98)",
-          borderColor: activeAccent?.glow ?? undefined,
-          boxShadow: activeAccent ? `0 12px 34px ${activeAccent.glow}` : undefined,
-        }}
-        aria-hidden="true"
-      >
-        {activeLesson && (
-          <>
-            <p className="font-mono text-[10px] uppercase tracking-wider" style={{ color: activeAccent?.color }}>
-              {activeLesson.eyebrow}
-            </p>
-            <p className="mt-1 text-sm font-semibold leading-snug">{activeLesson.title}</p>
-            <p className="mt-2 text-xs leading-relaxed text-foreground/70 dark:text-white/70">{activeLesson.body}</p>
-            <p className="mt-2 font-mono text-[11px] leading-relaxed text-foreground/55 dark:text-white/60">{activeLesson.detail}</p>
-          </>
-        )}
-      </div>
+      {showGearLayer && (
+        <>
+          <GearLayer
+            svgRef={gearSvgRef}
+            activeGear={activeGear}
+            activeAccent={activeAccent}
+            activateGear={activateGear}
+            clearGear={clearGear}
+          />
+          <GearTooltip activeLesson={activeLesson} activeAccent={activeAccent} />
+        </>
+      )}
       <div
         className="pointer-events-none absolute inset-0 opacity-30 dark:opacity-50 mix-blend-overlay"
         aria-hidden="true"
         style={{ backgroundImage: grainSvg, backgroundRepeat: "repeat", backgroundSize: "128px 128px" }}
       />
 
-      <div className={`${pageShellClassName} relative z-20 grid gap-10 md:grid-cols-[1fr_18rem] lg:grid-cols-[1fr_20rem] md:items-center`}>
+      <div className={`${pageShellClassName} relative z-30 grid gap-10 md:grid-cols-[1fr_18rem] lg:grid-cols-[1fr_20rem] md:items-center`}>
         <div className="md:hidden">
           <motion.img
             src="/ashvin-profile.png"
