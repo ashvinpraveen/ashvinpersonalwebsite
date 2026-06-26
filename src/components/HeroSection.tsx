@@ -217,7 +217,7 @@ const GearHoverCircle = ({
   pointerEvents?: "all" | "stroke";
 }) => (
   <circle
-    className="pointer-events-auto"
+    className="pointer-events-none md:pointer-events-auto"
     cx={cx}
     cy={cy}
     r={r}
@@ -252,7 +252,7 @@ const GearHoverLine = ({
   clearGear: GearLayerProps["clearGear"];
 }) => (
   <line
-    className="pointer-events-auto"
+    className="pointer-events-none md:pointer-events-auto"
     x1={x1}
     y1={y1}
     x2={x2}
@@ -400,7 +400,7 @@ const ActiveGearOverlay = ({ activeGear, activeAccent }: Pick<GearLayerProps, "a
 const GearLayer = ({ svgRef, activeGear, activeAccent, activateGear, clearGear }: GearLayerProps) => (
   <motion.svg
     ref={svgRef}
-    className="pointer-events-auto absolute right-[-160px] top-0 z-10 h-[55rem] w-[50rem] overflow-visible text-foreground/15 dark:text-white/18"
+    className="pointer-events-none absolute right-[-160px] top-0 z-0 h-[55rem] w-[50rem] overflow-visible text-foreground/15 dark:text-white/18 md:pointer-events-auto"
     viewBox="0 0 800 880"
     fill="none"
     aria-hidden="true"
