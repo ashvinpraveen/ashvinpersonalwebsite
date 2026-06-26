@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -16,6 +16,7 @@ const navLinks = [
 ];
 
 const SiteNav = ({ variant = "dark" }: SiteNavProps) => {
+  const navRef = useRef<HTMLElement>(null);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -25,6 +26,18 @@ const SiteNav = ({ variant = "dark" }: SiteNavProps) => {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (navRef.current?.contains(event.target as Node)) return;
+      setMenuOpen(false);
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [menuOpen]);
 
   const onHero = variant === "light" && !scrolled;
   const mobileMenuOpen = menuOpen;
@@ -43,7 +56,7 @@ const SiteNav = ({ variant = "dark" }: SiteNavProps) => {
     : "bg-background/95 text-foreground";
 
   return (
-    <nav className={`site-nav fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navBg}`}>
+    <nav ref={navRef} className={`site-nav fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navBg}`}>
       <div className="flex h-12 w-full items-center justify-between px-3 md:px-4 lg:px-6">
         <Link href="/" className={`text-sm tracking-tight transition-colors sm:text-base ${logoClass}`}>
           <span className="font-semibold">Ashvin</span>{" "}
