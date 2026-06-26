@@ -33,6 +33,7 @@ const MAX_SIDE_PANEL_WIDTH = 520;
 const COMPACT_PAGE_WIDTH = 768;
 const PET_VIEWPORT_MARGIN = 12;
 const PET_DRAG_THRESHOLD = 5;
+const SIDE_PANEL_ANIMATION_MS = 220;
 const SITE_ROUTES = [
   { path: "/", label: "Home" },
   { path: "/blog", label: "Writing" },
@@ -343,11 +344,14 @@ function ChatWidgetInner() {
   const [petPosition, setPetPosition] = useState<PetPosition | null>(null);
   const [isPetDragging, setIsPetDragging] = useState(false);
   const [sidePanelWidth, setSidePanelWidth] = useState(DEFAULT_SIDE_PANEL_WIDTH);
+  const [isSidePanelExiting, setIsSidePanelExiting] = useState(false);
+  const chatPanelRef = useRef<HTMLElement>(null);
   const messageListRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const petDragRef = useRef<PetDragState | null>(null);
+  const sidePanelExitTimeoutRef = useRef<number | null>(null);
   const ignoreLauncherClickRef = useRef(false);
   const modelMenuRef = useRef<HTMLDivElement>(null);
 
@@ -414,6 +418,33 @@ function ChatWidgetInner() {
     });
     inputRef.current?.focus();
   }, [isOpen, messages.length]);
+
+  useEffect(() => {
+    if (!isOpen || isSidePanelOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (chatPanelRef.current?.contains(target) || launcherRef.current?.contains(target)) {
+        return;
+      }
+
+      setIsOpen(false);
+      setIsSidePanelOpen(false);
+      setIsHistoryOpen(false);
+      setIsModelMenuOpen(false);
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [isOpen, isSidePanelOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (sidePanelExitTimeoutRef.current) {
+        window.clearTimeout(sidePanelExitTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!activeThreadId && chat?.thread?._id) {
@@ -696,6 +727,54 @@ function ChatWidgetInner() {
     petDragRef.current = null;
   }
 
+  function clearSidePanelExitTimeout() {
+    if (sidePanelExitTimeoutRef.current) {
+      window.clearTimeout(sidePanelExitTimeoutRef.current);
+      sidePanelExitTimeoutRef.current = null;
+    }
+  }
+
+  function openSidePanel() {
+    clearSidePanelExitTimeout();
+    setIsOpen(true);
+    setIsSidePanelExiting(false);
+    setIsSidePanelOpen(true);
+  }
+
+  function contractSidePanel() {
+    if (!isSidePanelOpen) {
+      openSidePanel();
+      return;
+    }
+
+    clearSidePanelExitTimeout();
+    setIsSidePanelExiting(true);
+    sidePanelExitTimeoutRef.current = window.setTimeout(() => {
+      setIsSidePanelOpen(false);
+      setIsSidePanelExiting(false);
+      sidePanelExitTimeoutRef.current = null;
+    }, SIDE_PANEL_ANIMATION_MS);
+  }
+
+  function minimizeChat() {
+    clearSidePanelExitTimeout();
+    setIsHistoryOpen(false);
+    setIsModelMenuOpen(false);
+
+    if (!isSidePanelOpen) {
+      setIsOpen(false);
+      return;
+    }
+
+    setIsSidePanelExiting(true);
+    sidePanelExitTimeoutRef.current = window.setTimeout(() => {
+      setIsOpen(false);
+      setIsSidePanelOpen(false);
+      setIsSidePanelExiting(false);
+      sidePanelExitTimeoutRef.current = null;
+    }, SIDE_PANEL_ANIMATION_MS);
+  }
+
   function handlePetClick(event: ReactMouseEvent<HTMLButtonElement>) {
     if (ignoreLauncherClickRef.current) {
       ignoreLauncherClickRef.current = false;
@@ -703,8 +782,15 @@ function ChatWidgetInner() {
       return;
     }
 
+    if (isOpen) {
+      minimizeChat();
+      return;
+    }
+
+    clearSidePanelExitTimeout();
     setIsSidePanelOpen(false);
-    setIsOpen((value) => !value);
+    setIsSidePanelExiting(false);
+    setIsOpen(true);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -813,15 +899,21 @@ function ChatWidgetInner() {
         isSidePanelOpen
           ? "bottom-0 right-0 top-0 hidden sm:flex sm:w-[var(--chat-side-width)]"
           : isOpen
-            ? "left-0 right-0 top-[var(--chat-mobile-top,0px)] h-[var(--chat-mobile-height,100dvh)] max-w-none sm:inset-auto sm:bottom-36 sm:right-5 sm:top-auto sm:h-auto sm:max-w-[calc(100vw-1.5rem)]"
+            ? "left-0 right-0 top-[var(--chat-mobile-top,0px)] h-[var(--chat-mobile-height,100dvh)] max-w-none sm:inset-auto sm:bottom-24 sm:right-5 sm:top-auto sm:h-auto sm:max-w-[calc(100vw-1.5rem)]"
           : "bottom-6 right-3 sm:bottom-8 sm:right-5",
       )}
       style={widgetStyle}
     >
       {isOpen ? (
         <section
+          ref={chatPanelRef}
           className={cn(
-            "chat-panel-enter relative flex flex-col overflow-hidden bg-card/95 backdrop-blur-xl sm:border sm:border-border sm:bg-card/75",
+            "relative flex flex-col overflow-hidden bg-card/95 backdrop-blur-xl sm:border sm:border-border sm:bg-card/75",
+            isSidePanelOpen
+              ? isSidePanelExiting
+                ? "chat-side-panel-exit"
+                : "chat-side-panel-enter"
+              : "chat-panel-enter",
             isSidePanelOpen
               ? "h-dvh w-full rounded-none border-y-0 border-r-0 shadow-none"
               : "h-full w-full rounded-none shadow-2xl sm:h-auto sm:w-[min(15rem,calc(100vw-1.5rem))] sm:rounded-lg",
@@ -867,7 +959,13 @@ function ChatWidgetInner() {
                 size="icon"
                 className="hidden h-8 w-8 sm:inline-flex"
                 aria-label={isSidePanelOpen ? "Contract chat" : "Expand chat"}
-                onClick={() => setIsSidePanelOpen((value) => !value)}
+                onClick={() => {
+                  if (isSidePanelOpen) {
+                    contractSidePanel();
+                  } else {
+                    openSidePanel();
+                  }
+                }}
               >
                 {isSidePanelOpen ? (
                   <Minimize2 aria-hidden="true" />
@@ -881,11 +979,7 @@ function ChatWidgetInner() {
                 size="icon"
                 className="h-8 w-8"
                 aria-label="Minimize chat"
-                onClick={() => {
-                  setIsOpen(false);
-                  setIsSidePanelOpen(false);
-                  setIsHistoryOpen(false);
-                }}
+                onClick={minimizeChat}
               >
                 <Minus aria-hidden="true" />
               </Button>
@@ -946,7 +1040,14 @@ function ChatWidgetInner() {
                   )}
                 </div>
               ))
-            ) : null}
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center px-2 text-center">
+                <p className="text-base font-medium text-foreground">How can I help?</p>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  Ashvin here, chat with me about anything.
+                </p>
+              </div>
+            )}
             {isSending ? (
               <div className="mr-auto w-full max-w-none px-0 py-1 text-sm text-muted-foreground">
                 Thinking...
