@@ -272,9 +272,8 @@ const GearHoverLine = ({
 const SunSpeedMarker = ({ active = false }: { active?: boolean }) => (
   <g strokeWidth={active ? 2.2 : 1.8}>
     <GearRotation from={0} to={sunRotationDegrees} />
-    <circle cx="480" cy="70" r="16" fill="hsl(var(--background))" opacity={active ? 0.98 : 0.74} />
-    <circle cx="480" cy="70" r="16" fill="none" opacity={active ? 1 : 0.8} />
-    <circle cx="480" cy="70" r="4" fill="currentColor" stroke="none" opacity={active ? 0.95 : 0.7} />
+    <circle cx="480" cy="70" r="16" fill="none" opacity={active ? 1 : 0.82} />
+    <circle cx="480" cy="70" r="4" fill="none" opacity={active ? 0.95 : 0.72} />
   </g>
 );
 
