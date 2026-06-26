@@ -908,15 +908,15 @@ function ChatWidgetInner() {
         <section
           ref={chatPanelRef}
           className={cn(
-            "relative flex flex-col overflow-hidden bg-card/95 backdrop-blur-xl sm:border sm:border-border sm:bg-card/75",
+            "relative flex flex-col overflow-hidden bg-card/95 backdrop-blur-xl sm:bg-card/75",
             isSidePanelOpen
               ? isSidePanelExiting
                 ? "chat-side-panel-exit"
                 : "chat-side-panel-enter"
               : "chat-panel-enter",
             isSidePanelOpen
-              ? "h-dvh w-full rounded-none border-y-0 border-r-0 shadow-none"
-              : "h-full w-full rounded-none shadow-2xl sm:h-auto sm:w-[min(15rem,calc(100vw-1.5rem))] sm:rounded-lg",
+              ? "h-dvh w-full rounded-none border-0 shadow-none"
+              : "h-full w-full rounded-none shadow-2xl sm:h-auto sm:w-[min(15rem,calc(100vw-1.5rem))] sm:rounded-lg sm:border sm:border-border",
           )}
         >
           {isSidePanelOpen ? (
