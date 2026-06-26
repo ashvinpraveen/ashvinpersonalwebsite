@@ -992,7 +992,7 @@ function ChatWidgetInner() {
         isSidePanelOpen
           ? "bottom-0 right-0 top-0 hidden sm:flex sm:w-[var(--chat-side-width)]"
           : isOpen
-            ? "left-0 right-0 top-[var(--chat-mobile-top,0px)] h-[var(--chat-mobile-height,100dvh)] max-w-none sm:inset-auto sm:bottom-24 sm:right-5 sm:top-auto sm:h-auto sm:max-w-[calc(100vw-1.5rem)]"
+            ? "left-0 right-0 top-[var(--chat-mobile-top,0px)] h-[var(--chat-mobile-height,100dvh)] max-w-none bg-card sm:inset-auto sm:bottom-24 sm:right-5 sm:top-auto sm:h-auto sm:max-w-[calc(100vw-1.5rem)] sm:bg-transparent"
           : "bottom-6 right-3 sm:bottom-8 sm:right-5",
       )}
       style={widgetStyle}
@@ -1001,7 +1001,7 @@ function ChatWidgetInner() {
         <section
           ref={chatPanelRef}
           className={cn(
-            "relative flex flex-col overflow-hidden bg-card/95 backdrop-blur-xl sm:bg-card/75",
+            "relative flex flex-col overflow-hidden bg-card sm:bg-card/75 sm:backdrop-blur-xl",
             isSidePanelOpen
               ? isSidePanelExiting
                 ? "chat-side-panel-exit"
@@ -1080,7 +1080,7 @@ function ChatWidgetInner() {
           </header>
 
           {isHistoryOpen ? (
-            <div className="mx-3 mb-2 rounded-md border border-border bg-background/60 p-1.5">
+            <div className="mx-3 mb-2 rounded-md border border-border bg-background p-1.5 sm:bg-background/60">
               {threads.length > 0 ? (
                 <div className="space-y-1">
                   {threads.map((thread) => (
@@ -1152,9 +1152,9 @@ function ChatWidgetInner() {
             onSubmit={handleSubmit}
             className="p-3 pt-1 [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))] sm:p-3 sm:pt-1"
           >
-            <div className="overflow-hidden rounded-3xl bg-popover/85 shadow-sm ring-1 ring-border/35 dark:bg-secondary/80">
+            <div className="overflow-hidden rounded-3xl bg-popover shadow-sm ring-1 ring-border/35 dark:bg-secondary sm:bg-popover/85 sm:dark:bg-secondary/80">
               <div className="px-3 pt-3">
-                <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-background/70 px-2.5 py-1 text-[11px] text-muted-foreground dark:bg-background/45">
+                <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-background px-2.5 py-1 text-[11px] text-muted-foreground sm:bg-background/70 sm:dark:bg-background/45">
                   <Compass aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{contextPillText}</span>
                 </div>
@@ -1231,7 +1231,7 @@ function ChatWidgetInner() {
                     aria-label="Model"
                     aria-haspopup="listbox"
                     aria-expanded={isModelMenuOpen}
-                    className="flex h-8 min-w-20 items-center justify-between gap-2 rounded-full bg-background/50 px-3 text-xs text-muted-foreground outline-none transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex h-8 min-w-20 items-center justify-between gap-2 rounded-full bg-background px-3 text-xs text-muted-foreground outline-none transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:bg-background/50"
                     onClick={() => setIsModelMenuOpen((value) => !value)}
                   >
                     <span>{MODEL_OPTIONS.find((option) => option.value === modelProvider)?.label}</span>
@@ -1247,7 +1247,7 @@ function ChatWidgetInner() {
                     <div
                       role="listbox"
                       aria-label="Model"
-                      className="absolute bottom-full right-0 z-10 mb-1 w-28 overflow-hidden rounded-lg border border-border bg-card/95 p-1 shadow-lg backdrop-blur-xl"
+                      className="absolute bottom-full right-0 z-10 mb-1 w-28 overflow-hidden rounded-lg border border-border bg-card p-1 shadow-lg sm:bg-card/95 sm:backdrop-blur-xl"
                     >
                       {MODEL_OPTIONS.map((option) => (
                         <button
