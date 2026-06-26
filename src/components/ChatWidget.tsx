@@ -224,6 +224,18 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function shouldContainScroll(element: HTMLElement, deltaY: number) {
+  if (Math.abs(deltaY) < 0.01) return false;
+
+  const maxScrollTop = element.scrollHeight - element.clientHeight;
+  if (maxScrollTop <= 0) return true;
+
+  const isAtTop = element.scrollTop <= 0;
+  const isAtBottom = element.scrollTop >= maxScrollTop - 1;
+
+  return (deltaY < 0 && isAtTop) || (deltaY > 0 && isAtBottom);
+}
+
 function canvasToDataUrl(canvas: HTMLCanvasElement, mimeType: string) {
   if (mimeType === "image/png") {
     return canvas.toDataURL("image/png");
@@ -435,6 +447,50 @@ function ChatWidgetInner() {
     });
     inputRef.current?.focus();
   }, [isOpen, messages.length]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const messageList = messageListRef.current;
+    if (!messageList) return;
+
+    let lastTouchY = 0;
+
+    const handleWheel = (event: WheelEvent) => {
+      if (shouldContainScroll(messageList, event.deltaY)) {
+        event.preventDefault();
+      }
+      event.stopPropagation();
+    };
+
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return;
+      lastTouchY = event.touches[0].clientY;
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return;
+
+      const currentTouchY = event.touches[0].clientY;
+      const deltaY = lastTouchY - currentTouchY;
+      lastTouchY = currentTouchY;
+
+      if (shouldContainScroll(messageList, deltaY)) {
+        event.preventDefault();
+      }
+      event.stopPropagation();
+    };
+
+    messageList.addEventListener("wheel", handleWheel, { passive: false });
+    messageList.addEventListener("touchstart", handleTouchStart, { passive: true });
+    messageList.addEventListener("touchmove", handleTouchMove, { passive: false });
+
+    return () => {
+      messageList.removeEventListener("wheel", handleWheel);
+      messageList.removeEventListener("touchstart", handleTouchStart);
+      messageList.removeEventListener("touchmove", handleTouchMove);
+    };
+  }, [isOpen, isSidePanelOpen]);
 
   useEffect(() => {
     if (!isOpen || isSidePanelOpen) return;
