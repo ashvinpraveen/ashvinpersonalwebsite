@@ -1,6 +1,14 @@
 "use client";
 
-import { type CSSProperties, type FormEvent, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type FormEvent,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowUp, Check, ChevronDown, Compass, History, Maximize2, MessageSquarePlus, Minimize2, Minus, Plus, X } from "lucide-react";
@@ -15,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 const CLIENT_ID_KEY = "ashvin-chat-client-id";
 const MODEL_PROVIDER_KEY = "ashvin-chat-model-provider";
+const PET_POSITION_KEY = "ashvin-pet-position";
 const MAX_MESSAGE_LENGTH = 900;
 const MAX_IMAGE_ATTACHMENTS = 3;
 const MAX_IMAGE_DIMENSION = 1024;
@@ -22,6 +31,8 @@ const DEFAULT_SIDE_PANEL_WIDTH = 320;
 const MIN_SIDE_PANEL_WIDTH = 280;
 const MAX_SIDE_PANEL_WIDTH = 520;
 const COMPACT_PAGE_WIDTH = 768;
+const PET_VIEWPORT_MARGIN = 12;
+const PET_DRAG_THRESHOLD = 5;
 const SITE_ROUTES = [
   { path: "/", label: "Home" },
   { path: "/blog", label: "Writing" },
@@ -56,6 +67,7 @@ type PageContext = {
   url: string;
   path: string;
   title: string;
+  timeZone: string;
   visibleText: string;
   sections: Array<{
     id: string;
@@ -91,23 +103,25 @@ type ChatToolCall =
     };
 
 type ModelProvider = "ilmu" | "gemini";
-type AshvinPetPose = "idle" | "working" | "running" | "talk" | "thinking" | "journaling" | "filmmaking" | "laptop";
+type AshvinPetAnimation = "idle" | "chat" | "drag";
+type PetPosition = {
+  x: number;
+  y: number;
+};
+type PetDragState = {
+  dragging: boolean;
+  pointerId: number;
+  previousUserSelect: string;
+  startClientX: number;
+  startClientY: number;
+  startX: number;
+  startY: number;
+};
 
 const MODEL_OPTIONS: Array<{ label: string; value: ModelProvider }> = [
   { label: "Ilmu", value: "ilmu" },
   { label: "Gemini", value: "gemini" },
 ];
-const ASHVIN_PET_POSE_INDEX: Record<AshvinPetPose, number> = {
-  idle: 0,
-  working: 1,
-  running: 2,
-  talk: 3,
-  thinking: 4,
-  journaling: 5,
-  filmmaking: 6,
-  laptop: 7,
-};
-const ASHVIN_PET_POSE_COUNT = Object.keys(ASHVIN_PET_POSE_INDEX).length;
 
 function getOrCreateClientId() {
   const existingClientId = window.localStorage.getItem(CLIENT_ID_KEY);
@@ -131,17 +145,36 @@ function getRouteLabel(path: string) {
   return SITE_ROUTES.find((route) => route.path === path)?.label ?? "This page";
 }
 
-function getAshvinPetSpritePosition(pose: AshvinPetPose) {
-  return `${(ASHVIN_PET_POSE_INDEX[pose] / (ASHVIN_PET_POSE_COUNT - 1)) * 100}%`;
+function clampPetPosition(position: PetPosition, size: { width: number; height: number }): PetPosition {
+  const maxX = Math.max(PET_VIEWPORT_MARGIN, window.innerWidth - size.width - PET_VIEWPORT_MARGIN);
+  const maxY = Math.max(PET_VIEWPORT_MARGIN, window.innerHeight - size.height - PET_VIEWPORT_MARGIN);
+
+  return {
+    x: clamp(position.x, PET_VIEWPORT_MARGIN, maxX),
+    y: clamp(position.y, PET_VIEWPORT_MARGIN, maxY),
+  };
 }
 
-function getAshvinPetPose(pathname: string | null, isOpen: boolean, isSending: boolean): AshvinPetPose {
-  if (isSending) return "thinking";
-  if (isOpen) return "laptop";
-  if (pathname?.startsWith("/blog")) return "journaling";
-  if (pathname === "/resources") return "working";
-  if (pathname === "/text" || pathname === "/postcard" || pathname === "/postcards") return "talk";
-  return "idle";
+function getDefaultPetPosition(size: { width: number; height: number }): PetPosition {
+  const horizontalMargin = window.matchMedia("(min-width: 640px)").matches ? 20 : 12;
+  const verticalMargin = window.matchMedia("(min-width: 640px)").matches ? 32 : 24;
+
+  return {
+    x: window.innerWidth - size.width - horizontalMargin,
+    y: window.innerHeight - size.height - verticalMargin,
+  };
+}
+
+function getStoredPetPosition() {
+  try {
+    const storedPosition = window.localStorage.getItem(PET_POSITION_KEY);
+    if (!storedPosition) return null;
+    const parsedPosition = JSON.parse(storedPosition) as Partial<PetPosition>;
+    if (typeof parsedPosition.x !== "number" || typeof parsedPosition.y !== "number") return null;
+    return { x: parsedPosition.x, y: parsedPosition.y };
+  } catch {
+    return null;
+  }
 }
 
 function normalizeText(value: string) {
@@ -175,6 +208,7 @@ function collectPageContext(path: string): PageContext {
     url: window.location.href,
     path,
     title,
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kuala_Lumpur",
     visibleText: mainText.slice(0, 900),
     sections,
     links,
@@ -233,17 +267,25 @@ async function compressImage(file: File): Promise<AttachedImage> {
   }
 }
 
-function GeneratedAshvinPet({ compact = false, pose = "idle" }: { compact?: boolean; pose?: AshvinPetPose }) {
+function GeneratedAshvinPet({
+  animation = "idle",
+  compact = false,
+}: {
+  animation?: AshvinPetAnimation;
+  compact?: boolean;
+}) {
   return (
     <span
       aria-hidden="true"
-      className={cn("ashvin-pet", compact && "ashvin-pet--compact")}
-      style={
-        {
-          "--ashvin-pet-position": getAshvinPetSpritePosition(pose),
-          "--ashvin-pet-hover-position": getAshvinPetSpritePosition("running"),
-        } as CSSProperties
-      }
+      className={cn(
+        "ashvin-pet",
+        animation === "drag"
+          ? "ashvin-pet--drag"
+          : animation === "chat"
+            ? "ashvin-pet--chat"
+            : "ashvin-pet--idle",
+        compact && "ashvin-pet--compact",
+      )}
     />
   );
 }
@@ -298,10 +340,15 @@ function ChatWidgetInner() {
   const [isSending, setIsSending] = useState(false);
   const [mobileViewport, setMobileViewport] = useState<MobileViewport | null>(null);
   const [pageContext, setPageContext] = useState<PageContext | null>(null);
+  const [petPosition, setPetPosition] = useState<PetPosition | null>(null);
+  const [isPetDragging, setIsPetDragging] = useState(false);
   const [sidePanelWidth, setSidePanelWidth] = useState(DEFAULT_SIDE_PANEL_WIDTH);
   const messageListRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const petDragRef = useRef<PetDragState | null>(null);
+  const ignoreLauncherClickRef = useRef(false);
   const modelMenuRef = useRef<HTMLDivElement>(null);
 
   const chat = useQuery(
@@ -315,11 +362,38 @@ function ChatWidgetInner() {
   const threads = chat?.threads ?? [];
   const hasConversation = messages.length > 0;
   const isAdminRoute = pathname?.startsWith("/admin") ?? false;
-  const petPose = getAshvinPetPose(pathname, isOpen || isSidePanelOpen, isSending);
+  const petAnimation: AshvinPetAnimation = isPetDragging ? "drag" : isOpen || isSidePanelOpen ? "chat" : "idle";
 
   useEffect(() => {
     setClientId(getOrCreateClientId());
     setModelProvider(getStoredModelProvider());
+  }, []);
+
+  useEffect(() => {
+    const launcherRect = launcherRef.current?.getBoundingClientRect();
+    const launcherSize = {
+      width: launcherRect?.width ?? 80,
+      height: launcherRect?.height ?? 80,
+    };
+    const initialPosition = getStoredPetPosition() ?? getDefaultPetPosition(launcherSize);
+    setPetPosition(clampPetPosition(initialPosition, launcherSize));
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const launcherRect = launcherRef.current?.getBoundingClientRect();
+      const launcherSize = {
+        width: launcherRect?.width ?? 80,
+        height: launcherRect?.height ?? 80,
+      };
+
+      setPetPosition((currentPosition) =>
+        currentPosition ? clampPetPosition(currentPosition, launcherSize) : currentPosition,
+      );
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -470,6 +544,14 @@ function ChatWidgetInner() {
     ...mobileViewportStyle,
     "--chat-side-width": `${sidePanelWidth}px`,
   } as CSSProperties;
+  const launcherStyle = petPosition
+    ? ({
+        bottom: "auto",
+        left: `${petPosition.x}px`,
+        right: "auto",
+        top: `${petPosition.y}px`,
+      } as CSSProperties)
+    : undefined;
   const contextPillText = pageContext
     ? `${getRouteLabel(pageContext.path)} · ${pageContext.title}`
     : "Reading this page";
@@ -543,6 +625,86 @@ function ChatWidgetInner() {
 
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp);
+  }
+
+  function handlePetPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (event.button !== 0) return;
+
+    const launcherRect = event.currentTarget.getBoundingClientRect();
+    const startPosition = petPosition ?? {
+      x: launcherRect.left,
+      y: launcherRect.top,
+    };
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    petDragRef.current = {
+      dragging: false,
+      pointerId: event.pointerId,
+      previousUserSelect: document.body.style.userSelect,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startX: startPosition.x,
+      startY: startPosition.y,
+    };
+  }
+
+  function handlePetPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const dragState = petDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - dragState.startClientX;
+    const deltaY = event.clientY - dragState.startClientY;
+    if (!dragState.dragging && Math.hypot(deltaX, deltaY) < PET_DRAG_THRESHOLD) return;
+
+    if (!dragState.dragging) {
+      dragState.dragging = true;
+      document.body.style.userSelect = "none";
+      setIsPetDragging(true);
+    }
+
+    const launcherRect = event.currentTarget.getBoundingClientRect();
+    setPetPosition(
+      clampPetPosition(
+        {
+          x: dragState.startX + deltaX,
+          y: dragState.startY + deltaY,
+        },
+        launcherRect,
+      ),
+    );
+  }
+
+  function handlePetPointerEnd(event: ReactPointerEvent<HTMLButtonElement>) {
+    const dragState = petDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    document.body.style.userSelect = dragState.previousUserSelect;
+    if (dragState.dragging) {
+      ignoreLauncherClickRef.current = true;
+      setIsPetDragging(false);
+      setPetPosition((currentPosition) => {
+        if (currentPosition) {
+          window.localStorage.setItem(PET_POSITION_KEY, JSON.stringify(currentPosition));
+        }
+        return currentPosition;
+      });
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    petDragRef.current = null;
+  }
+
+  function handlePetClick(event: ReactMouseEvent<HTMLButtonElement>) {
+    if (ignoreLauncherClickRef.current) {
+      ignoreLauncherClickRef.current = false;
+      event.preventDefault();
+      return;
+    }
+
+    setIsSidePanelOpen(false);
+    setIsOpen((value) => !value);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -933,16 +1095,24 @@ function ChatWidgetInner() {
       ) : null}
 
       <button
+        ref={launcherRef}
         type="button"
-        className={cn("ashvin-pet-launcher", (isOpen || isSidePanelOpen) && "hidden sm:block", isSidePanelOpen && "sm:hidden")}
-        onClick={() => {
-          setIsSidePanelOpen(false);
-          setIsOpen((value) => !value);
-        }}
+        className={cn(
+          "ashvin-pet-launcher",
+          isPetDragging && "ashvin-pet-launcher--dragging",
+          (isOpen || isSidePanelOpen) && "hidden sm:block",
+          isSidePanelOpen && "sm:hidden",
+        )}
+        style={launcherStyle}
+        onClick={handlePetClick}
+        onPointerCancel={handlePetPointerEnd}
+        onPointerDown={handlePetPointerDown}
+        onPointerMove={handlePetPointerMove}
+        onPointerUp={handlePetPointerEnd}
         aria-expanded={isOpen}
         aria-label={isOpen ? "Hide AI Ashvin chat" : "Open AI Ashvin chat"}
       >
-        <GeneratedAshvinPet pose={petPose} />
+        <GeneratedAshvinPet animation={petAnimation} />
       </button>
     </div>
   );

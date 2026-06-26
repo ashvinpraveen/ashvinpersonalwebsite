@@ -1,65 +1,114 @@
 {
   "image": "/ai-ashvin-spritesheet.png",
   "frame": {
-    "width": 256,
-    "height": 367
+    "width": 384,
+    "height": 384
   },
-  "poses": [
+  "animations": {
+    "idleWave": [
+      "idle-open",
+      "idle-blink",
+      "idle-open",
+      "wave-lift",
+      "wave-up-a",
+      "wave-up-b"
+    ],
+    "laptopTyping": [
+      "laptop-type-a",
+      "laptop-type-b",
+      "laptop-type-c"
+    ],
+    "dragWorried": [
+      "drag-worried-a",
+      "drag-worried-b",
+      "drag-worried-c",
+      "drag-worried-d"
+    ]
+  },
+  "frames": [
     {
-      "name": "idle",
+      "name": "idle-open",
       "x": 0,
       "y": 0,
-      "width": 256,
-      "height": 367
+      "width": 384,
+      "height": 384
     },
     {
-      "name": "working",
-      "x": 256,
+      "name": "idle-blink",
+      "x": 384,
       "y": 0,
-      "width": 256,
-      "height": 367
+      "width": 384,
+      "height": 384
     },
     {
-      "name": "running",
-      "x": 512,
-      "y": 0,
-      "width": 256,
-      "height": 367
-    },
-    {
-      "name": "talk",
+      "name": "wave-lift",
       "x": 768,
       "y": 0,
-      "width": 256,
-      "height": 367
+      "width": 384,
+      "height": 384
     },
     {
-      "name": "thinking",
-      "x": 1024,
+      "name": "wave-up-a",
+      "x": 1152,
       "y": 0,
-      "width": 256,
-      "height": 367
+      "width": 384,
+      "height": 384
     },
     {
-      "name": "journaling",
-      "x": 1280,
-      "y": 0,
-      "width": 256,
-      "height": 367
-    },
-    {
-      "name": "filmmaking",
+      "name": "wave-up-b",
       "x": 1536,
       "y": 0,
-      "width": 256,
-      "height": 367
+      "width": 384,
+      "height": 384
     },
     {
-      "name": "laptop",
-      "x": 1792,
+      "name": "laptop-type-a",
+      "x": 1920,
       "y": 0,
-      "width": 256,
-      "height": 367
+      "width": 384,
+      "height": 384
+    },
+    {
+      "name": "laptop-type-b",
+      "x": 2304,
+      "y": 0,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "name": "laptop-type-c",
+      "x": 2688,
+      "y": 0,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "name": "drag-worried-a",
+      "x": 3072,
+      "y": 0,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "name": "drag-worried-b",
+      "x": 3456,
+      "y": 0,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "name": "drag-worried-c",
+      "x": 3840,
+      "y": 0,
+      "width": 384,
+      "height": 384
+    },
+    {
+      "name": "drag-worried-d",
+      "x": 4224,
+      "y": 0,
+      "width": 384,
+      "height": 384
     }
   ]
 }

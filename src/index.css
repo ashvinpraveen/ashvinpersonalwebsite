@@ -85,8 +85,11 @@
 
 @layer components {
   .ashvin-pet-launcher {
-    width: 3.1rem;
-    height: 3.75rem;
+    position: fixed;
+    right: 0.75rem;
+    bottom: 1.5rem;
+    width: 3.6rem;
+    height: 3.6rem;
     padding: 0;
     border-radius: 0;
     background: transparent;
@@ -94,6 +97,8 @@
     box-shadow: none;
     overflow: visible;
     cursor: pointer;
+    touch-action: none;
+    user-select: none;
   }
 
   .ashvin-pet-launcher:hover,
@@ -104,26 +109,54 @@
 
   .ashvin-pet {
     display: block;
-    width: 3.1rem;
-    aspect-ratio: 256 / 367;
+    width: 3.6rem;
+    aspect-ratio: 1;
     background-image: url("/ai-ashvin-spritesheet.png");
-    background-position: var(--ashvin-pet-position, 0%) 0;
+    background-position: 0% 0;
     background-repeat: no-repeat;
-    background-size: 800% 100%;
+    background-size: 1200% 100%;
     image-rendering: pixelated;
     pointer-events: none;
     transform-origin: 50% 100%;
-    transition: background-position 80ms steps(1), transform 160ms ease;
+    transition: transform 160ms ease;
   }
 
   .ashvin-pet-launcher:hover .ashvin-pet,
   .ashvin-pet-launcher:focus-visible .ashvin-pet {
-    background-position: var(--ashvin-pet-hover-position, var(--ashvin-pet-position, 0%)) 0;
     transform: scale(1.025);
+  }
+
+  .ashvin-pet-launcher--dragging {
+    cursor: grabbing;
+  }
+
+  .ashvin-pet--idle {
+    animation: ashvin-pet-idle-wave 5.2s steps(1, end) infinite;
+  }
+
+  .ashvin-pet--chat {
+    animation: ashvin-pet-laptop-typing 820ms steps(1, end) infinite;
+  }
+
+  .ashvin-pet--drag {
+    animation: ashvin-pet-drag-worried 520ms steps(1, end) infinite;
   }
 
   .ashvin-pet--compact {
     width: 2.5rem;
+  }
+
+  @media (min-width: 640px) {
+    .ashvin-pet-launcher {
+      right: 1.25rem;
+      bottom: 2rem;
+      width: 5rem;
+      height: 5rem;
+    }
+
+    .ashvin-pet {
+      width: 5rem;
+    }
   }
 
   .chat-panel-enter {
@@ -146,6 +179,57 @@
     to {
       opacity: 1;
       transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes ashvin-pet-idle-wave {
+    0%,
+    52% {
+      background-position: 0% 0;
+    }
+    58% {
+      background-position: 9.0909% 0;
+    }
+    64% {
+      background-position: 0% 0;
+    }
+    74% {
+      background-position: 18.1818% 0;
+    }
+    86% {
+      background-position: 27.2727% 0;
+    }
+    100% {
+      background-position: 36.3636% 0;
+    }
+  }
+
+  @keyframes ashvin-pet-laptop-typing {
+    0% {
+      background-position: 45.4545% 0;
+    }
+    34% {
+      background-position: 54.5455% 0;
+    }
+    67%,
+    100% {
+      background-position: 63.6364% 0;
+    }
+  }
+
+  @keyframes ashvin-pet-drag-worried {
+    0% {
+      background-position: 72.7273% 0;
+    }
+    25% {
+      background-position: 81.8182% 0;
+    }
+    50% {
+      background-position: 90.9091% 0;
+    }
+    75%,
+    100% {
+      background-position: 100% 0;
     }
   }
 }
