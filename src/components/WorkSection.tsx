@@ -59,8 +59,15 @@ const WorkSection = () => {
     <SectionBlock id="projects" label="Projects">
       <div className="grid gap-3 md:grid-cols-2">
         {projects.map((item) => (
-          <div key={item.href} className={`flex h-full flex-col ${cardCompact}`}>
-            <div className="flex items-center gap-3 mb-2">
+          <div key={item.href} className={`group relative flex h-full flex-col ${cardCompact}`}>
+            <a
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute inset-0 z-10 rounded-2xl"
+              aria-label={`View ${item.name}`}
+            />
+            <div className="relative z-20 flex items-center gap-3 mb-2 pointer-events-none">
               {item.logo ? (
                 <img
                   src={item.logo}
@@ -76,18 +83,13 @@ const WorkSection = () => {
                 {item.name}
               </h3>
             </div>
-            <p className={`text-sm leading-relaxed ${textSecondary}`}>
+            <p className={`relative z-20 text-sm leading-relaxed pointer-events-none ${textSecondary}`}>
               {item.description}
             </p>
-            <div className="mt-auto pt-3 flex gap-4">
-              <a
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
+            <div className="relative z-20 mt-auto pt-3 flex gap-4">
+              <span className="font-mono text-xs text-muted-foreground transition-colors group-hover:text-foreground">
                 View →
-              </a>
+              </span>
               {item.githubHref && (
                 <a
                   href={item.githubHref}

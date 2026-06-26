@@ -8,7 +8,7 @@ const inlineLinkClassName = linkPrimary;
 const preview = [
   "I'm Ashvin, 27, born and raised in Sarawak, Malaysia, now based in Kuala Lumpur. I'm Malaysian with Indian heritage; my grandparents came to Sarawak from Kerala, and that family history still shapes a lot of how I think.",
   "The thread running through my life has been education, social mobility, and progress. I grew up around people who treated learning as a way to change the trajectory of a family, a community, and eventually a region.",
-  "That's why I'm drawn to building tools, teaching what I learn, and sharing the process publicly. My usual line is simple: building stuff and sharing what I learn along the way.",
+  "That's why I'm drawn to building tools, teaching what I learn, and sharing the process publicly.",
 ];
 
 const expanded = [

@@ -40,7 +40,7 @@
     --radius: 0.75rem;
 
     --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
-    --font-mono: 'JetBrains Mono', 'Roboto Mono', monospace;
+    --font-mono: var(--font-sans);
   }
 
   .dark {

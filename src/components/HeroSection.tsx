@@ -536,38 +536,30 @@ const HeroSection = () => {
             Designing products that augment human capabilities
           </motion.h1>
           <motion.p
-            className="font-mono text-sm mb-6 flex items-center gap-2"
+            className="text-base text-foreground/70 dark:text-white/70 leading-relaxed"
             variants={fadeUp}
             initial="hidden"
             animate="visible"
             custom={1}
           >
-            <span className="font-semibold">Co-founder & CEO</span>
-            <span className="text-foreground/40 dark:text-white/40">·</span>
+            Hey it's Ash, I'm a product designer, marketer & startup generalist. Currently building{" "}
             <a
               href="https://cleve.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white transition-colors"
+              className="text-foreground dark:text-white underline underline-offset-4 transition-colors hover:text-foreground/70 dark:hover:text-white/70"
             >
-              Cleve.ai
+              Cleve
             </a>
-          </motion.p>
-          <motion.p
-            className="text-base text-foreground/70 dark:text-white/70 leading-relaxed"
-            variants={fadeUp}
-            initial="hidden"
-            animate="visible"
-            custom={2}
-          >
-            Experimenting with AI's applications, building and sharing what I've found helpful.
+            , a self-learning AI co-worker & second brain workspace. I share my learnings & thoughts
+            mostly on IG stories, LinkedIn and on my blog.
           </motion.p>
           <motion.div
             className="mt-8 flex flex-wrap gap-3"
             variants={fadeUp}
             initial="hidden"
             animate="visible"
-            custom={3}
+            custom={2}
           >
             <a
               href="/blog"

@@ -1,4 +1,5 @@
 import { linkSubtle } from "@/lib/styles";
+import { pageShellClassName } from "@/lib/layout";
 
 const gridLightSvg = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='60' height='60' fill='none' stroke='rgba(0,0,0,0.06)' stroke-width='0.5'/%3E%3C/svg%3E")`;
 const gridDarkSvg = `url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='60' height='60' fill='none' stroke='rgba(255,255,255,0.06)' stroke-width='0.5'/%3E%3C/svg%3E")`;
@@ -27,52 +28,57 @@ const Footer = () => {
         aria-hidden="true"
         style={{ backgroundImage: grainSvg, backgroundRepeat: "repeat", backgroundSize: "128px 128px" }}
       />
-      {/* Top fade — light */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-24 dark:hidden"
-        aria-hidden="true"
-        style={{ background: "linear-gradient(to bottom, hsl(35, 30%, 90%), transparent)" }}
-      />
-      {/* Top fade — dark */}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-24 hidden dark:block"
-        aria-hidden="true"
-        style={{ background: "linear-gradient(to bottom, hsl(30, 15%, 12%), transparent)" }}
-      />
-
-      <div className="relative py-16 md:py-24 flex flex-col items-center gap-6 text-center px-6">
-        <div className="flex items-center gap-3 font-mono text-xs text-muted-foreground">
-          <a
-            href="https://github.com/ashvinpraveen/ashvinpersonalwebsite"
-            target="_blank"
-            rel="noreferrer"
-            className={linkSubtle}
-          >
-            source
-          </a>
-          <span className="text-border">·</span>
-          <a
-            href="https://github.com/ashvinpraveen/ashvinpersonalwebsite/fork"
-            target="_blank"
-            rel="noreferrer"
-            className={linkSubtle}
-          >
-            fork this site
-          </a>
-          <span className="text-border">·</span>
-          <a
-            href="https://cleve.ai"
-            target="_blank"
-            rel="noreferrer"
-            className={linkSubtle}
-          >
-            built with cleve
-          </a>
+      <div className={`${pageShellClassName} relative py-16 md:py-24`}>
+        <div className="grid gap-8 text-sm sm:grid-cols-2 md:grid-cols-4">
+          <div className="space-y-3">
+            <p className="font-semibold tracking-tight">Site</p>
+            <div className="flex flex-col gap-2 text-muted-foreground">
+              <a href="/" className={linkSubtle}>Home</a>
+              <a href="/blog" className={linkSubtle}>Writing</a>
+              <a href="/resources" className={linkSubtle}>Resources</a>
+              <a href="/postcards" className={linkSubtle}>Postcards</a>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <p className="font-semibold tracking-tight">Projects</p>
+            <div className="flex flex-col gap-2 text-muted-foreground">
+              <a href="https://cleve.ai" target="_blank" rel="noreferrer" className={linkSubtle}>Cleve.ai</a>
+              <a href="https://www.malaysian.ai/" target="_blank" rel="noreferrer" className={linkSubtle}>Malaysian.ai</a>
+              <a href="https://rakantutor.org/naic" target="_blank" rel="noreferrer" className={linkSubtle}>NAIC</a>
+              <a href="https://buildforpublic.com" target="_blank" rel="noreferrer" className={linkSubtle}>Build for Public</a>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <p className="font-semibold tracking-tight">Contact</p>
+            <div className="flex flex-col gap-2 text-muted-foreground">
+              <a href="https://cal.com/ashvinpraveen" target="_blank" rel="noreferrer" className={linkSubtle}>Book a call</a>
+              <a href="https://linkedin.com/in/ashvinpraveen" target="_blank" rel="noreferrer" className={linkSubtle}>LinkedIn</a>
+              <a href="/text" className={linkSubtle}>Text me</a>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <p className="font-semibold tracking-tight">Colophon</p>
+            <div className="flex flex-col gap-2 text-muted-foreground">
+              <a
+                href="https://github.com/ashvinpraveen/ashvinpersonalwebsite"
+                target="_blank"
+                rel="noreferrer"
+                className={linkSubtle}
+              >
+                Source
+              </a>
+              <a
+                href="https://github.com/ashvinpraveen/ashvinpersonalwebsite/fork"
+                target="_blank"
+                rel="noreferrer"
+                className={linkSubtle}
+              >
+                Fork this site
+              </a>
+              <span>© {year} Ashvin Praveen</span>
+            </div>
+          </div>
         </div>
-
-        <p className="font-mono text-[10px] text-muted-foreground/60">
-          © {year} ashvin praveen
-        </p>
       </div>
     </footer>
   );

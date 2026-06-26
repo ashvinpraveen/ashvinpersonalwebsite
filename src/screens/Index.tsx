@@ -7,7 +7,6 @@ import AboutSection from "@/components/AboutSection";
 import WorkSection from "@/components/WorkSection";
 import WritingSection from "@/components/WritingSection";
 
-import ResourcesSection from "@/components/ResourcesSection";
 import ContactSection from "@/components/ContactSection";
 import { pageShellClassName } from "@/lib/layout";
 
@@ -21,7 +20,6 @@ const Index = () => {
         <AboutSection />
         <WritingSection />
 
-        <ResourcesSection />
         <ContactSection />
         <Footer />
       </main>
