@@ -805,7 +805,7 @@ function isValidEmail(value: string) {
 }
 
 function hasExplicitBookingConfirmation(value: string) {
-  return /\b(yes|confirm|confirmed|book it|book this|schedule it|go ahead|that works|lock it in)\b/i.test(
+  return /\b(yes|yeah|yep|yup|please|confirm|confirmed|book it|book this|schedule it|go ahead|that works|works for me|sounds good|perfect|lock it in|do it)\b/i.test(
     value,
   );
 }
@@ -822,7 +822,8 @@ function hasRecentBookingOffer(
       (message) =>
         message.author === "ashvin" &&
         (message.body.includes("i found a few 15 minute slots") ||
-          message.body.includes("reply with the one you want")),
+          message.body.includes("reply with the one you want") ||
+          message.body.includes("what works?")),
     );
 }
 
@@ -843,6 +844,53 @@ function formatSlot(slot: CalSlot, timeZone: string) {
     .toLowerCase();
 }
 
+function formatSlotDay(slot: CalSlot, timeZone: string) {
+  const date = new Date(slot.start);
+  if (Number.isNaN(date.getTime())) return slot.start;
+
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone,
+  })
+    .format(date)
+    .toLowerCase();
+}
+
+function formatSlotTime(slot: CalSlot, timeZone: string) {
+  const date = new Date(slot.start);
+  if (Number.isNaN(date.getTime())) return slot.start;
+
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone,
+  })
+    .format(date)
+    .toLowerCase();
+}
+
+function joinReadableOptions(options: string[]) {
+  if (options.length <= 1) return options[0] ?? "";
+  if (options.length === 2) return `${options[0]} or ${options[1]}`;
+  return `${options.slice(0, -1).join(", ")}, or ${options[options.length - 1]}`;
+}
+
+function formatSlotOptions(slots: CalSlot[], timeZone: string) {
+  const groupedSlots = new Map<string, string[]>();
+  for (const slot of slots.slice(0, 4)) {
+    const day = formatSlotDay(slot, timeZone);
+    const times = groupedSlots.get(day) ?? [];
+    times.push(formatSlotTime(slot, timeZone));
+    groupedSlots.set(day, times);
+  }
+
+  return Array.from(groupedSlots.entries())
+    .map(([day, times]) => `${day} at ${joinReadableOptions(times)}`)
+    .join(", or ");
+}
+
 function buildAvailabilityReply(
   slots: CalSlot[],
   timeZone: string,
@@ -852,20 +900,17 @@ function buildAvailabilityReply(
     return `i don't see an open 15 minute slot in that window. easiest is to book some time **here**: ${getCalBookingLink()}`;
   }
 
-  const slotLines = slots
-    .slice(0, 4)
-    .map((slot, index) => `${index + 1}. ${formatSlot(slot, timeZone)} \`${slot.start}\``)
-    .join("\n");
+  const slotOptions = formatSlotOptions(slots, timeZone);
 
   const intro = options.usedExpandedWindow
-    ? "i didn't see anything in that exact window, but i found a few nearby 15 minute slots:"
-    : "i found a few 15 minute slots:";
+    ? "i didn't see anything in that exact window, but i can do"
+    : "i can do";
 
-  return `${intro}\n\n${slotLines}\n\nreply with the one you want, plus your name and email, and i'll book it after you confirm.`;
+  return `${intro} ${slotOptions}. what works?`;
 }
 
 function buildConfirmSlotReply(slot: CalSlot, timeZone: string) {
-  return `i can do ${formatSlot(slot, timeZone)}. reply with "yes, book this" plus your name and email, and i'll lock it in.`;
+  return `cool, should i book ${formatSlot(slot, timeZone)}?`;
 }
 
 function readCalErrorMessage(payload: CalSlotsResponse | CalBookingResponse) {
@@ -1013,7 +1058,6 @@ async function createCalBooking(
         language: "en",
       },
       bookingFieldsResponses,
-      lengthInMinutes: DEFAULT_CAL_DURATION_MINUTES,
       metadata: {
         source: "ashvinpersonalwebsite-chat",
       },
@@ -1073,7 +1117,7 @@ async function handleBookingToolCall(
   }
 
   if (!hasExplicitBookingConfirmation(visitorBody)) {
-    return `just to confirm, should i book ${formatSlot({ start: toolCall.args.start }, timeZone)} for ${toolCall.args.attendeeName}?`;
+    return `cool, should i book ${formatSlot({ start: toolCall.args.start }, timeZone)}?`;
   }
 
   const booking = await createCalBooking(apiKey, toolCall.args);

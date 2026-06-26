@@ -813,7 +813,7 @@ function ChatWidgetInner() {
         isSidePanelOpen
           ? "bottom-0 right-0 top-0 hidden sm:flex sm:w-[var(--chat-side-width)]"
           : isOpen
-            ? "left-0 right-0 top-[var(--chat-mobile-top,0px)] h-[var(--chat-mobile-height,100dvh)] max-w-none sm:inset-auto sm:bottom-8 sm:right-5 sm:top-auto sm:h-auto sm:max-w-[calc(100vw-1.5rem)]"
+            ? "left-0 right-0 top-[var(--chat-mobile-top,0px)] h-[var(--chat-mobile-height,100dvh)] max-w-none sm:inset-auto sm:bottom-36 sm:right-5 sm:top-auto sm:h-auto sm:max-w-[calc(100vw-1.5rem)]"
           : "bottom-6 right-3 sm:bottom-8 sm:right-5",
       )}
       style={widgetStyle}
@@ -928,12 +928,7 @@ function ChatWidgetInner() {
                 : "flex-1 sm:h-[12rem] sm:max-h-[min(12rem,calc(70dvh-10rem))] sm:flex-none",
             )}
           >
-            {!hasConversation ? (
-              <div className="rounded-md bg-muted/60 p-3 text-sm leading-relaxed text-muted-foreground">
-                Ask about my projects, AI, startups, Malaysia, or what I am
-                learning in public.
-              </div>
-            ) : (
+            {hasConversation ? (
               messages.map((item) => (
                 <div
                   key={item._id}
@@ -951,7 +946,7 @@ function ChatWidgetInner() {
                   )}
                 </div>
               ))
-            )}
+            ) : null}
             {isSending ? (
               <div className="mr-auto w-full max-w-none px-0 py-1 text-sm text-muted-foreground">
                 Thinking...
