@@ -1100,7 +1100,7 @@ function ChatWidgetInner() {
                 <div
                   key={item._id}
                   className={cn(
-                    "text-sm leading-relaxed",
+                    "text-base leading-relaxed sm:text-sm",
                     item.author === "visitor"
                       ? "ml-auto max-w-[82%] rounded-lg bg-primary px-3 py-2 text-primary-foreground"
                       : "mr-auto w-full max-w-none px-0 py-1 text-foreground",
@@ -1122,7 +1122,7 @@ function ChatWidgetInner() {
               </div>
             )}
             {isSending ? (
-              <div className="mr-auto w-full max-w-none px-0 py-1 text-sm text-muted-foreground">
+              <div className="mr-auto w-full max-w-none px-0 py-1 text-base text-muted-foreground sm:text-sm">
                 Thinking...
               </div>
             ) : null}
@@ -1150,7 +1150,7 @@ function ChatWidgetInner() {
                   }
                 }}
                 placeholder="Ask me anything"
-                className="min-h-20 resize-none border-0 bg-transparent px-3 py-3 text-sm leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="min-h-20 resize-none border-0 bg-transparent px-3 py-3 text-base leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm"
               />
               <div className="flex min-h-12 items-center justify-between gap-2 px-2.5 pb-2.5">
                 <div className="flex min-w-0 flex-1 items-center gap-1.5">
