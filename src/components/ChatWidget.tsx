@@ -1132,15 +1132,16 @@ function ChatWidgetInner() {
             onSubmit={handleSubmit}
             className="p-3 pt-1 [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))] sm:p-3 sm:pt-1"
           >
-            <div className="overflow-hidden rounded-3xl bg-muted/70">
+            <div className="overflow-hidden rounded-3xl bg-popover/85 shadow-sm ring-1 ring-border/35 dark:bg-secondary/80">
               <div className="px-3 pt-3">
-                <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-background/50 px-2.5 py-1 text-[11px] text-muted-foreground">
+                <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-background/70 px-2.5 py-1 text-[11px] text-muted-foreground dark:bg-background/45">
                   <Compass aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{contextPillText}</span>
                 </div>
               </div>
               <Textarea
                 ref={inputRef}
+                rows={1}
                 value={message}
                 onChange={(event) => setMessage(event.target.value.slice(0, MAX_MESSAGE_LENGTH))}
                 onKeyDown={(event) => {
@@ -1150,7 +1151,7 @@ function ChatWidgetInner() {
                   }
                 }}
                 placeholder="Ask me anything"
-                className="min-h-20 resize-none border-0 bg-transparent px-3 py-3 text-base leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm"
+                className="h-11 min-h-11 resize-none border-0 bg-transparent px-3 py-2 text-base leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm"
               />
               <div className="flex min-h-12 items-center justify-between gap-2 px-2.5 pb-2.5">
                 <div className="flex min-w-0 flex-1 items-center gap-1.5">
