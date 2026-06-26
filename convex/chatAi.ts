@@ -666,6 +666,7 @@ function isBookingToolCall(toolCall: ModelToolCall): toolCall is BookingToolCall
 }
 
 function buildSystemInstruction(pageContext: PageContext | undefined) {
+  const visitorTimeZone = normalizeTimeZone(pageContext?.timeZone);
   return `${SYSTEM_PROMPT}
 
 Screen tools:
@@ -679,6 +680,7 @@ Booking tools:
 - Ask for any missing details: preferred time/date, name, email, and timezone.
 - Use create_calendar_booking only after the visitor confirms a specific offered slot.
 - If direct booking fails, tell them to book some time **here**: ${getCalBookingLink()}.
+- Current date in the visitor's timezone: ${formatCurrentDate(visitorTimeZone)}. Interpret "today", "tomorrow", and "next week" relative to this date.
 
 Allowed internal pages: ${SAFE_SITE_PATHS.join(", ")}.
 Allowed homepage sections: ${SAFE_SECTION_IDS.join(", ")}.
@@ -753,8 +755,29 @@ function normalizeTimeZone(value: string | undefined) {
   }
 }
 
+function formatCurrentDate(timeZone: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone,
+  }).format(new Date());
+}
+
 function isValidDateInput(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isNaN(Date.parse(value));
+}
+
+function toIsoDate(value: string) {
+  const date = isValidDateInput(value) ? new Date(value) : new Date();
+  return date.toISOString().slice(0, 10);
+}
+
+function addDaysIsoDate(value: string, days: number) {
+  const date = new Date(`${toIsoDate(value)}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 function toUtcIso(value: string) {
@@ -820,7 +843,11 @@ function formatSlot(slot: CalSlot, timeZone: string) {
     .toLowerCase();
 }
 
-function buildAvailabilityReply(slots: CalSlot[], timeZone: string) {
+function buildAvailabilityReply(
+  slots: CalSlot[],
+  timeZone: string,
+  options: { usedExpandedWindow?: boolean } = {},
+) {
   if (slots.length === 0) {
     return `i don't see an open 15 minute slot in that window. easiest is to book some time **here**: ${getCalBookingLink()}`;
   }
@@ -830,7 +857,11 @@ function buildAvailabilityReply(slots: CalSlot[], timeZone: string) {
     .map((slot, index) => `${index + 1}. ${formatSlot(slot, timeZone)} \`${slot.start}\``)
     .join("\n");
 
-  return `i found a few 15 minute slots:\n\n${slotLines}\n\nreply with the one you want, plus your name and email, and i'll book it after you confirm.`;
+  const intro = options.usedExpandedWindow
+    ? "i didn't see anything in that exact window, but i found a few nearby 15 minute slots:"
+    : "i found a few 15 minute slots:";
+
+  return `${intro}\n\n${slotLines}\n\nreply with the one you want, plus your name and email, and i'll book it after you confirm.`;
 }
 
 function buildConfirmSlotReply(slot: CalSlot, timeZone: string) {
@@ -918,6 +949,30 @@ async function fetchCalSlots(
   return slots;
 }
 
+async function fetchCalSlotsWithExpandedWindow(
+  apiKey: string,
+  args: {
+    dateFrom: string;
+    dateTo: string;
+    timeZone: string;
+  },
+) {
+  const slots = await fetchCalSlots(apiKey, args);
+  if (slots.length > 0) {
+    return { slots, usedExpandedWindow: false };
+  }
+
+  const expandedDateFrom = toIsoDate(args.dateFrom);
+  const expandedDateTo = addDaysIsoDate(args.dateFrom, 21);
+  const expandedSlots = await fetchCalSlots(apiKey, {
+    dateFrom: expandedDateFrom,
+    dateTo: expandedDateTo,
+    timeZone: args.timeZone,
+  });
+
+  return { slots: expandedSlots, usedExpandedWindow: expandedSlots.length > 0 };
+}
+
 function findMatchingSlot(slots: CalSlot[], desiredStart: string) {
   const desiredMs = Date.parse(desiredStart);
   if (Number.isNaN(desiredMs)) return null;
@@ -991,12 +1046,14 @@ async function handleBookingToolCall(
 
   if (toolCall.name === "check_booking_availability") {
     const timeZone = normalizeTimeZone(toolCall.args.timeZone);
-    const slots = await fetchCalSlots(apiKey, {
+    const result = await fetchCalSlotsWithExpandedWindow(apiKey, {
       dateFrom: toolCall.args.dateFrom,
       dateTo: toolCall.args.dateTo,
       timeZone,
     });
-    return buildAvailabilityReply(slots, timeZone);
+    return buildAvailabilityReply(result.slots, timeZone, {
+      usedExpandedWindow: result.usedExpandedWindow,
+    });
   }
 
   if (!isValidEmail(toolCall.args.attendeeEmail)) {
@@ -1006,9 +1063,13 @@ async function handleBookingToolCall(
   const timeZone = normalizeTimeZone(toolCall.args.attendeeTimeZone);
   if (!hasRecentBookingOffer(messages)) {
     const window = dateWindowForStart(toolCall.args.start);
-    const slots = await fetchCalSlots(apiKey, { ...window, timeZone });
-    const matchingSlot = findMatchingSlot(slots, toolCall.args.start);
-    return matchingSlot ? buildConfirmSlotReply(matchingSlot, timeZone) : buildAvailabilityReply(slots, timeZone);
+    const result = await fetchCalSlotsWithExpandedWindow(apiKey, { ...window, timeZone });
+    const matchingSlot = findMatchingSlot(result.slots, toolCall.args.start);
+    return matchingSlot
+      ? buildConfirmSlotReply(matchingSlot, timeZone)
+      : buildAvailabilityReply(result.slots, timeZone, {
+          usedExpandedWindow: result.usedExpandedWindow,
+        });
   }
 
   if (!hasExplicitBookingConfirmation(visitorBody)) {
