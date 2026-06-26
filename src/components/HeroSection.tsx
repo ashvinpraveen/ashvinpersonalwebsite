@@ -544,15 +544,15 @@ const HeroSection = () => {
           >
             Hey it's Ash, I'm a product designer, marketer & startup generalist. Currently building{" "}
             <a
-              href="https://cleve.ai"
+              href="https://cleve.ai/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-foreground dark:text-white underline underline-offset-4 transition-colors hover:text-foreground/70 dark:hover:text-white/70"
+              className="inline-flex items-baseline gap-1 font-bold text-foreground no-underline transition-colors hover:text-link hover:underline hover:decoration-link/70 hover:underline-offset-4"
             >
+              <img src="/cleve-logo.png" alt="" className="h-[0.95em] w-[0.95em] self-center rounded-[0.2em]" />
               Cleve
             </a>
-            , a self-learning AI co-worker & second brain workspace. I share my learnings & thoughts
-            mostly on IG stories, LinkedIn and on my blog.
+            {", an AI second brain. I write about my learnings often."}
           </motion.p>
           <motion.div
             className="mt-8 flex flex-wrap gap-3"

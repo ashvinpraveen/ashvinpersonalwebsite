@@ -25,6 +25,12 @@
     --accent: 33 18% 82%;
     --accent-foreground: 30 14% 25%;
 
+    --link: 30 78% 38%;
+    --link-hover: 28 88% 30%;
+
+    --selection: 38 92% 72%;
+    --selection-foreground: 30 14% 18%;
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
@@ -65,6 +71,12 @@
     --accent: 30 7% 20%;
     --accent-foreground: 35 10% 90%;
 
+    --link: 38 92% 64%;
+    --link-hover: 38 96% 72%;
+
+    --selection: 38 92% 50%;
+    --selection-foreground: 30 8% 8%;
+
     --destructive: 0 62% 50%;
     --destructive-foreground: 35 10% 90%;
 
@@ -84,7 +96,8 @@
   }
 
   ::selection {
-    background: hsl(30 14% 25% / 0.15);
+    background: hsl(var(--selection));
+    color: hsl(var(--selection-foreground));
   }
 }
 
