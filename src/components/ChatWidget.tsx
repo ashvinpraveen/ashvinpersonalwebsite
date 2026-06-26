@@ -27,6 +27,7 @@ const PET_POSITION_KEY = "ashvin-pet-position";
 const MAX_MESSAGE_LENGTH = 900;
 const MAX_IMAGE_ATTACHMENTS = 3;
 const MAX_IMAGE_DIMENSION = 1024;
+const MAX_INPUT_ROWS = 7;
 const DEFAULT_SIDE_PANEL_WIDTH = 320;
 const MIN_SIDE_PANEL_WIDTH = 280;
 const MAX_SIDE_PANEL_WIDTH = 520;
@@ -234,6 +235,20 @@ function shouldContainScroll(element: HTMLElement, deltaY: number) {
   const isAtBottom = element.scrollTop >= maxScrollTop - 1;
 
   return (deltaY < 0 && isAtTop) || (deltaY > 0 && isAtBottom);
+}
+
+function resizeChatInput(textarea: HTMLTextAreaElement) {
+  textarea.style.height = "auto";
+
+  const styles = window.getComputedStyle(textarea);
+  const lineHeight = Number.parseFloat(styles.lineHeight) || 24;
+  const paddingTop = Number.parseFloat(styles.paddingTop) || 0;
+  const paddingBottom = Number.parseFloat(styles.paddingBottom) || 0;
+  const maxHeight = lineHeight * MAX_INPUT_ROWS + paddingTop + paddingBottom;
+  const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
+
+  textarea.style.height = `${nextHeight}px`;
+  textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
 }
 
 function canvasToDataUrl(canvas: HTMLCanvasElement, mimeType: string) {
@@ -447,6 +462,11 @@ function ChatWidgetInner() {
     });
     inputRef.current?.focus();
   }, [isOpen, messages.length]);
+
+  useEffect(() => {
+    if (!inputRef.current) return;
+    resizeChatInput(inputRef.current);
+  }, [message]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -1143,7 +1163,10 @@ function ChatWidgetInner() {
                 ref={inputRef}
                 rows={1}
                 value={message}
-                onChange={(event) => setMessage(event.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+                onChange={(event) => {
+                  setMessage(event.target.value.slice(0, MAX_MESSAGE_LENGTH));
+                  resizeChatInput(event.currentTarget);
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
@@ -1151,7 +1174,7 @@ function ChatWidgetInner() {
                   }
                 }}
                 placeholder="Ask me anything"
-                className="h-11 min-h-11 resize-none border-0 bg-transparent px-3 py-2 text-base leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm"
+                className="min-h-11 resize-none border-0 bg-transparent px-3 py-2 text-base leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm"
               />
               <div className="flex min-h-12 items-center justify-between gap-2 px-2.5 pb-2.5">
                 <div className="flex min-w-0 flex-1 items-center gap-1.5">
