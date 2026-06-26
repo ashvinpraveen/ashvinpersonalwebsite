@@ -745,6 +745,19 @@ function bookingFallbackReply() {
   return `i couldn't book it directly from here. book some time **here**: ${getCalBookingLink()}`;
 }
 
+function isCalBookingUnavailableError(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  return (
+    message.includes("already has booking") ||
+    message.includes("not available") ||
+    message.includes("no longer available")
+  );
+}
+
+function bookingUnavailableReply(slot: CalSlot, timeZone: string) {
+  return `ah, that slot didn't go through. cal.com says ${formatSlot(slot, timeZone)} may already be booked or no longer available. want me to check nearby times, or book directly **here**: ${getCalBookingLink()}`;
+}
+
 function normalizeTimeZone(value: string | undefined) {
   const timeZone = value || DEFAULT_CAL_TIME_ZONE;
   try {
@@ -823,6 +836,7 @@ function hasRecentBookingOffer(
         message.author === "ashvin" &&
         (message.body.includes("i found a few 15 minute slots") ||
           message.body.includes("reply with the one you want") ||
+          message.body.includes("cool, should i book") ||
           message.body.includes("what works?")),
     );
 }
@@ -1120,7 +1134,16 @@ async function handleBookingToolCall(
     return `cool, should i book ${formatSlot({ start: toolCall.args.start }, timeZone)}?`;
   }
 
-  const booking = await createCalBooking(apiKey, toolCall.args);
+  let booking: Awaited<ReturnType<typeof createCalBooking>>;
+  try {
+    booking = await createCalBooking(apiKey, toolCall.args);
+  } catch (error) {
+    if (isCalBookingUnavailableError(error)) {
+      return bookingUnavailableReply({ start: toolCall.args.start }, timeZone);
+    }
+    throw error;
+  }
+
   const bookingCode = booking.uid ? ` booking id: ${booking.uid}.` : "";
   return `done, you're booked for ${formatSlot({ start: booking.start, end: booking.end }, timeZone)}.${bookingCode} cal.com should send the invite to ${toolCall.args.attendeeEmail}.`;
 }

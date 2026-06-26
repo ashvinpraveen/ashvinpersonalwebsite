@@ -326,6 +326,23 @@ function ChatMarkdown({ children }: { children: string }) {
   );
 }
 
+function getChatErrorDescription(error: unknown) {
+  const fallback = "Please try again in a minute.";
+  if (!(error instanceof Error)) return fallback;
+
+  const cleanedMessage = error.message
+    .replace(/^\[CONVEX [^\]]+\]\s+\[Request ID:[^\]]+\]\s+Server Error\s*/i, "")
+    .replace(/^(Uncaught Error:\s*)+/i, "")
+    .replace(/\n\s*at\s+[\s\S]*$/i, "")
+    .trim();
+
+  if (cleanedMessage && !/^called by client$/i.test(cleanedMessage)) {
+    return cleanedMessage;
+  }
+
+  return fallback;
+}
+
 function ChatWidgetInner() {
   const router = useRouter();
   const pathname = usePathname();
@@ -819,7 +836,7 @@ function ChatWidgetInner() {
       setMessage("");
       setAttachedImages([]);
     } catch (error) {
-      const description = error instanceof Error ? error.message : "Please try again in a minute.";
+      const description = getChatErrorDescription(error);
       console.warn("AI Ashvin message failed:", description);
       toast.error("Message not sent", {
         description,
@@ -1077,7 +1094,7 @@ function ChatWidgetInner() {
                   }
                 }}
                 placeholder="Ask me anything"
-                className="min-h-20 resize-none border-0 bg-transparent px-3 py-3 text-base shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="min-h-20 resize-none border-0 bg-transparent px-3 py-3 text-sm leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <div className="flex min-h-12 items-center justify-between gap-2 px-2.5 pb-2.5">
                 <div className="flex min-w-0 flex-1 items-center gap-1.5">
