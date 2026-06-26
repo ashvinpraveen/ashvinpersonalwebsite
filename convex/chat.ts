@@ -1,11 +1,14 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { isAdmin, requireAdmin } from "./adminAuth";
 
 const MAX_CLIENT_ID_LENGTH = 80;
 const MAX_MESSAGE_LENGTH = 900;
 const MESSAGE_LIST_LIMIT = 80;
 const THREAD_LIST_LIMIT = 12;
+const ADMIN_THREAD_LIST_LIMIT = 80;
+const ADMIN_MESSAGE_LIST_LIMIT = 120;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_MAX_MESSAGES = 10;
 
@@ -63,6 +66,109 @@ export const startNewForClient = mutation({
       status: "open",
       lastMessageAt: now,
       createdAt: now,
+    });
+  },
+});
+
+export const listForAdmin = query({
+  args: {
+    adminSecret: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (!isAdmin(args.adminSecret)) {
+      return null;
+    }
+
+    const threads = await ctx.db
+      .query("chatThreads")
+      .withIndex("by_lastMessageAt")
+      .order("desc")
+      .take(ADMIN_THREAD_LIST_LIMIT);
+
+    return await Promise.all(
+      threads.map(async (thread) => {
+        const latestMessages = await ctx.db
+          .query("chatMessages")
+          .withIndex("by_threadId_and_createdAt", (q) => q.eq("threadId", thread._id))
+          .order("desc")
+          .take(1);
+        const latestVisitorMessages = await ctx.db
+          .query("chatMessages")
+          .withIndex("by_threadId_and_author_and_createdAt", (q) =>
+            q.eq("threadId", thread._id).eq("author", "visitor"),
+          )
+          .order("desc")
+          .take(1);
+        const latestMessage = latestMessages[0] ?? null;
+        const latestVisitorMessage = latestVisitorMessages[0] ?? null;
+        const lastVisitorMessageAt =
+          thread.lastVisitorMessageAt ?? latestVisitorMessage?.createdAt ?? null;
+
+        return {
+          ...thread,
+          latestMessage,
+          lastVisitorMessageAt,
+          unread: Boolean(
+            lastVisitorMessageAt && lastVisitorMessageAt > (thread.adminLastReadAt ?? 0),
+          ),
+        };
+      }),
+    );
+  },
+});
+
+export const getThreadForAdmin = query({
+  args: {
+    adminSecret: v.string(),
+    threadId: v.id("chatThreads"),
+  },
+  handler: async (ctx, args) => {
+    if (!isAdmin(args.adminSecret)) {
+      return null;
+    }
+
+    const thread = await ctx.db.get(args.threadId);
+    if (!thread) return null;
+
+    const messages = await ctx.db
+      .query("chatMessages")
+      .withIndex("by_threadId_and_createdAt", (q) => q.eq("threadId", thread._id))
+      .order("desc")
+      .take(ADMIN_MESSAGE_LIST_LIMIT);
+    const latestVisitorMessages = await ctx.db
+      .query("chatMessages")
+      .withIndex("by_threadId_and_author_and_createdAt", (q) =>
+        q.eq("threadId", thread._id).eq("author", "visitor"),
+      )
+      .order("desc")
+      .take(1);
+    const latestVisitorMessage = latestVisitorMessages[0] ?? null;
+    const lastVisitorMessageAt =
+      thread.lastVisitorMessageAt ?? latestVisitorMessage?.createdAt ?? null;
+
+    return {
+      thread: {
+        ...thread,
+        lastVisitorMessageAt,
+        unread: Boolean(
+          lastVisitorMessageAt && lastVisitorMessageAt > (thread.adminLastReadAt ?? 0),
+        ),
+      },
+      messages: messages.reverse() as Doc<"chatMessages">[],
+    };
+  },
+});
+
+export const markThreadReadForAdmin = mutation({
+  args: {
+    adminSecret: v.string(),
+    threadId: v.id("chatThreads"),
+  },
+  handler: async (ctx, args) => {
+    requireAdmin(args.adminSecret);
+
+    await ctx.db.patch(args.threadId, {
+      adminLastReadAt: Date.now(),
     });
   },
 });
@@ -131,6 +237,7 @@ export const reserveVisitorMessage = internalMutation({
             status: "open",
             title: body.slice(0, 60),
             lastMessageAt: now,
+            lastVisitorMessageAt: now,
             createdAt: now,
           });
 
@@ -139,6 +246,7 @@ export const reserveVisitorMessage = internalMutation({
         status: "open",
         title: existingThread.title ?? body.slice(0, 60),
         lastMessageAt: now,
+        lastVisitorMessageAt: now,
       });
     }
 
