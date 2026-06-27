@@ -87,7 +87,7 @@ function PostcardAdminList({ adminSecret }: { adminSecret: string }) {
   }
 
   return (
-    <section className="space-y-5">
+    <section className="h-full overflow-y-auto bg-background/50 p-4">
       {postcards === undefined && (
         <p className="font-mono text-xs text-muted-foreground">Loading postcards...</p>
       )}
@@ -100,102 +100,106 @@ function PostcardAdminList({ adminSecret }: { adminSecret: string }) {
         </div>
       )}
 
-      {postcards?.map((postcard) => (
-        <article
-          key={postcard._id}
-          className="grid gap-5 rounded-[8px] border border-border bg-card p-5 md:grid-cols-[0.95fr_1.05fr]"
-        >
-          <div className="space-y-4">
-            {postcard.hiddenAt ? (
-              <p className="w-fit rounded-full border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                Hidden
-              </p>
-            ) : null}
-            {postcard.drawingDataUrl && (
-              <div className="h-44 rounded-[8px] border border-border bg-background p-3 dark:bg-muted">
-                <img
-                  src={postcard.drawingDataUrl}
-                  alt=""
-                  className="h-full w-full object-contain dark:invert"
-                  loading="lazy"
-                />
-              </div>
-            )}
-            <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
-              {postcard.message}
-            </p>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-dashed border-border pt-4 font-mono text-[10px]">
-              <span className="text-muted-foreground/70">
-                {postcard.name || "Anonymous"}
-              </span>
-              {postcard.location && (
-                <span className="text-muted-foreground/60">{postcard.location}</span>
-              )}
-              <time className="text-muted-foreground">
-                {formatPostcardDate(postcard.createdAt)}
-              </time>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <label
-              htmlFor={`reply-${postcard._id}`}
-              className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+      {postcards ? (
+        <div className="space-y-4">
+          {postcards.map((postcard) => (
+            <article
+              key={postcard._id}
+              className="grid gap-5 rounded-[8px] border border-border bg-card p-5 md:grid-cols-[0.95fr_1.05fr]"
             >
-              Reply
-            </label>
-            <Textarea
-              id={`reply-${postcard._id}`}
-              value={drafts[postcard._id] ?? ""}
-              onChange={(event) =>
-                setDrafts((currentDrafts) => ({
-                  ...currentDrafts,
-                  [postcard._id]: event.target.value,
-                }))
-              }
-              maxLength={MAX_REPLY_LENGTH}
-              placeholder="Write a reply..."
-              className="min-h-36 rounded-[8px]"
-            />
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="font-mono text-[10px] text-muted-foreground">
-                {(drafts[postcard._id] ?? "").length}/{MAX_REPLY_LENGTH}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => toggleHidden(postcard._id, !postcard.hiddenAt)}
-                  disabled={hidingPostcardId === postcard._id}
-                  className="rounded-[8px] font-mono text-xs"
-                >
-                  {hidingPostcardId === postcard._id
-                    ? "Saving..."
-                    : postcard.hiddenAt
-                      ? "Restore"
-                      : "Hide"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => removePostcard(postcard._id)}
-                  disabled={deletingPostcardId === postcard._id}
-                  className="rounded-[8px] font-mono text-xs"
-                >
-                  {deletingPostcardId === postcard._id ? "Deleting..." : "Delete"}
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => saveReply(postcard._id)}
-                  className="rounded-[8px] font-mono text-xs"
-                >
-                  Save reply
-                </Button>
+              <div className="space-y-4">
+                {postcard.hiddenAt ? (
+                  <p className="w-fit rounded-full border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    Hidden
+                  </p>
+                ) : null}
+                {postcard.drawingDataUrl && (
+                  <div className="h-44 rounded-[8px] border border-border bg-background p-3 dark:bg-muted">
+                    <img
+                      src={postcard.drawingDataUrl}
+                      alt=""
+                      className="h-full w-full object-contain dark:invert"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+                <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
+                  {postcard.message}
+                </p>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-dashed border-border pt-4 font-mono text-[10px]">
+                  <span className="text-muted-foreground/70">
+                    {postcard.name || "Anonymous"}
+                  </span>
+                  {postcard.location && (
+                    <span className="text-muted-foreground/60">{postcard.location}</span>
+                  )}
+                  <time className="text-muted-foreground">
+                    {formatPostcardDate(postcard.createdAt)}
+                  </time>
+                </div>
               </div>
-            </div>
-          </div>
-        </article>
-      ))}
+
+              <div className="space-y-3">
+                <label
+                  htmlFor={`reply-${postcard._id}`}
+                  className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+                >
+                  Reply
+                </label>
+                <Textarea
+                  id={`reply-${postcard._id}`}
+                  value={drafts[postcard._id] ?? ""}
+                  onChange={(event) =>
+                    setDrafts((currentDrafts) => ({
+                      ...currentDrafts,
+                      [postcard._id]: event.target.value,
+                    }))
+                  }
+                  maxLength={MAX_REPLY_LENGTH}
+                  placeholder="Write a reply..."
+                  className="min-h-36 rounded-[8px]"
+                />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-mono text-[10px] text-muted-foreground">
+                    {(drafts[postcard._id] ?? "").length}/{MAX_REPLY_LENGTH}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => toggleHidden(postcard._id, !postcard.hiddenAt)}
+                      disabled={hidingPostcardId === postcard._id}
+                      className="rounded-[8px] font-mono text-xs"
+                    >
+                      {hidingPostcardId === postcard._id
+                        ? "Saving..."
+                        : postcard.hiddenAt
+                          ? "Restore"
+                          : "Hide"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => removePostcard(postcard._id)}
+                      disabled={deletingPostcardId === postcard._id}
+                      className="rounded-[8px] font-mono text-xs"
+                    >
+                      {deletingPostcardId === postcard._id ? "Deleting..." : "Delete"}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => saveReply(postcard._id)}
+                      className="rounded-[8px] font-mono text-xs"
+                    >
+                      Save reply
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -204,7 +208,6 @@ const PostcardAdmin = () => (
   <AdminShell
     activePath="/admin/postcards"
     title="Postcards"
-    description="Read postcards people leave and reply from here."
   >
     {(adminSecret) => <PostcardAdminList adminSecret={adminSecret} />}
   </AdminShell>

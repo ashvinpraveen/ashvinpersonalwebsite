@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Bot, Inbox, MailOpen, MessageCircle, Send, UserRound } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import AdminShell from "@/screens/AdminShell";
@@ -45,13 +47,108 @@ function getThreadTitle(thread: { title?: string; clientId: string }) {
   return thread.title?.trim() || `Visitor ${shortClientId(thread.clientId)}`;
 }
 
+function AdminMessageMarkdown({
+  children,
+  inverse = false,
+}: {
+  children: string;
+  inverse?: boolean;
+}) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        a: ({ children, href, ...props }) => (
+          <a
+            className="underline underline-offset-2"
+            href={href}
+            rel="noreferrer"
+            target="_blank"
+            {...props}
+          >
+            {children}
+          </a>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote
+            className={cn(
+              "my-2 border-l-2 pl-3 italic",
+              inverse ? "border-white/45" : "border-border text-muted-foreground",
+            )}
+          >
+            {children}
+          </blockquote>
+        ),
+        code: ({ children }) => (
+          <code
+            className={cn(
+              "rounded px-1 py-0.5 text-[0.85em]",
+              inverse ? "bg-white/15" : "bg-muted",
+            )}
+          >
+            {children}
+          </code>
+        ),
+        ol: ({ children }) => (
+          <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0">{children}</ol>
+        ),
+        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+        pre: ({ children }) => (
+          <pre
+            className={cn(
+              "my-2 overflow-x-auto rounded-[6px] p-3 text-xs",
+              inverse ? "bg-black/15" : "bg-muted",
+            )}
+          >
+            {children}
+          </pre>
+        ),
+        table: ({ children }) => (
+          <div className="my-2 overflow-x-auto">
+            <table className="w-full border-collapse text-xs">{children}</table>
+          </div>
+        ),
+        td: ({ children }) => (
+          <td
+            className={cn(
+              "border px-2 py-1 align-top",
+              inverse ? "border-white/25" : "border-border",
+            )}
+          >
+            {children}
+          </td>
+        ),
+        th: ({ children }) => (
+          <th
+            className={cn(
+              "border px-2 py-1 text-left align-top font-medium",
+              inverse ? "border-white/25" : "border-border",
+            )}
+          >
+            {children}
+          </th>
+        ),
+        ul: ({ children }) => (
+          <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0">{children}</ul>
+        ),
+      }}
+    >
+      {children}
+    </ReactMarkdown>
+  );
+}
+
 function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
   const conversations = useQuery(api.chat.listForAdmin, { adminSecret });
   const [selectedThreadId, setSelectedThreadId] = useState<Id<"chatThreads"> | null>(null);
+  const visibleConversations = useMemo(() => {
+    if (!conversations) return conversations;
+    return conversations.filter((conversation) => conversation.latestMessage);
+  }, [conversations]);
   const selectedThread = useMemo(() => {
-    if (!conversations || !selectedThreadId) return null;
-    return conversations.find((conversation) => conversation._id === selectedThreadId) ?? null;
-  }, [conversations, selectedThreadId]);
+    if (!visibleConversations || !selectedThreadId) return null;
+    return visibleConversations.find((conversation) => conversation._id === selectedThreadId) ?? null;
+  }, [selectedThreadId, visibleConversations]);
   const threadDetail = useQuery(
     api.chat.getThreadForAdmin,
     adminSecret && selectedThreadId ? { adminSecret, threadId: selectedThreadId } : "skip",
@@ -59,12 +156,15 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
   const markThreadRead = useMutation(api.chat.markThreadReadForAdmin);
 
   useEffect(() => {
-    if (!conversations || conversations.length === 0) return;
-    if (selectedThreadId && conversations.some((conversation) => conversation._id === selectedThreadId)) {
+    if (!visibleConversations || visibleConversations.length === 0) return;
+    if (
+      selectedThreadId &&
+      visibleConversations.some((conversation) => conversation._id === selectedThreadId)
+    ) {
       return;
     }
-    setSelectedThreadId(conversations[0]._id);
-  }, [conversations, selectedThreadId]);
+    setSelectedThreadId(visibleConversations[0]._id);
+  }, [selectedThreadId, visibleConversations]);
 
   useEffect(() => {
     if (!adminSecret || !selectedThreadId || !threadDetail?.thread.unread) return;
@@ -76,12 +176,16 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
   }, [adminSecret, markThreadRead, selectedThreadId, threadDetail?.thread.unread]);
 
   if (conversations === undefined) {
-    return <p className="font-mono text-xs text-muted-foreground">Loading chats...</p>;
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="font-mono text-xs text-muted-foreground">Loading chats...</p>
+      </div>
+    );
   }
 
   if (conversations === null || threadDetail === null) {
     return (
-      <div className="max-w-md rounded-[8px] border border-border bg-card p-5">
+      <div className="m-4 max-w-md rounded-[8px] border border-border bg-card p-5">
         <p className="text-sm text-muted-foreground">
           That password did not work, or the admin secret is not configured.
         </p>
@@ -89,9 +193,9 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
     );
   }
 
-  if (conversations.length === 0) {
+  if (visibleConversations.length === 0) {
     return (
-      <div className="flex min-h-[28rem] flex-col items-center justify-center rounded-[8px] border border-dashed border-border bg-card/40 px-5 text-center">
+      <div className="flex h-full flex-col items-center justify-center bg-background/50 px-5 text-center">
         <Inbox aria-hidden="true" className="mb-3 h-8 w-8 text-muted-foreground" />
         <p className="text-sm font-medium text-foreground">No chats yet.</p>
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">
@@ -102,20 +206,20 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
   }
 
   return (
-    <div className="grid min-h-[calc(100dvh-11rem)] overflow-hidden rounded-[8px] border border-border bg-card lg:grid-cols-[22rem_minmax(0,1fr)]">
-      <aside className="min-h-0 border-b border-border lg:border-b-0 lg:border-r">
-        <div className="flex h-14 items-center justify-between border-b border-border px-4">
+    <div className="grid h-full min-h-0 overflow-hidden bg-card lg:grid-cols-[22rem_minmax(0,1fr)]">
+      <aside className="flex min-h-0 flex-col border-b border-border lg:border-b-0 lg:border-r">
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
           <div className="flex items-center gap-2">
             <MessageCircle aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
             <p className="text-sm font-medium">Conversations</p>
           </div>
           <span className="font-mono text-[11px] text-muted-foreground">
-            {conversations.filter((conversation) => conversation.unread).length} unread
+            {visibleConversations.filter((conversation) => conversation.unread).length} unread
           </span>
         </div>
 
-        <div className="max-h-[22rem] overflow-y-auto lg:max-h-[calc(100dvh-14.5rem)]">
-          {conversations.map((conversation) => {
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {visibleConversations.map((conversation) => {
             const isSelected = conversation._id === selectedThreadId;
             const isUnread = conversation.unread;
 
@@ -168,10 +272,10 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
         </div>
       </aside>
 
-      <section className="flex min-h-[32rem] min-w-0 flex-col bg-background/55">
+      <section className="flex min-h-0 min-w-0 flex-col bg-background/55">
         {selectedThread && threadDetail ? (
           <>
-            <header className="flex min-h-14 items-center justify-between gap-3 border-b border-border bg-card px-4">
+            <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-foreground">
                   {getThreadTitle(selectedThread)}
@@ -194,7 +298,7 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
               </Button>
             </header>
 
-            <div className="flex-1 overflow-y-auto px-4 py-5">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
               <div className="mx-auto flex max-w-3xl flex-col gap-3">
                 {threadDetail.messages.map((message) => {
                   const isVisitor = message.author === "visitor";
@@ -219,7 +323,11 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
                           {isVisitor ? "Visitor" : "AI Ashvin"}
                         </span>
                       </div>
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.body}</p>
+                      <div className="text-sm leading-relaxed">
+                        <AdminMessageMarkdown inverse={isVisitor}>
+                          {message.body}
+                        </AdminMessageMarkdown>
+                      </div>
                       <time className="self-end font-mono text-[10px] opacity-70">
                         {formatMessageTime(message.createdAt)}
                       </time>
@@ -245,7 +353,6 @@ export default function ChatAdmin() {
     <AdminShell
       activePath="/admin"
       title="Chat inbox"
-      description="Visitor chats with the AI bot, ordered by the latest message."
     >
       {(adminSecret) => <ChatAdminInbox adminSecret={adminSecret} />}
     </AdminShell>
