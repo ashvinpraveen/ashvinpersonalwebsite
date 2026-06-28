@@ -1,5 +1,7 @@
 import { defineApp } from "convex/server";
 import { v } from "convex/values";
+import agent from "@convex-dev/agent/convex.config.js";
+import migrations from "@convex-dev/migrations/convex.config.js";
 
 const app = defineApp({
   env: {
@@ -16,5 +18,8 @@ const app = defineApp({
     POSTCARD_ADMIN_SECRET: v.optional(v.string()),
   },
 });
+
+app.use(agent);
+app.use(migrations);
 
 export default app;

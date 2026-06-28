@@ -70,6 +70,18 @@ export const startNewForClient = mutation({
   },
 });
 
+export const setAgentThreadId = internalMutation({
+  args: {
+    threadId: v.id("chatThreads"),
+    agentThreadId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.threadId, {
+      agentThreadId: args.agentThreadId,
+    });
+  },
+});
+
 export const listForAdmin = query({
   args: {
     adminSecret: v.string(),
@@ -298,5 +310,14 @@ export const getRecentMessages = internalQuery({
       .take(12);
 
     return messages.reverse() as Doc<"chatMessages">[];
+  },
+});
+
+export const getThreadForAgent = internalQuery({
+  args: {
+    threadId: v.id("chatThreads"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.threadId);
   },
 });

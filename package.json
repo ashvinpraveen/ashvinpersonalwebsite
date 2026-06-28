@@ -13,6 +13,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.30",
+    "@ai-sdk/openai-compatible": "^2.0.54",
+    "@convex-dev/agent": "^0.6.4",
+    "@convex-dev/migrations": "^0.3.5",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -43,6 +47,7 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tanstack/react-query": "^5.83.0",
     "@vercel/analytics": "^2.0.1",
+    "ai": "^6.0.214",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
