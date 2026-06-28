@@ -11,14 +11,28 @@ import {
 } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowUp, Check, ChevronDown, Compass, History, Maximize2, MessageSquarePlus, Minimize2, Minus, Plus, X } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { Check, ChevronDown, Compass, History, Maximize2, MessageSquarePlus, Minimize2, Minus, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { Conversation, ConversationContent } from "@/components/ai-elements/conversation";
+import {
+  Message,
+  MessageContent,
+  MessageLoading,
+  MessageResponse,
+} from "@/components/ai-elements/message";
+import {
+  PromptInput,
+  PromptInputBody,
+  PromptInputFooter,
+  PromptInputHeader,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputTools,
+} from "@/components/ai-elements/prompt-input";
+import { Tool, ToolContent, ToolHeader } from "@/components/ai-elements/tool";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const CLIENT_ID_KEY = "ashvin-chat-client-id";
@@ -318,41 +332,6 @@ function GeneratedAshvinPet({
   );
 }
 
-function ChatMarkdown({ children }: { children: string }) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        a: ({ children, href, ...props }) => (
-          <a
-            className="underline underline-offset-2"
-            href={href}
-            rel="noreferrer"
-            target="_blank"
-            {...props}
-          >
-            {children}
-          </a>
-        ),
-        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-        ul: ({ children }) => (
-          <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0">{children}</ul>
-        ),
-        ol: ({ children }) => (
-          <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0">{children}</ol>
-        ),
-        code: ({ children }) => (
-          <code className="rounded bg-background/70 px-1 py-0.5 text-[0.85em]">
-            {children}
-          </code>
-        ),
-      }}
-    >
-      {children}
-    </ReactMarkdown>
-  );
-}
-
 function getChatErrorDescription(error: unknown) {
   const fallback = "Please try again in a minute.";
   if (!(error instanceof Error)) return fallback;
@@ -382,6 +361,7 @@ function ChatWidgetInner() {
   const [modelProvider, setModelProvider] = useState<ModelProvider>("ilmu");
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const [recentToolCalls, setRecentToolCalls] = useState<ChatToolCall[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [mobileViewport, setMobileViewport] = useState<MobileViewport | null>(null);
   const [pageContext, setPageContext] = useState<PageContext | null>(null);
@@ -729,6 +709,33 @@ function ChatWidgetInner() {
     }
   }
 
+  function getToolCallDisplay(toolCall: ChatToolCall) {
+    if (toolCall.name === "navigate_site") {
+      return {
+        label: "Navigate",
+        detail: toolCall.args.reason
+          ? `${toolCall.args.path} · ${toolCall.args.reason}`
+          : toolCall.args.path,
+      };
+    }
+
+    if (toolCall.name === "scroll_to_section") {
+      return {
+        label: "Scroll",
+        detail: toolCall.args.reason
+          ? `#${toolCall.args.sectionId} · ${toolCall.args.reason}`
+          : `#${toolCall.args.sectionId}`,
+      };
+    }
+
+    return {
+      label: "Highlight",
+      detail: toolCall.args.reason
+        ? `#${toolCall.args.sectionId} · ${toolCall.args.reason}`
+        : `#${toolCall.args.sectionId}`,
+    };
+  }
+
   function handleSideResizeStart(event: ReactPointerEvent<HTMLDivElement>) {
     event.preventDefault();
     const startX = event.clientX;
@@ -908,7 +915,9 @@ function ChatWidgetInner() {
           mimeType: image.mimeType,
         })),
       });
-      applyToolCalls(result.toolCalls ?? []);
+      const toolCalls = result.toolCalls ?? [];
+      setRecentToolCalls(toolCalls);
+      applyToolCalls(toolCalls);
       setMessage("");
       setAttachedImages([]);
     } catch (error) {
@@ -930,6 +939,7 @@ function ChatWidgetInner() {
       setActiveThreadId(threadId);
       setMessage("");
       setAttachedImages([]);
+      setRecentToolCalls([]);
       setIsHistoryOpen(false);
       inputRef.current?.focus();
     } catch (error) {
@@ -1106,60 +1116,76 @@ function ChatWidgetInner() {
             </div>
           ) : null}
 
-          <div
-            ref={messageListRef}
-            className={cn(
-              "flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain px-3 py-3",
-              isSidePanelOpen
-                ? "flex-1"
-                : "flex-1 sm:h-[12rem] sm:max-h-[min(12rem,calc(70dvh-10rem))] sm:flex-none",
-            )}
-          >
-            {hasConversation ? (
-              messages.map((item) => (
-                <div
-                  key={item._id}
-                  className={cn(
-                    "text-base leading-relaxed sm:text-sm",
-                    item.author === "visitor"
-                      ? "ml-auto max-w-[82%] rounded-lg bg-primary px-3 py-2 text-primary-foreground"
-                      : "mr-auto w-full max-w-none px-0 py-1 text-foreground",
-                  )}
-                >
-                  {item.author === "ashvin" ? (
-                    <ChatMarkdown>{item.body}</ChatMarkdown>
-                  ) : (
-                    item.body
-                  )}
+          <Conversation>
+            <ConversationContent
+              ref={messageListRef}
+              className={cn(
+                "flex flex-col gap-3 px-3 py-3",
+                isSidePanelOpen
+                  ? "flex-1"
+                  : "flex-1 sm:h-[12rem] sm:max-h-[min(12rem,calc(70dvh-10rem))] sm:flex-none",
+              )}
+            >
+              {hasConversation ? (
+                messages.map((item) => (
+                  <Message
+                    key={item._id}
+                    from={item.author === "visitor" ? "user" : "assistant"}
+                  >
+                    <MessageContent>
+                      {item.author === "visitor" ? (
+                        item.body
+                      ) : (
+                        <MessageResponse>{item.body}</MessageResponse>
+                      )}
+                    </MessageContent>
+                  </Message>
+                ))
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center px-2 text-center">
+                  <p className="text-base font-medium text-foreground">How can I help?</p>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    Ashvin here, chat with me about anything.
+                  </p>
                 </div>
-              ))
-            ) : (
-              <div className="flex flex-1 flex-col items-center justify-center px-2 text-center">
-                <p className="text-base font-medium text-foreground">How can I help?</p>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                  Ashvin here, chat with me about anything.
-                </p>
-              </div>
-            )}
-            {isSending ? (
-              <div className="mr-auto w-full max-w-none px-0 py-1 text-base text-muted-foreground sm:text-sm">
-                Thinking...
-              </div>
-            ) : null}
-          </div>
+              )}
+              {recentToolCalls.length > 0 ? (
+                <Message from="assistant">
+                  <MessageContent className="space-y-2">
+                    {recentToolCalls.map((toolCall, index) => {
+                      const display = getToolCallDisplay(toolCall);
+                      return (
+                        <Tool key={`${toolCall.name}-${index}`}>
+                          <ToolHeader status="output-available">{display.label}</ToolHeader>
+                          <ToolContent>{display.detail}</ToolContent>
+                        </Tool>
+                      );
+                    })}
+                  </MessageContent>
+                </Message>
+              ) : null}
+              {isSending ? (
+                <Message from="assistant">
+                  <MessageContent>
+                    <MessageLoading />
+                  </MessageContent>
+                </Message>
+              ) : null}
+            </ConversationContent>
+          </Conversation>
 
-          <form
+          <PromptInput
             onSubmit={handleSubmit}
             className="p-3 pt-1 [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))] sm:p-3 sm:pt-1"
           >
-            <div className="overflow-hidden rounded-3xl bg-popover shadow-sm ring-1 ring-border/35 dark:bg-secondary sm:bg-popover/85 sm:dark:bg-secondary/80">
-              <div className="px-3 pt-3">
+            <PromptInputBody>
+              <PromptInputHeader>
                 <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-background px-2.5 py-1 text-[11px] text-muted-foreground sm:bg-background/70 sm:dark:bg-background/45">
                   <Compass aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{contextPillText}</span>
                 </div>
-              </div>
-              <Textarea
+              </PromptInputHeader>
+              <PromptInputTextarea
                 ref={inputRef}
                 rows={1}
                 value={message}
@@ -1174,10 +1200,9 @@ function ChatWidgetInner() {
                   }
                 }}
                 placeholder="Ask me anything"
-                className="min-h-11 resize-none border-0 bg-transparent px-3 py-2 text-base leading-relaxed shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm"
               />
-              <div className="flex min-h-12 items-center justify-between gap-2 px-2.5 pb-2.5">
-                <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <PromptInputFooter>
+                <PromptInputTools>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -1224,7 +1249,7 @@ function ChatWidgetInner() {
                       </button>
                     </div>
                   ))}
-                </div>
+                </PromptInputTools>
                 <div ref={modelMenuRef} className="relative shrink-0">
                   <button
                     type="button"
@@ -1272,18 +1297,13 @@ function ChatWidgetInner() {
                     </div>
                   ) : null}
                 </div>
-                <Button
-                  type="submit"
-                  size="icon"
-                  aria-label="Send message"
-                  className="h-8 w-8 shrink-0 rounded-full"
+                <PromptInputSubmit
+                  status={isSending ? "submitted" : "ready"}
                   disabled={(!message.trim() && attachedImages.length === 0) || isSending || !clientId}
-                >
-                  <ArrowUp aria-hidden="true" />
-                </Button>
-              </div>
-            </div>
-          </form>
+                />
+              </PromptInputFooter>
+            </PromptInputBody>
+          </PromptInput>
         </section>
       ) : null}
 

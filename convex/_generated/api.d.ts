@@ -9,6 +9,7 @@
  */
 
 import type * as adminAuth from "../adminAuth.js";
+import type * as adminDashboard from "../adminDashboard.js";
 import type * as articleViews from "../articleViews.js";
 import type * as chat from "../chat.js";
 import type * as chatAi from "../chatAi.js";
@@ -23,6 +24,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   adminAuth: typeof adminAuth;
+  adminDashboard: typeof adminDashboard;
   articleViews: typeof articleViews;
   chat: typeof chat;
   chatAi: typeof chatAi;

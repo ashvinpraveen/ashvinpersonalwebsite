@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, ReactNode, useEffect, useState } from "react";
-import { LogOut, MessageCircle, PencilLine } from "lucide-react";
+import { LayoutDashboard, LogOut, MessageCircle, PencilLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -10,13 +10,18 @@ import { cn } from "@/lib/utils";
 export const ADMIN_SECRET_KEY = "postcard-admin-secret";
 
 type AdminShellProps = {
-  activePath: "/admin" | "/admin/postcards";
+  activePath: "/admin" | "/admin/dashboard" | "/admin/postcards";
   title: string;
   description?: string;
   children: (adminSecret: string) => ReactNode;
 };
 
 const adminNavItems = [
+  {
+    href: "/admin/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+  },
   {
     href: "/admin",
     label: "Chats",
@@ -62,7 +67,7 @@ export default function AdminShell({
   return (
     <main className="h-dvh overflow-hidden bg-background text-foreground">
         {adminSecret ? (
-          <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-card lg:grid-cols-[9.5rem_minmax(0,1fr)] lg:grid-rows-1">
+          <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-card lg:grid-cols-[9.5rem_minmax(0,1fr)] lg:grid-rows-1">
             <aside className="flex min-h-0 flex-col border-b border-border bg-background/70 lg:border-b-0 lg:border-r">
               <div className="flex h-14 items-center justify-between gap-3 border-b border-border px-3">
                 <div className="min-w-0">
@@ -82,7 +87,7 @@ export default function AdminShell({
                 </Button>
               </div>
 
-              <nav className="flex gap-1 overflow-x-auto p-2 lg:flex-1 lg:flex-col lg:overflow-y-auto">
+              <nav className="hidden gap-1 overflow-x-auto p-2 lg:flex lg:flex-1 lg:flex-col lg:overflow-y-auto">
                 {adminNavItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = activePath === item.href;
@@ -119,6 +124,29 @@ export default function AdminShell({
             </aside>
 
             <section className="min-h-0 min-w-0 overflow-hidden">{children(adminSecret)}</section>
+
+            <nav className="grid h-16 grid-cols-3 border-t border-border bg-background/95 px-3 py-2 lg:hidden">
+              {adminNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activePath === item.href;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] text-[11px] font-medium transition-colors",
+                      isActive
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <Icon aria-hidden="true" className="h-4 w-4" />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
         ) : (
           <div className="flex h-full items-center justify-center">

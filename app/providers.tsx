@@ -3,6 +3,7 @@
 import { ReactNode, useMemo, useState } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { usePathname } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -26,6 +27,8 @@ function MaybeConvexProvider({ children }: { children: ReactNode }) {
 
 export default function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
+  const pathname = usePathname();
+  const showChatWidget = !pathname?.startsWith("/admin");
 
   return (
     <PostHogProvider>
@@ -37,7 +40,7 @@ export default function Providers({ children }: { children: ReactNode }) {
               <Toaster />
               <Sonner />
               {children}
-              <ChatWidget />
+              {showChatWidget ? <ChatWidget /> : null}
             </TooltipProvider>
           </ThemeProvider>
         </QueryClientProvider>

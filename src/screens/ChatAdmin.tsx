@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Bot, Inbox, MailOpen, MessageCircle, Send, UserRound } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { Bot, ChevronLeft, Inbox, MailOpen, MessageCircle, Send, UserRound } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
 import AdminShell from "@/screens/AdminShell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -47,100 +50,10 @@ function getThreadTitle(thread: { title?: string; clientId: string }) {
   return thread.title?.trim() || `Visitor ${shortClientId(thread.clientId)}`;
 }
 
-function AdminMessageMarkdown({
-  children,
-  inverse = false,
-}: {
-  children: string;
-  inverse?: boolean;
-}) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        a: ({ children, href, ...props }) => (
-          <a
-            className="underline underline-offset-2"
-            href={href}
-            rel="noreferrer"
-            target="_blank"
-            {...props}
-          >
-            {children}
-          </a>
-        ),
-        blockquote: ({ children }) => (
-          <blockquote
-            className={cn(
-              "my-2 border-l-2 pl-3 italic",
-              inverse ? "border-white/45" : "border-border text-muted-foreground",
-            )}
-          >
-            {children}
-          </blockquote>
-        ),
-        code: ({ children }) => (
-          <code
-            className={cn(
-              "rounded px-1 py-0.5 text-[0.85em]",
-              inverse ? "bg-white/15" : "bg-muted",
-            )}
-          >
-            {children}
-          </code>
-        ),
-        ol: ({ children }) => (
-          <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0">{children}</ol>
-        ),
-        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-        pre: ({ children }) => (
-          <pre
-            className={cn(
-              "my-2 overflow-x-auto rounded-[6px] p-3 text-xs",
-              inverse ? "bg-black/15" : "bg-muted",
-            )}
-          >
-            {children}
-          </pre>
-        ),
-        table: ({ children }) => (
-          <div className="my-2 overflow-x-auto">
-            <table className="w-full border-collapse text-xs">{children}</table>
-          </div>
-        ),
-        td: ({ children }) => (
-          <td
-            className={cn(
-              "border px-2 py-1 align-top",
-              inverse ? "border-white/25" : "border-border",
-            )}
-          >
-            {children}
-          </td>
-        ),
-        th: ({ children }) => (
-          <th
-            className={cn(
-              "border px-2 py-1 text-left align-top font-medium",
-              inverse ? "border-white/25" : "border-border",
-            )}
-          >
-            {children}
-          </th>
-        ),
-        ul: ({ children }) => (
-          <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0">{children}</ul>
-        ),
-      }}
-    >
-      {children}
-    </ReactMarkdown>
-  );
-}
-
 function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
   const conversations = useQuery(api.chat.listForAdmin, { adminSecret });
   const [selectedThreadId, setSelectedThreadId] = useState<Id<"chatThreads"> | null>(null);
+  const [isThreadOpen, setIsThreadOpen] = useState(false);
   const visibleConversations = useMemo(() => {
     if (!conversations) return conversations;
     return conversations.filter((conversation) => conversation.latestMessage);
@@ -164,6 +77,16 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
       return;
     }
     setSelectedThreadId(visibleConversations[0]._id);
+  }, [selectedThreadId, visibleConversations]);
+
+  useEffect(() => {
+    if (
+      selectedThreadId &&
+      visibleConversations &&
+      !visibleConversations.some((conversation) => conversation._id === selectedThreadId)
+    ) {
+      setIsThreadOpen(false);
+    }
   }, [selectedThreadId, visibleConversations]);
 
   useEffect(() => {
@@ -207,7 +130,12 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
 
   return (
     <div className="grid h-full min-h-0 overflow-hidden bg-card lg:grid-cols-[22rem_minmax(0,1fr)]">
-      <aside className="flex min-h-0 flex-col border-b border-border lg:border-b-0 lg:border-r">
+      <aside
+        className={cn(
+          "min-h-0 flex-col border-b border-border lg:flex lg:border-b-0 lg:border-r",
+          isThreadOpen ? "hidden" : "flex",
+        )}
+      >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
           <div className="flex items-center gap-2">
             <MessageCircle aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
@@ -231,7 +159,10 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
                   "grid w-full grid-cols-[minmax(0,1fr)_auto] gap-x-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-muted/70",
                   isSelected && "bg-muted",
                 )}
-                onClick={() => setSelectedThreadId(conversation._id)}
+                onClick={() => {
+                  setSelectedThreadId(conversation._id);
+                  setIsThreadOpen(true);
+                }}
               >
                 <div className="min-w-0 space-y-1">
                   <div className="flex min-w-0 items-center gap-2">
@@ -272,11 +203,27 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
         </div>
       </aside>
 
-      <section className="flex min-h-0 min-w-0 flex-col bg-background/55">
+      <section
+        className={cn(
+          "min-h-0 min-w-0 flex-col bg-background/55 lg:flex",
+          isThreadOpen ? "flex" : "hidden",
+        )}
+      >
         {selectedThread && threadDetail ? (
           <>
             <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4">
-              <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="-ml-2 h-8 w-8 shrink-0 rounded-[7px] text-muted-foreground hover:text-foreground lg:hidden"
+                  aria-label="Back to conversations"
+                  onClick={() => setIsThreadOpen(false)}
+                >
+                  <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+                </Button>
+                <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-foreground">
                   {getThreadTitle(selectedThread)}
                 </p>
@@ -284,6 +231,7 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
                   {shortClientId(selectedThread.clientId)} · started{" "}
                   {formatMessageTime(selectedThread.createdAt)}
                 </p>
+                </div>
               </div>
               <Button
                 type="button"
@@ -298,40 +246,33 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
               </Button>
             </header>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 lg:px-4 lg:py-5">
               <div className="mx-auto flex max-w-3xl flex-col gap-3">
                 {threadDetail.messages.map((message) => {
                   const isVisitor = message.author === "visitor";
 
                   return (
-                    <article
+                    <Message
                       key={message._id}
-                      className={cn(
-                        "flex max-w-[86%] flex-col gap-1 rounded-[8px] px-3 py-2 shadow-sm",
-                        isVisitor
-                          ? "ml-auto bg-emerald-600 text-white"
-                          : "mr-auto bg-card text-foreground",
-                      )}
+                      from={isVisitor ? "user" : "assistant"}
                     >
-                      <div className="flex items-center gap-1.5">
-                        {isVisitor ? (
-                          <UserRound aria-hidden="true" className="h-3.5 w-3.5 opacity-80" />
-                        ) : (
-                          <Bot aria-hidden="true" className="h-3.5 w-3.5 opacity-70" />
-                        )}
-                        <span className="font-mono text-[10px] uppercase tracking-widest opacity-75">
-                          {isVisitor ? "Visitor" : "AI Ashvin"}
-                        </span>
-                      </div>
-                      <div className="text-sm leading-relaxed">
-                        <AdminMessageMarkdown inverse={isVisitor}>
-                          {message.body}
-                        </AdminMessageMarkdown>
-                      </div>
-                      <time className="self-end font-mono text-[10px] opacity-70">
-                        {formatMessageTime(message.createdAt)}
-                      </time>
-                    </article>
+                      <MessageContent className="max-w-[88%] lg:max-w-[82%]">
+                        <div className="flex items-center gap-1.5">
+                          {isVisitor ? (
+                            <UserRound aria-hidden="true" className="h-3.5 w-3.5 opacity-80" />
+                          ) : (
+                            <Bot aria-hidden="true" className="h-3.5 w-3.5 opacity-70" />
+                          )}
+                          <span className="font-mono text-[10px] uppercase tracking-widest opacity-75">
+                            {isVisitor ? "Visitor" : "AI Ashvin"}
+                          </span>
+                        </div>
+                        <MessageResponse>{message.body}</MessageResponse>
+                        <time className="block text-right font-mono text-[10px] opacity-70">
+                          {formatMessageTime(message.createdAt)}
+                        </time>
+                      </MessageContent>
+                    </Message>
                   );
                 })}
               </div>

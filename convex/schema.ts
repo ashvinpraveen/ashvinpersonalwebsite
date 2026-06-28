@@ -34,6 +34,7 @@ export default defineSchema({
     lastVisitorMessageAt: v.optional(v.number()),
     createdAt: v.number(),
   })
+    .index("by_createdAt", ["createdAt"])
     .index("by_clientId", ["clientId"])
     .index("by_clientId_and_lastMessageAt", ["clientId", "lastMessageAt"])
     .index("by_lastMessageAt", ["lastMessageAt"])
