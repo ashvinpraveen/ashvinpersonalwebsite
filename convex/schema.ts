@@ -29,6 +29,7 @@ export default defineSchema({
     clientId: v.string(),
     status: v.union(v.literal("open"), v.literal("closed")),
     title: v.optional(v.string()),
+    agentThreadId: v.optional(v.string()),
     adminLastReadAt: v.optional(v.number()),
     lastMessageAt: v.number(),
     lastVisitorMessageAt: v.optional(v.number()),

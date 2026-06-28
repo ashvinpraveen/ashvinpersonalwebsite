@@ -5,11 +5,13 @@ import {
   type FormEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
+import { useUIMessages } from "@convex-dev/agent/react";
 import { usePathname, useRouter } from "next/navigation";
 import { Check, ChevronDown, Compass, History, Maximize2, MessageSquarePlus, Minimize2, Minus, Plus, X } from "lucide-react";
 import { toast } from "sonner";
@@ -33,6 +35,11 @@ import {
 import { Tool, ToolContent, ToolHeader } from "@/components/ai-elements/tool";
 import { Button } from "@/components/ui/button";
 import AshvinPet from "@/features/chat-widget/AshvinPet";
+import {
+  extractScreenToolCalls,
+  toDisplayChatMessages,
+  type AgentUiMessage,
+} from "@/features/chat-widget/agentMessages";
 import {
   clamp,
   clampPetPosition,
@@ -72,7 +79,7 @@ import type {
   PetDragState,
   PetPosition,
 } from "@/features/chat-widget/types";
-import { isAiChatEnabled } from "@/lib/features";
+import { isAgentChatBackend, isAiChatEnabled } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
 function ChatWidgetInner() {
@@ -104,15 +111,26 @@ function ChatWidgetInner() {
   const sidePanelExitTimeoutRef = useRef<number | null>(null);
   const ignoreLauncherClickRef = useRef(false);
   const modelMenuRef = useRef<HTMLDivElement>(null);
+  const appliedAgentToolCallIdsRef = useRef(new Set<string>());
 
   const chat = useQuery(
     api.chat.getForClient,
     clientId ? { clientId, threadId: activeThreadId } : "skip",
   );
   const sendMessage = useAction(api.chatAi.send);
+  const sendAgentMessage = useAction(api.chatAgent.send);
   const startNewChat = useMutation(api.chat.startNewForClient);
+  const agentMessages = useUIMessages(
+    api.chatAgent.getForClient,
+    isAgentChatBackend && clientId && activeThreadId
+      ? { clientId, threadId: activeThreadId }
+      : "skip",
+    { initialNumItems: 80, stream: true },
+  );
 
-  const messages = chat?.messages ?? [];
+  const messages = isAgentChatBackend
+    ? toDisplayChatMessages((agentMessages.results ?? []) as AgentUiMessage[])
+    : chat?.messages ?? [];
   const threads = chat?.threads ?? [];
   const hasConversation = messages.length > 0;
   const isAdminRoute = pathname?.startsWith("/admin") ?? false;
@@ -386,15 +404,15 @@ function ChatWidgetInner() {
     ? `${getRouteLabel(pageContext.path)} · ${pageContext.title}`
     : "Reading this page";
 
-  function scrollToSection(sectionId: string) {
+  const scrollToSection = useCallback((sectionId: string) => {
     const section = document.getElementById(sectionId);
     if (!section) return false;
 
     section.scrollIntoView({ behavior: "smooth", block: "start" });
     return true;
-  }
+  }, []);
 
-  function highlightSection(sectionId: string) {
+  const highlightSection = useCallback((sectionId: string) => {
     const section = document.getElementById(sectionId);
     if (!section) return false;
 
@@ -403,9 +421,9 @@ function ChatWidgetInner() {
       section.classList.remove("chat-section-highlight");
     }, 1800);
     return true;
-  }
+  }, []);
 
-  function applyToolCalls(toolCalls: ChatToolCall[]) {
+  const applyToolCalls = useCallback((toolCalls: ChatToolCall[]) => {
     for (const toolCall of toolCalls) {
       if (toolCall.name === "navigate_site" && isSafeSitePath(toolCall.args.path)) {
         router.push(toolCall.args.path);
@@ -433,7 +451,19 @@ function ChatWidgetInner() {
         }
       }
     }
-  }
+  }, [highlightSection, router, scrollToSection]);
+
+  useEffect(() => {
+    if (!isAgentChatBackend) return;
+    const toolCalls = extractScreenToolCalls(
+      (agentMessages.results ?? []) as AgentUiMessage[],
+      appliedAgentToolCallIdsRef.current,
+    );
+    if (toolCalls.length === 0) return;
+
+    setRecentToolCalls(toolCalls);
+    applyToolCalls(toolCalls);
+  }, [agentMessages.results, applyToolCalls]);
 
   function getToolCallDisplay(toolCall: ChatToolCall) {
     if (toolCall.name === "navigate_site") {
@@ -630,7 +660,7 @@ function ChatWidgetInner() {
     try {
       const latestPageContext = collectPageContext(pathname || window.location.pathname);
       setPageContext(latestPageContext);
-      const result = await sendMessage({
+      const payload = {
         clientId,
         threadId: activeThreadId,
         body: body || "Please look at the attached image.",
@@ -640,10 +670,17 @@ function ChatWidgetInner() {
           data: image.data,
           mimeType: image.mimeType,
         })),
-      });
-      const toolCalls = result.toolCalls ?? [];
-      setRecentToolCalls(toolCalls);
-      applyToolCalls(toolCalls);
+      };
+
+      if (isAgentChatBackend) {
+        const result = await sendAgentMessage(payload);
+        setActiveThreadId(result.threadId);
+      } else {
+        const result = await sendMessage(payload);
+        const toolCalls = result.toolCalls ?? [];
+        setRecentToolCalls(toolCalls);
+        applyToolCalls(toolCalls);
+      }
       setMessage("");
       setAttachedImages([]);
     } catch (error) {
@@ -666,6 +703,7 @@ function ChatWidgetInner() {
       setMessage("");
       setAttachedImages([]);
       setRecentToolCalls([]);
+      appliedAgentToolCallIdsRef.current.clear();
       setIsHistoryOpen(false);
       inputRef.current?.focus();
     } catch (error) {

@@ -2,9 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { useUIMessages } from "@convex-dev/agent/react";
 import { Bot, ChevronLeft, Inbox, MailOpen, MessageCircle, Send, UserRound } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import {
+  toDisplayChatMessages,
+  type AgentUiMessage,
+} from "@/features/chat-widget/agentMessages";
 import {
   Message,
   MessageContent,
@@ -20,7 +25,7 @@ import {
   getThreadTitle,
   shortClientId,
 } from "@/features/admin/formatters";
-import { isAdminEnabled } from "@/lib/features";
+import { isAdminEnabled, isAgentChatBackend } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
 function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
@@ -39,7 +44,17 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
     api.chat.getThreadForAdmin,
     adminSecret && selectedThreadId ? { adminSecret, threadId: selectedThreadId } : "skip",
   );
+  const agentMessages = useUIMessages(
+    api.chatAgent.getForAdmin,
+    isAgentChatBackend && adminSecret && selectedThreadId
+      ? { adminSecret, threadId: selectedThreadId }
+      : "skip",
+    { initialNumItems: 120, stream: true },
+  );
   const markThreadRead = useMutation(api.chat.markThreadReadForAdmin);
+  const visibleMessages = isAgentChatBackend
+    ? toDisplayChatMessages((agentMessages.results ?? []) as AgentUiMessage[])
+    : threadDetail?.messages ?? [];
 
   useEffect(() => {
     if (visibleConversations.length === 0) return;
@@ -221,7 +236,7 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
 
             <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 lg:px-4 lg:py-5">
               <div className="mx-auto flex max-w-3xl flex-col gap-3">
-                {threadDetail.messages.map((message) => {
+                {visibleMessages.map((message) => {
                   const isVisitor = message.author === "visitor";
 
                   return (
