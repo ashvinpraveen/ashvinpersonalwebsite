@@ -8,18 +8,9 @@ import Footer from "@/components/Footer";
 import ActivityMap from "@/components/ActivityMap";
 import { CleveNote, fetchNotes } from "@/lib/cleve";
 import { fetchBatchArticleViews } from "@/lib/articleViews";
+import { formatNoteDate } from "@/lib/dateFormat";
 import { contentColumnClassName, pageShellClassName } from "@/lib/layout";
 import { monoLabel, heading, linkPrimary } from "@/lib/styles";
-
-const formatNoteDate = (timestamp: number | null | undefined) => {
-  if (!timestamp) return "Updated recently";
-
-  return new Date(timestamp).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-};
 
 const PostSkeleton = () => (
   <li className="space-y-2">

@@ -10,6 +10,7 @@ import WritingSection from "@/components/WritingSection";
 
 import ContactSection from "@/components/ContactSection";
 import { pageShellClassName } from "@/lib/layout";
+import { isBlogEnabled } from "@/lib/features";
 
 const Index = () => {
   return (
@@ -20,7 +21,7 @@ const Index = () => {
       <main className={`${pageShellClassName} pt-12`}>
         <WorkSection />
         <AboutSection />
-        <WritingSection />
+        {isBlogEnabled ? <WritingSection /> : null}
 
         <ContactSection />
         <Footer />

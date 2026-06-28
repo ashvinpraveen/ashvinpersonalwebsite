@@ -8,16 +8,12 @@ import type { Id } from "../../convex/_generated/dataModel";
 import AdminShell from "@/screens/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import FeatureUnavailable from "@/components/FeatureUnavailable";
+import { ADMIN_UNAVAILABLE_MESSAGE } from "@/features/admin/formatters";
+import { formatPostcardDate } from "@/features/postcards/browser";
+import { isAdminEnabled } from "@/lib/features";
 
 const MAX_REPLY_LENGTH = 500;
-
-function formatPostcardDate(timestamp: number) {
-  return new Date(timestamp).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 function PostcardAdminList({ adminSecret }: { adminSecret: string }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -95,7 +91,7 @@ function PostcardAdminList({ adminSecret }: { adminSecret: string }) {
       {postcards === null && (
         <div className="max-w-md rounded-[8px] border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">
-            That password did not work, or the admin secret is not configured.
+            {ADMIN_UNAVAILABLE_MESSAGE}
           </p>
         </div>
       )}
@@ -204,13 +200,26 @@ function PostcardAdminList({ adminSecret }: { adminSecret: string }) {
   );
 }
 
-const PostcardAdmin = () => (
-  <AdminShell
-    activePath="/admin/postcards"
-    title="Postcards"
-  >
-    {(adminSecret) => <PostcardAdminList adminSecret={adminSecret} />}
-  </AdminShell>
-);
+const PostcardAdmin = () => {
+  if (!isAdminEnabled) {
+    return (
+      <main className="flex h-dvh items-center justify-center bg-background p-6">
+        <FeatureUnavailable
+          title="Postcard admin is not configured"
+          description="Set NEXT_PUBLIC_CONVEX_URL and run Convex to enable postcard moderation."
+        />
+      </main>
+    );
+  }
+
+  return (
+    <AdminShell
+      activePath="/admin/postcards"
+      title="Postcards"
+    >
+      {(adminSecret) => <PostcardAdminList adminSecret={adminSecret} />}
+    </AdminShell>
+  );
+};
 
 export default PostcardAdmin;

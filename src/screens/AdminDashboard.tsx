@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { api } from "../../convex/_generated/api";
 import AdminShell from "@/screens/AdminShell";
+import FeatureUnavailable from "@/components/FeatureUnavailable";
 import {
   ChartConfig,
   ChartContainer,
@@ -22,6 +23,12 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import {
+  ADMIN_UNAVAILABLE_MESSAGE,
+  formatMessageTime,
+  getThreadTitle,
+} from "@/features/admin/formatters";
+import { isAdminEnabled, isPostHogEnabled } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
 const activityChartConfig = {
@@ -51,24 +58,6 @@ function formatDateLabel(date: string) {
     month: "short",
     day: "numeric",
   });
-}
-
-function formatMessageTime(timestamp: number) {
-  return new Date(timestamp).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function shortClientId(clientId: string) {
-  if (clientId.length <= 12) return clientId;
-  return `${clientId.slice(0, 6)}...${clientId.slice(-4)}`;
-}
-
-function getThreadTitle(thread: { title?: string; clientId: string }) {
-  return thread.title?.trim() || `Visitor ${shortClientId(thread.clientId)}`;
 }
 
 function MetricCard({
@@ -132,7 +121,7 @@ function DashboardPanel({
 
 function AdminDashboardContent({ adminSecret }: { adminSecret: string }) {
   const dashboard = useQuery(api.adminDashboard.getOverview, { adminSecret });
-  const hasPostHogCapture = Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY);
+  const hasPostHogCapture = isPostHogEnabled;
 
   if (dashboard === undefined) {
     return (
@@ -146,7 +135,7 @@ function AdminDashboardContent({ adminSecret }: { adminSecret: string }) {
     return (
       <div className="m-4 max-w-md rounded-[8px] border border-border bg-card p-5">
         <p className="text-sm text-muted-foreground">
-          That password did not work, or the admin secret is not configured.
+          {ADMIN_UNAVAILABLE_MESSAGE}
         </p>
       </div>
     );
@@ -316,13 +305,26 @@ function AdminDashboardContent({ adminSecret }: { adminSecret: string }) {
   );
 }
 
-const AdminDashboard = () => (
-  <AdminShell
-    activePath="/admin/dashboard"
-    title="Dashboard"
-  >
-    {(adminSecret) => <AdminDashboardContent adminSecret={adminSecret} />}
-  </AdminShell>
-);
+const AdminDashboard = () => {
+  if (!isAdminEnabled) {
+    return (
+      <main className="flex h-dvh items-center justify-center bg-background p-6">
+        <FeatureUnavailable
+          title="Admin dashboard is not configured"
+          description="Set NEXT_PUBLIC_CONVEX_URL and run Convex to enable dashboard data."
+        />
+      </main>
+    );
+  }
+
+  return (
+    <AdminShell
+      activePath="/admin/dashboard"
+      title="Dashboard"
+    >
+      {(adminSecret) => <AdminDashboardContent adminSecret={adminSecret} />}
+    </AdminShell>
+  );
+};
 
 export default AdminDashboard;

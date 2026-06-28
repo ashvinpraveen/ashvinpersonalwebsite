@@ -72,6 +72,7 @@ import type {
   PetDragState,
   PetPosition,
 } from "@/features/chat-widget/types";
+import { isAiChatEnabled } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
 function ChatWidgetInner() {
@@ -1057,7 +1058,7 @@ function ChatWidgetInner() {
 }
 
 export default function ChatWidget() {
-  if (!process.env.NEXT_PUBLIC_CONVEX_URL) return null;
+  if (!isAiChatEnabled) return null;
 
   return <ChatWidgetInner />;
 }

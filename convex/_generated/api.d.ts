@@ -14,6 +14,8 @@ import type * as articleViews from "../articleViews.js";
 import type * as chat from "../chat.js";
 import type * as chatAi from "../chatAi.js";
 import type * as http from "../http.js";
+import type * as lib_chatAiBooking from "../lib/chatAiBooking.js";
+import type * as lib_chatAiTypes from "../lib/chatAiTypes.js";
 import type * as postcards from "../postcards.js";
 
 import type {
@@ -29,6 +31,8 @@ declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   chatAi: typeof chatAi;
   http: typeof http;
+  "lib/chatAiBooking": typeof lib_chatAiBooking;
+  "lib/chatAiTypes": typeof lib_chatAiTypes;
   postcards: typeof postcards;
 }>;
 

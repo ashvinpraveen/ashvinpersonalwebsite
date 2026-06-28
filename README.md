@@ -223,6 +223,17 @@ NEXT_PUBLIC_CONVEX_SITE_URL=your_convex_site_url
 
 You can find these URLs in your Convex dashboard after setting up your project. The site URL usually looks like `https://your-deployment.convex.site`.
 
+You can also skip `.env.local` at first. The site will still start, but service-backed features such as writing data, AI chat, postcards, admin, and PostHog will be empty, hidden, or show a not-configured state until their environment variables are added.
+
+To intentionally hide optional features in a fork, add any of these:
+
+```bash
+NEXT_PUBLIC_ENABLE_BLOG=false
+NEXT_PUBLIC_ENABLE_AI_CHAT=false
+NEXT_PUBLIC_ENABLE_POSTCARDS=false
+NEXT_PUBLIC_ENABLE_POSTHOG=false
+```
+
 **Important**: Never commit `.env.local` to GitHub. It's already in `.gitignore`, so Git will ignore it automatically.
 
 ### Step 4: Run Everything Together
@@ -337,6 +348,7 @@ If this is your first push, Git might ask you to log in. Follow the prompts.
 5. Before deploying, add your environment variables:
    - `NEXT_PUBLIC_CONVEX_URL` — your Convex cloud URL
    - `NEXT_PUBLIC_CONVEX_SITE_URL` — your Convex site URL (the one ending in `.convex.site`)
+   - Optional feature flags such as `NEXT_PUBLIC_ENABLE_BLOG=false` if you want to ship without a service-backed feature
 6. Click **Deploy**
 
 In about a minute, your site will be live! Vercel gives you a URL like `your-project.vercel.app`. You can also connect a custom domain later from Vercel's dashboard.

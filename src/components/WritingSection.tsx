@@ -3,17 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchNotes } from "@/lib/cleve";
 import SectionBlock from "@/components/SectionBlock";
 import ActivityMap from "./ActivityMap";
+import { formatNoteDate } from "@/lib/dateFormat";
 import { linkPrimary, arrowHover, heading } from "@/lib/styles";
-
-const formatNoteDate = (timestamp: number | null | undefined) => {
-  if (!timestamp) return "Updated recently";
-
-  return new Date(timestamp).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-};
 
 const WritingSection = () => {
   const { data: notes, isLoading, isError } = useQuery({

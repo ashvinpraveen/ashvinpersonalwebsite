@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import PostHogProvider from "@/components/PostHogProvider";
 import ChatWidget from "@/components/ChatWidget";
+import { isAiChatEnabled } from "@/lib/features";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
@@ -40,7 +41,7 @@ export default function Providers({ children }: { children: ReactNode }) {
               <Toaster />
               <Sonner />
               {children}
-              {showChatWidget ? <ChatWidget /> : null}
+              {showChatWidget && isAiChatEnabled ? <ChatWidget /> : null}
             </TooltipProvider>
           </ThemeProvider>
         </QueryClientProvider>

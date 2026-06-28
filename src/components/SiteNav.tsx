@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { isBlogEnabled, isPostcardsEnabled } from "@/lib/features";
 
 type SiteNavProps = {
   variant?: "light" | "dark";
@@ -13,7 +14,11 @@ const navLinks = [
   { href: "/postcards", label: "Postcards" },
   { href: "/resources", label: "Resources" },
   { href: "/blog", label: "Writing" },
-];
+].filter((link) => {
+  if (link.href === "/blog") return isBlogEnabled;
+  if (link.href === "/postcards") return isPostcardsEnabled;
+  return true;
+});
 
 const SiteNav = ({ variant = "dark" }: SiteNavProps) => {
   const navRef = useRef<HTMLElement>(null);

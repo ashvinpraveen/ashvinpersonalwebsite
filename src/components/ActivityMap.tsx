@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { CleveNote, fetchNote } from "@/lib/cleve";
 import LazyRichMarkdown from "@/components/LazyRichMarkdown";
+import { formatMonthDayYear, formatNoteDate } from "@/lib/dateFormat";
 import {
   Sheet,
   SheetContent,
@@ -40,22 +41,8 @@ function toKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function formatNoteDate(timestamp: number | null | undefined) {
-  if (!timestamp) return "Updated recently";
-
-  return new Date(timestamp).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
 function formatDay(date: Date) {
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatMonthDayYear(date);
 }
 
 function panelContent(note: CleveNote | null) {

@@ -9,18 +9,9 @@ import Footer from "@/components/Footer";
 import LazyRichMarkdown from "@/components/LazyRichMarkdown";
 import { CleveNote, fetchNote } from "@/lib/cleve";
 import { recordArticleView, fetchArticleViews } from "@/lib/articleViews";
+import { formatNoteDate } from "@/lib/dateFormat";
 import { contentColumnClassName, pageShellClassName } from "@/lib/layout";
 import { navLink, heading } from "@/lib/styles";
-
-const formatNoteDate = (timestamp: number | null | undefined) => {
-  if (!timestamp) return "Updated recently";
-
-  return new Date(timestamp).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-};
 
 type BlogPostProps = {
   id: string;

@@ -1,3 +1,5 @@
+import { isBlogEnabled } from "@/lib/features";
+
 export interface CleveNote {
   id: string;
   title: string;
@@ -7,6 +9,7 @@ export interface CleveNote {
 }
 
 function getConvexSiteUrl(): string | null {
+  if (!isBlogEnabled) return null;
   return process.env.NEXT_PUBLIC_CONVEX_SITE_URL || null;
 }
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, PointerEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Heart, Undo2 } from "lucide-react";
+import { Heart } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -10,373 +10,17 @@ import Footer from "@/components/Footer";
 import SiteNav from "@/components/SiteNav";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import FeatureUnavailable from "@/components/FeatureUnavailable";
+import { formatPostcardDate, getOrCreatePostcardClientId, readPostcardDraft } from "@/features/postcards/browser";
+import { DEFAULT_PEN_SIZE, DRAFT_KEY, MAX_MESSAGE_LENGTH, MESSAGE_COUNTER_THRESHOLD } from "@/features/postcards/config";
+import DrawingField from "@/features/postcards/DrawingField";
+import DrawingPad from "@/features/postcards/DrawingPad";
+import type { DrawingStroke, EditablePostcard, PendingPostcard, PostcardDraft } from "@/features/postcards/types";
+import { isPostcardsEnabled } from "@/lib/features";
 import { contentColumnClassName, pageShellClassName } from "@/lib/layout";
 import { cn } from "@/lib/utils";
 
-const MAX_MESSAGE_LENGTH = 500;
-const MESSAGE_COUNTER_THRESHOLD = 420;
-const CLIENT_ID_KEY = "postcard-client-id";
-const DRAFT_KEY = "postcard-draft";
-const DEFAULT_PEN_SIZE = 3;
-const drawingPlacements = [
-  { left: "8%", top: "18%", width: "28%", rotate: "-4deg" },
-  { left: "36%", top: "8%", width: "24%", rotate: "3deg" },
-  { left: "66%", top: "22%", width: "22%", rotate: "-2deg" },
-  { left: "18%", top: "54%", width: "20%", rotate: "5deg" },
-  { left: "48%", top: "48%", width: "30%", rotate: "-3deg" },
-  { left: "73%", top: "60%", width: "18%", rotate: "4deg" },
-];
-
-type DrawingPoint = {
-  x: number;
-  y: number;
-};
-
-type DrawingStroke = {
-  points: DrawingPoint[];
-  width: number;
-};
-
-type EditablePostcard = {
-  _id: Id<"postcards">;
-  name: string;
-  location: string;
-  message: string;
-};
-
-type PendingPostcard = {
-  name: string;
-  location: string;
-  message: string;
-  drawingDataUrl: string | null;
-};
-
-type PostcardDraft = {
-  name?: string;
-  location?: string;
-  message?: string;
-  drawingStrokes?: DrawingStroke[];
-  penSize?: number;
-};
-
-function formatPostcardDate(timestamp: number) {
-  return new Date(timestamp).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function getOrCreateClientId() {
-  const existingClientId = window.localStorage.getItem(CLIENT_ID_KEY);
-  if (existingClientId) return existingClientId;
-
-  const clientId =
-    typeof window.crypto?.randomUUID === "function"
-      ? window.crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  window.localStorage.setItem(CLIENT_ID_KEY, clientId);
-  return clientId;
-}
-
-function isDrawingStroke(value: unknown): value is DrawingStroke {
-  if (!value || typeof value !== "object") return false;
-  const stroke = value as { points?: unknown; width?: unknown };
-  return (
-    Array.isArray(stroke.points) &&
-    stroke.points.every((point) => {
-      if (!point || typeof point !== "object") return false;
-      const maybePoint = point as { x?: unknown; y?: unknown };
-      return typeof maybePoint.x === "number" && typeof maybePoint.y === "number";
-    }) &&
-    typeof stroke.width === "number"
-  );
-}
-
-function readPostcardDraft(): PostcardDraft | null {
-  const rawDraft = window.localStorage.getItem(DRAFT_KEY);
-  if (!rawDraft) return null;
-
-  try {
-    const draft = JSON.parse(rawDraft) as PostcardDraft;
-    return {
-      name: typeof draft.name === "string" ? draft.name : "",
-      location: typeof draft.location === "string" ? draft.location : "",
-      message: typeof draft.message === "string" ? draft.message : "",
-      drawingStrokes: Array.isArray(draft.drawingStrokes)
-        ? draft.drawingStrokes.filter(isDrawingStroke)
-        : [],
-      penSize: typeof draft.penSize === "number" ? draft.penSize : DEFAULT_PEN_SIZE,
-    };
-  } catch {
-    return null;
-  }
-}
-
-const DrawingPad = ({
-  hasDrawing,
-  onHasDrawingChange,
-  strokes,
-  onStrokesChange,
-  penSize,
-  onPenSizeChange,
-}: {
-  hasDrawing: boolean;
-  onHasDrawingChange: (hasDrawing: boolean) => void;
-  strokes: DrawingStroke[];
-  onStrokesChange: (strokes: DrawingStroke[]) => void;
-  penSize: number;
-  onPenSizeChange: (penSize: number) => void;
-}) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const isDrawingRef = useRef(false);
-  const strokesRef = useRef<DrawingStroke[]>(strokes);
-  const [strokeCount, setStrokeCount] = useState(0);
-
-  const prepareCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return null;
-
-    const ratio = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(rect.width * ratio);
-    canvas.height = Math.floor(rect.height * ratio);
-
-    const context = canvas.getContext("2d");
-    if (!context) return null;
-
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    context.lineCap = "round";
-    context.lineJoin = "round";
-    context.strokeStyle = "#000000";
-
-    return { context, width: rect.width, height: rect.height };
-  }, []);
-
-  const drawStroke = useCallback((
-    context: CanvasRenderingContext2D,
-    stroke: DrawingStroke,
-    width: number,
-    height: number,
-  ) => {
-    if (stroke.points.length === 0) return;
-
-    context.lineWidth = stroke.width;
-    context.beginPath();
-    context.moveTo(stroke.points[0].x * width, stroke.points[0].y * height);
-
-    if (stroke.points.length === 1) {
-      context.lineTo(stroke.points[0].x * width + 0.01, stroke.points[0].y * height + 0.01);
-    } else {
-      stroke.points.slice(1).forEach((point) => {
-        context.lineTo(point.x * width, point.y * height);
-      });
-    }
-
-    context.stroke();
-  }, []);
-
-  const redrawCanvas = useCallback(() => {
-    const preparedCanvas = prepareCanvas();
-    if (!preparedCanvas) return;
-
-    const { context, width, height } = preparedCanvas;
-    context.clearRect(0, 0, width, height);
-    strokesRef.current.forEach((stroke) => drawStroke(context, stroke, width, height));
-  }, [drawStroke, prepareCanvas]);
-
-  useEffect(() => {
-    redrawCanvas();
-    window.addEventListener("resize", redrawCanvas);
-    return () => window.removeEventListener("resize", redrawCanvas);
-  }, [redrawCanvas]);
-
-  useEffect(() => {
-    strokesRef.current = strokes;
-    redrawCanvas();
-    setStrokeCount(strokes.length);
-    onHasDrawingChange(strokes.length > 0);
-  }, [onHasDrawingChange, redrawCanvas, strokes]);
-
-  function commitStrokes(nextStrokes: DrawingStroke[]) {
-    strokesRef.current = nextStrokes;
-    setStrokeCount(nextStrokes.length);
-    onHasDrawingChange(nextStrokes.length > 0);
-    onStrokesChange(nextStrokes);
-    redrawCanvas();
-  }
-
-  function getPoint(event: PointerEvent<HTMLCanvasElement>) {
-    const rect = event.currentTarget.getBoundingClientRect();
-    return {
-      x: (event.clientX - rect.left) / rect.width,
-      y: (event.clientY - rect.top) / rect.height,
-    };
-  }
-
-  function startDrawing(event: PointerEvent<HTMLCanvasElement>) {
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const point = getPoint(event);
-    isDrawingRef.current = true;
-    commitStrokes([...strokesRef.current, { points: [point], width: penSize }]);
-  }
-
-  function draw(event: PointerEvent<HTMLCanvasElement>) {
-    if (!isDrawingRef.current) return;
-
-    const point = getPoint(event);
-    const currentStroke = strokesRef.current[strokesRef.current.length - 1];
-    if (!currentStroke) return;
-
-    const nextStrokes = strokesRef.current.map((stroke, index) =>
-      index === strokesRef.current.length - 1
-        ? { ...stroke, points: [...stroke.points, point] }
-        : stroke,
-    );
-    commitStrokes(nextStrokes);
-  }
-
-  function stopDrawing(event: PointerEvent<HTMLCanvasElement>) {
-    isDrawingRef.current = false;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-  }
-
-  function clearDrawing() {
-    commitStrokes([]);
-  }
-
-  function undoStroke() {
-    commitStrokes(strokesRef.current.slice(0, -1));
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-          <span>Pen</span>
-          {[2, 3, 5].map((size) => (
-            <button
-              key={size}
-              type="button"
-              onClick={() => onPenSizeChange(size)}
-              className={cn(
-                "grid h-7 w-7 place-items-center rounded-full border border-border transition-colors hover:text-foreground",
-                penSize === size && "border-primary/60 text-primary",
-              )}
-              aria-label={`Use ${size}px pen`}
-              title={`${size}px pen`}
-            >
-              <span
-                aria-hidden="true"
-                className="rounded-full bg-current"
-                style={{ width: size + 4, height: size + 4 }}
-              />
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={undoStroke}
-          disabled={strokeCount === 0}
-          className="grid h-8 w-8 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
-          aria-label="Undo last line"
-          title="Undo"
-        >
-          <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
-      </div>
-      <div
-        className={cn(
-          "overflow-hidden rounded-[12px] border border-border bg-background dark:bg-muted",
-          hasDrawing && "border-primary/70",
-        )}
-      >
-        <canvas
-          ref={canvasRef}
-          id="postcard-drawing"
-          className="block h-64 w-full touch-none dark:invert"
-          onPointerDown={startDrawing}
-          onPointerMove={draw}
-          onPointerUp={stopDrawing}
-          onPointerCancel={stopDrawing}
-          aria-label="Drawing canvas"
-        />
-      </div>
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={clearDrawing}
-          className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Clear
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const DrawingField = ({
-  postcards,
-}: {
-  postcards:
-    | Array<{
-        _id: string;
-        drawingDataUrl: string | null;
-        name: string;
-        location: string;
-      }>
-    | undefined;
-}) => {
-  const drawings = postcards?.filter((postcard) => postcard.drawingDataUrl) ?? [];
-
-  return (
-    <section className="space-y-5 border-t border-border pt-12">
-      <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-        Drawings
-      </h2>
-
-      <div className="relative min-h-[22rem] overflow-hidden rounded-[12px] border border-border bg-card">
-        <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-border" />
-        <div className="absolute inset-y-0 left-1/2 border-l border-dashed border-border" />
-
-        {drawings.length === 0 && (
-          <div className="grid h-[22rem] place-items-center px-6 text-center font-mono text-xs text-muted-foreground">
-            Drawings will collect here.
-          </div>
-        )}
-
-        {drawings.map((postcard, index) => {
-          const placement = drawingPlacements[index % drawingPlacements.length];
-          return (
-            <div
-              key={postcard._id}
-              className="absolute rounded-[12px] border border-border bg-background/80 p-3 dark:bg-muted"
-              style={{
-                left: placement.left,
-                top: placement.top,
-                width: placement.width,
-                transform: `rotate(${placement.rotate})`,
-              }}
-            >
-              <img
-                src={postcard.drawingDataUrl ?? ""}
-                alt={`Drawing from ${postcard.name || postcard.location || "a postcard"}`}
-                className="h-full w-full object-contain dark:invert"
-                loading="lazy"
-              />
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-};
-
-const Postcard = () => {
+const PostcardApp = () => {
   const [clientId, setClientId] = useState("");
   const postcards = useQuery(
     api.postcards.list,
@@ -409,7 +53,7 @@ const Postcard = () => {
   const [likingPostcardId, setLikingPostcardId] = useState<Id<"postcards"> | null>(null);
 
   useEffect(() => {
-    setClientId(getOrCreateClientId());
+    setClientId(getOrCreatePostcardClientId());
 
     const draft = readPostcardDraft();
     if (draft) {
@@ -965,4 +609,23 @@ const Postcard = () => {
   );
 };
 
-export default Postcard;
+export default function Postcard() {
+  if (!isPostcardsEnabled) {
+    return (
+      <>
+        <SiteNav />
+        <main className={`${pageShellClassName} pt-24`}>
+          <div className={contentColumnClassName}>
+            <FeatureUnavailable
+              title="Postcards are not configured"
+              description="Set NEXT_PUBLIC_CONVEX_URL and run Convex to enable postcards. The rest of the site can run without it."
+            />
+            <Footer />
+          </div>
+        </main>
+      </>
+    );
+  }
+
+  return <PostcardApp />;
+}

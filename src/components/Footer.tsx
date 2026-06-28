@@ -2,6 +2,7 @@ import { linkSubtle } from "@/lib/styles";
 import { pageShellClassName } from "@/lib/layout";
 import { PlanetaryGearSystem } from "@/components/HeroSection";
 import { cuttingMatGridDark, cuttingMatGridLight, grainSvg } from "@/lib/visuals";
+import { isBlogEnabled, isPostcardsEnabled } from "@/lib/features";
 
 const Footer = () => {
   const year = new Date().getFullYear();
@@ -32,9 +33,9 @@ const Footer = () => {
             <p className="font-semibold tracking-tight">Site</p>
             <div className="flex flex-col gap-2 text-muted-foreground">
               <a href="/" className={linkSubtle}>Home</a>
-              <a href="/blog" className={linkSubtle}>Writing</a>
+              {isBlogEnabled ? <a href="/blog" className={linkSubtle}>Writing</a> : null}
               <a href="/resources" className={linkSubtle}>Resources</a>
-              <a href="/postcards" className={linkSubtle}>Postcards</a>
+              {isPostcardsEnabled ? <a href="/postcards" className={linkSubtle}>Postcards</a> : null}
             </div>
           </div>
           <div className="space-y-3">

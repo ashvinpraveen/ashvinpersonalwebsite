@@ -12,52 +12,25 @@ import {
 } from "@/components/ai-elements/message";
 import AdminShell from "@/screens/AdminShell";
 import { Button } from "@/components/ui/button";
+import FeatureUnavailable from "@/components/FeatureUnavailable";
+import {
+  ADMIN_UNAVAILABLE_MESSAGE,
+  formatMessageTime,
+  formatThreadTime,
+  getThreadTitle,
+  shortClientId,
+} from "@/features/admin/formatters";
+import { isAdminEnabled } from "@/lib/features";
 import { cn } from "@/lib/utils";
-
-function formatThreadTime(timestamp: number) {
-  const date = new Date(timestamp);
-  const today = new Date();
-  const isToday = date.toDateString() === today.toDateString();
-
-  if (isToday) {
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  }
-
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function formatMessageTime(timestamp: number) {
-  return new Date(timestamp).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function shortClientId(clientId: string) {
-  if (clientId.length <= 12) return clientId;
-  return `${clientId.slice(0, 6)}...${clientId.slice(-4)}`;
-}
-
-function getThreadTitle(thread: { title?: string; clientId: string }) {
-  return thread.title?.trim() || `Visitor ${shortClientId(thread.clientId)}`;
-}
 
 function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
   const conversations = useQuery(api.chat.listForAdmin, { adminSecret });
   const [selectedThreadId, setSelectedThreadId] = useState<Id<"chatThreads"> | null>(null);
   const [isThreadOpen, setIsThreadOpen] = useState(false);
-  const visibleConversations = useMemo(() => {
-    if (!conversations) return conversations;
-    return conversations.filter((conversation) => conversation.latestMessage);
-  }, [conversations]);
+  const visibleConversations = useMemo(
+    () => conversations?.filter((conversation) => conversation.latestMessage) ?? [],
+    [conversations],
+  );
   const selectedThread = useMemo(() => {
     if (!visibleConversations || !selectedThreadId) return null;
     return visibleConversations.find((conversation) => conversation._id === selectedThreadId) ?? null;
@@ -69,7 +42,7 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
   const markThreadRead = useMutation(api.chat.markThreadReadForAdmin);
 
   useEffect(() => {
-    if (!visibleConversations || visibleConversations.length === 0) return;
+    if (visibleConversations.length === 0) return;
     if (
       selectedThreadId &&
       visibleConversations.some((conversation) => conversation._id === selectedThreadId)
@@ -110,7 +83,7 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
     return (
       <div className="m-4 max-w-md rounded-[8px] border border-border bg-card p-5">
         <p className="text-sm text-muted-foreground">
-          That password did not work, or the admin secret is not configured.
+          {ADMIN_UNAVAILABLE_MESSAGE}
         </p>
       </div>
     );
@@ -290,6 +263,17 @@ function ChatAdminInbox({ adminSecret }: { adminSecret: string }) {
 }
 
 export default function ChatAdmin() {
+  if (!isAdminEnabled) {
+    return (
+      <main className="flex h-dvh items-center justify-center bg-background p-6">
+        <FeatureUnavailable
+          title="Chat admin is not configured"
+          description="Set NEXT_PUBLIC_CONVEX_URL and run Convex to enable the private chat inbox."
+        />
+      </main>
+    );
+  }
+
   return (
     <AdminShell
       activePath="/admin"

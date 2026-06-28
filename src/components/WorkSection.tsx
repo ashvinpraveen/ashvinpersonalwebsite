@@ -7,7 +7,7 @@ type ProjectItem = {
   href: string;
   githubHref?: string;
   description: string;
-  logo?: string;
+  logo?: string | null;
   alt?: string;
   initials?: string;
 };

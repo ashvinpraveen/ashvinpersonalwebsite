@@ -144,7 +144,7 @@ const fadeUp = {
 };
 
 type GearLayerProps = {
-  svgRef: RefObject<SVGSVGElement | null>;
+  svgRef: RefObject<SVGSVGElement>;
   activeGear: ActiveGear;
   activeAccent: GearAccent | null;
   activateGear: (gear: Exclude<ActiveGear, null>) => void;
@@ -157,7 +157,7 @@ type GearLayerProps = {
 type GearInteractionProps = Pick<GearLayerProps, "activeGear" | "activateGear" | "clearGear">;
 
 const useGearAnimationControl = (
-  svgRef: RefObject<SVGSVGElement | null>,
+  svgRef: RefObject<SVGSVGElement>,
   isInteractionPaused: boolean,
   enabled = true,
 ) => {
