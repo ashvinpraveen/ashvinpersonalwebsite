@@ -14,6 +14,7 @@ import type * as articleViews from "../articleViews.js";
 import type * as chat from "../chat.js";
 import type * as chatAgent from "../chatAgent.js";
 import type * as chatAi from "../chatAi.js";
+import type * as diary from "../diary.js";
 import type * as http from "../http.js";
 import type * as lib_chatAiBooking from "../lib/chatAiBooking.js";
 import type * as lib_chatAiShared from "../lib/chatAiShared.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   chatAgent: typeof chatAgent;
   chatAi: typeof chatAi;
+  diary: typeof diary;
   http: typeof http;
   "lib/chatAiBooking": typeof lib_chatAiBooking;
   "lib/chatAiShared": typeof lib_chatAiShared;
