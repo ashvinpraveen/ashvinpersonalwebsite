@@ -33,6 +33,7 @@ const Footer = () => {
             <p className="font-semibold tracking-tight">Site</p>
             <div className="flex flex-col gap-2 text-muted-foreground">
               <a href="/" className={linkSubtle}>Home</a>
+              <a href="/diary" className={linkSubtle}>Diary</a>
               {isBlogEnabled ? <a href="/blog" className={linkSubtle}>Writing</a> : null}
               <a href="/resources" className={linkSubtle}>Resources</a>
               {isPostcardsEnabled ? <a href="/postcards" className={linkSubtle}>Postcards</a> : null}
@@ -42,6 +43,7 @@ const Footer = () => {
             <p className="font-semibold tracking-tight">Projects</p>
             <div className="flex flex-col gap-2 text-muted-foreground">
               <a href="https://cleve.ai" target="_blank" rel="noreferrer" className={linkSubtle}>Cleve.ai</a>
+              <a href="/diary" className={linkSubtle}>Tom Riddle Diary</a>
               <a href="https://www.malaysian.ai/" target="_blank" rel="noreferrer" className={linkSubtle}>Malaysian.ai</a>
               <a href="https://rakantutor.org/naic" target="_blank" rel="noreferrer" className={linkSubtle}>NAIC</a>
               <a href="https://buildforpublic.com" target="_blank" rel="noreferrer" className={linkSubtle}>Build for Public</a>

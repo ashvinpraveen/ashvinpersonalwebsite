@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { isConvexConfigured } from "@/lib/features";
@@ -24,7 +24,62 @@ const FALLBACK_REPLY = "The ink refuses to settle. Write to me again.";
 const PAPER_NOISE =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E\")";
 
+const AUTO_SUBMIT_DELAY_MS = 3000;
+const REPLY_PAGE_CHAR_LIMIT = 270;
+
 type AskDiary = (entry: string, history: DiaryMessage[]) => Promise<string>;
+
+type ReplyPage = {
+  text: string;
+  start: number;
+  end: number;
+};
+
+function splitDiaryPages(text: string) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return [{ text: "", start: 0, end: 0 }];
+
+  const pages: ReplyPage[] = [];
+  let pageStart = 0;
+  let pageEnd = 0;
+  let hasPageText = false;
+
+  for (const match of normalized.matchAll(/\S+/g)) {
+    const word = match[0];
+    const wordStart = match.index;
+    const wordEnd = wordStart + word.length;
+
+    if (!hasPageText) {
+      pageStart = wordStart;
+      pageEnd = wordEnd;
+      hasPageText = true;
+      continue;
+    }
+
+    const nextText = normalized.slice(pageStart, wordEnd);
+    if (nextText.length > REPLY_PAGE_CHAR_LIMIT) {
+      pages.push({
+        text: normalized.slice(pageStart, pageEnd),
+        start: pageStart,
+        end: pageEnd,
+      });
+      pageStart = wordStart;
+      pageEnd = wordEnd;
+    } else {
+      pageEnd = wordEnd;
+    }
+  }
+
+  if (hasPageText) {
+    pages.push({
+      text: normalized.slice(pageStart, pageEnd),
+      start: pageStart,
+      end: pageEnd,
+    });
+  }
+
+  return pages;
+}
 
 export default function RiddleDiary() {
   if (!isConvexConfigured) {
@@ -50,10 +105,14 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
   const [draft, setDraft] = useState("");
   const [reply, setReply] = useState("");
   const [revealed, setRevealed] = useState(0);
+  const [replyPage, setReplyPage] = useState(0);
+  const [isNameRevealed, setIsNameRevealed] = useState(false);
   const [hasWritten, setHasWritten] = useState(false);
   const historyRef = useRef<DiaryMessage[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const timeoutsRef = useRef<number[]>([]);
+  const displayReply = useMemo(() => reply.replace(/\s+/g, " ").trim(), [reply]);
+  const replyPages = useMemo(() => splitDiaryPages(displayReply), [displayReply]);
 
   const after = useCallback((ms: number, fn: () => void) => {
     timeoutsRef.current.push(window.setTimeout(fn, ms));
@@ -73,7 +132,11 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
     });
   };
 
-  const submit = () => {
+  const toggleCoverName = () => {
+    setIsNameRevealed((isRevealed) => !isRevealed);
+  };
+
+  const submit = useCallback(() => {
     const entry = draft.trim();
     if (!entry || phase !== "idle") return;
     setHasWritten(true);
@@ -95,30 +158,43 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
         historyRef.current = updatedHistory.slice(-12);
         setReply(replyText);
         setRevealed(0);
+        setReplyPage(0);
         setPhase("writing");
       });
     });
-  };
+  }, [after, askDiary, draft, phase]);
+
+  useEffect(() => {
+    if (phase !== "idle" || !draft.trim()) return;
+    const autoSubmitTimeout = window.setTimeout(submit, AUTO_SUBMIT_DELAY_MS);
+    return () => window.clearTimeout(autoSubmitTimeout);
+  }, [draft, phase, submit]);
 
   useEffect(() => {
     if (phase !== "writing") return;
-    if (revealed >= reply.length) {
+    if (revealed >= displayReply.length) {
       const doneTimeout = window.setTimeout(() => setPhase("fading-reply"), 4500);
       return () => window.clearTimeout(doneTimeout);
     }
-    const previous = reply[revealed - 1] ?? "";
+    const currentPage = replyPages[replyPage];
+    if (currentPage && revealed >= currentPage.end && replyPage < replyPages.length - 1) {
+      const flipTimeout = window.setTimeout(() => setReplyPage((page) => page + 1), 820);
+      return () => window.clearTimeout(flipTimeout);
+    }
+    const previous = displayReply[revealed - 1] ?? "";
     let delay = 30 + Math.random() * 55;
     if (".!?…".includes(previous)) delay += 340;
     else if (",;:—".includes(previous)) delay += 150;
     const charTimeout = window.setTimeout(() => setRevealed((count) => count + 1), delay);
     return () => window.clearTimeout(charTimeout);
-  }, [phase, revealed, reply]);
+  }, [phase, revealed, displayReply, replyPage, replyPages]);
 
   useEffect(() => {
     if (phase !== "fading-reply") return;
     const resetTimeout = window.setTimeout(() => {
       setReply("");
       setRevealed(0);
+      setReplyPage(0);
       setPhase("idle");
       inputRef.current?.focus();
     }, 1800);
@@ -126,12 +202,14 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
   }, [phase]);
 
   const isOpen = phase !== "closed";
+  const currentReplyPage = replyPages[replyPage] ?? { text: "", start: 0, end: 0 };
+  const currentReplyRevealed = Math.max(0, revealed - currentReplyPage.start);
 
   return (
     <div className="rd-root">
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Tangerine:wght@700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Cormorant+SC:wght@600;700&family=Tangerine:wght@700&display=swap"
       />
       <a className="rd-back" href="/" aria-label="Leave the diary">
         ←
@@ -144,15 +222,12 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
           {(phase === "idle" || phase === "fading-entry") && (
             <div className={`rd-text rd-entry${phase === "fading-entry" ? " rd-fade" : ""}`}>
               <div className="rd-line">
-                {draft.length === 0 && !hasWritten ? (
-                  <span className="rd-hint">write…</span>
-                ) : (
+                {draft.length > 0 &&
                   draft.split("").map((char, index) => (
                     <span className="rd-char" key={`${index}-${char}`}>
                       {char}
                     </span>
-                  ))
-                )}
+                  ))}
                 {phase === "idle" && <span className="rd-caret" aria-hidden="true" />}
               </div>
             </div>
@@ -165,17 +240,25 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
               className={`rd-text rd-reply${phase === "fading-reply" ? " rd-fade" : ""}`}
               aria-live="polite"
             >
-              <div className="rd-line">
-                {reply.split("").map((char, index) => (
-                  <span
-                    className="rd-rchar"
-                    key={index}
-                    style={{ opacity: index < revealed ? 1 : 0 }}
-                  >
-                    {char}
-                  </span>
-                ))}
+              {replyPage > 0 && <span className="rd-turn" key={`turn-${replyPage}`} />}
+              <div className="rd-page-flip" key={replyPage}>
+                <div className="rd-line">
+                  {currentReplyPage.text.split("").map((char, index) => (
+                    <span
+                      className="rd-rchar"
+                      key={index}
+                      style={{ opacity: index < currentReplyRevealed ? 1 : 0 }}
+                    >
+                      {char}
+                    </span>
+                  ))}
+                </div>
               </div>
+              {replyPages.length > 1 && (
+                <span className="rd-page-count">
+                  {replyPage + 1}/{replyPages.length}
+                </span>
+              )}
             </div>
           )}
 
@@ -216,7 +299,25 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
         >
           <div className="rd-cover-front">
             <div className="rd-cover-frame" />
-            <span className="rd-cover-name">T. M. Riddle</span>
+            <span
+              className={`rd-cover-name${isNameRevealed ? " rd-name-revealed" : ""}`}
+              role="button"
+              tabIndex={isOpen ? -1 : 0}
+              aria-label="Reveal the diary name"
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleCoverName();
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  toggleCoverName();
+                }
+              }}
+            >
+              {isNameRevealed ? "I AM LORD VOLDEMORT" : "TOM MARVOLO RIDDLE"}
+            </span>
           </div>
           <div className="rd-cover-back" />
         </div>
@@ -232,7 +333,9 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
           justify-content: center;
           overflow: hidden;
           background:
-            radial-gradient(120% 90% at 50% 15%, #201813 0%, #0d0a08 55%, #050403 100%);
+            radial-gradient(70% 68% at 50% 46%, rgba(15, 10, 7, 0.08) 0%, rgba(7, 5, 4, 0.58) 72%, rgba(3, 3, 2, 0.86) 100%),
+            linear-gradient(180deg, rgba(6, 4, 3, 0.1) 0%, rgba(6, 4, 3, 0.38) 100%),
+            url("/diary-background.png") center / cover no-repeat;
         }
 
         .rd-back {
@@ -271,6 +374,7 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
           box-shadow:
             inset 0 0 70px rgba(92, 62, 24, 0.35),
             inset 0 0 8px rgba(92, 62, 24, 0.25),
+            inset -10px 0 16px -18px rgba(82, 55, 22, 0.7),
             -1px 0 0 #b9a274,
             -3px 2px 0 #cdb98d,
             -5px 4px 0 #b9a274;
@@ -298,7 +402,7 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
         .rd-text {
           position: absolute;
           inset: 0;
-          padding: 14% 11%;
+          padding: 13% 11% 12%;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -320,17 +424,13 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
 
         .rd-entry {
           font-family: "Caveat", cursive;
-          font-size: clamp(1.45rem, 5.5vw, 1.9rem);
+          font-size: clamp(1.3rem, 4.8vw, 1.65rem);
           line-height: 1.5;
           color: #262b42;
           text-shadow: 0 0 1px rgba(38, 43, 66, 0.35);
         }
         .rd-char {
           animation: rd-ink-in 0.5s ease both;
-        }
-        .rd-hint {
-          opacity: 0.32;
-          animation: rd-ink-in 1.2s ease both;
         }
         .rd-caret {
           display: inline-block;
@@ -345,13 +445,42 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
         .rd-reply {
           font-family: "Tangerine", cursive;
           font-weight: 700;
-          font-size: clamp(2.1rem, 8vw, 3.1rem);
-          line-height: 1.25;
+          font-size: clamp(1.55rem, 5.4vw, 2.15rem);
+          line-height: 1.28;
           color: #2e1c12;
           text-shadow: 0 0 1px rgba(46, 28, 18, 0.4);
         }
+        .rd-page-flip {
+          max-width: 100%;
+          max-height: 100%;
+          transform-origin: right center;
+          animation: rd-page-arrive 0.7s ease both;
+        }
         .rd-rchar {
           transition: opacity 0.45s ease;
+        }
+        .rd-turn {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          border-radius: inherit;
+          pointer-events: none;
+          transform-origin: right center;
+          background:
+            linear-gradient(270deg, rgba(80, 52, 20, 0.28), rgba(236, 223, 189, 0.8) 36%, rgba(255, 248, 226, 0.7));
+          box-shadow:
+            inset -16px 0 22px -20px rgba(0, 0, 0, 0.65),
+            -12px 0 22px rgba(83, 54, 21, 0.18);
+          animation: rd-page-turn 0.82s cubic-bezier(0.65, 0, 0.25, 1) both;
+        }
+        .rd-page-count {
+          position: absolute;
+          right: 9%;
+          bottom: 5.5%;
+          font-family: "Caveat", cursive;
+          font-size: 0.9rem;
+          color: rgba(46, 28, 18, 0.45);
+          letter-spacing: 0;
         }
 
         .rd-blot {
@@ -391,12 +520,12 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
           inset: 0;
           z-index: 3;
           transform-style: preserve-3d;
-          transform-origin: left center;
+          transform-origin: right center;
           transition: transform 1.6s cubic-bezier(0.7, 0, 0.3, 1), opacity 0.6s ease 1.05s;
           cursor: pointer;
         }
         .rd-open .rd-cover {
-          transform: rotateY(-180deg);
+          transform: rotateY(180deg);
           opacity: 0;
           pointer-events: none;
         }
@@ -436,16 +565,64 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
         }
         .rd-cover-name {
           position: absolute;
-          left: 0;
-          right: 0;
-          bottom: 14%;
+          left: 50%;
+          bottom: 13%;
+          width: 64%;
+          min-height: 42px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px 10px 7px;
+          border: 1px solid rgba(154, 125, 64, 0.42);
+          border-radius: 2px;
+          background:
+            linear-gradient(180deg, rgba(14, 13, 11, 0.9), rgba(7, 6, 5, 0.86)),
+            ${PAPER_NOISE};
+          background-blend-mode: normal, overlay;
+          box-shadow:
+            inset 0 1px 1px rgba(214, 184, 108, 0.14),
+            inset 0 -2px 5px rgba(0, 0, 0, 0.65),
+            0 1px 0 rgba(0, 0, 0, 0.65),
+            0 0 0 1px rgba(0, 0, 0, 0.35);
+          transform: translateX(-50%) rotate(-1deg) translateZ(2px) scaleX(0.78);
+          transform-origin: center;
           text-align: center;
-          font-family: "Tangerine", cursive;
+          font-family: "Cormorant SC", "Times New Roman", serif;
           font-weight: 700;
-          font-size: clamp(1.5rem, 5vw, 2rem);
-          letter-spacing: 0.08em;
-          color: rgba(158, 130, 72, 0.42);
-          text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.8);
+          font-size: clamp(0.96rem, 3vw, 1.2rem);
+          line-height: 0.92;
+          letter-spacing: 0.035em;
+          color: rgba(187, 156, 86, 0.78);
+          text-shadow:
+            0 -1px 0 rgba(0, 0, 0, 0.9),
+            0 1px 0 rgba(251, 220, 136, 0.16),
+            0 0 1px rgba(229, 190, 100, 0.22);
+          cursor: pointer;
+          user-select: none;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          transition:
+            opacity 0.18s ease,
+            color 0.35s ease,
+            border-color 0.35s ease,
+            box-shadow 0.35s ease,
+            transform 0.35s ease;
+        }
+        .rd-open .rd-cover-name {
+          opacity: 0;
+          pointer-events: none;
+        }
+        .rd-cover-name:hover,
+        .rd-cover-name:focus-visible {
+          color: rgba(214, 181, 96, 0.9);
+          border-color: rgba(179, 145, 74, 0.58);
+          outline: none;
+          transform: translateX(-50%) rotate(-1deg) translateY(-1px) translateZ(2px) scaleX(0.78);
+        }
+        .rd-name-revealed {
+          width: 72%;
+          color: rgba(210, 173, 89, 0.88);
+          letter-spacing: 0.025em;
         }
 
         @keyframes rd-ink-in {
@@ -471,6 +648,31 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
           50% {
             opacity: 0.6;
             transform: scale(1);
+          }
+        }
+        @keyframes rd-page-turn {
+          0% {
+            opacity: 0.95;
+            transform: rotateY(0deg) skewY(0deg);
+          }
+          55% {
+            opacity: 0.78;
+          }
+          100% {
+            opacity: 0;
+            transform: rotateY(178deg) skewY(2deg);
+          }
+        }
+        @keyframes rd-page-arrive {
+          from {
+            opacity: 0;
+            filter: blur(2px);
+            transform: translateX(-8px) rotateY(-8deg);
+          }
+          to {
+            opacity: 1;
+            filter: blur(0);
+            transform: translateX(0) rotateY(0deg);
           }
         }
 

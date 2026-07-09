@@ -11,6 +11,7 @@ type SiteNavProps = {
 };
 
 const navLinks = [
+  { href: "/diary", label: "Diary" },
   { href: "/postcards", label: "Postcards" },
   { href: "/resources", label: "Resources" },
   { href: "/blog", label: "Writing" },
