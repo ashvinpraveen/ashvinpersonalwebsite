@@ -7,10 +7,11 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { isBlogEnabled, isPostcardsEnabled } from "@/lib/features";
 
 type SiteNavProps = {
-  variant?: "light" | "dark";
+  variant?: "light" | "dark" | "diary";
 };
 
 const navLinks = [
+  { href: "/diary", label: "Diary" },
   { href: "/postcards", label: "Postcards" },
   { href: "/resources", label: "Resources" },
   { href: "/blog", label: "Writing" },
@@ -45,20 +46,29 @@ const SiteNav = ({ variant = "dark" }: SiteNavProps) => {
   }, [menuOpen]);
 
   const onHero = variant === "light" && !scrolled;
+  const onDiary = variant === "diary" && !scrolled;
   const mobileMenuOpen = menuOpen;
 
-  const logoClass = onHero
-    ? "text-foreground hover:text-foreground/70 dark:text-white/90 dark:hover:text-white"
-    : "text-foreground hover:text-foreground/70";
-  const linkClass = onHero
-    ? "text-muted-foreground hover:text-foreground dark:text-white/70 dark:hover:text-white"
-    : "text-muted-foreground hover:text-foreground";
+  const logoClass = onDiary
+    ? "text-[#e2d4b8]/85 hover:text-[#f5ead0]"
+    : onHero
+      ? "text-foreground hover:text-foreground/70 dark:text-white/90 dark:hover:text-white"
+      : "text-foreground hover:text-foreground/70";
+  const linkClass = onDiary
+    ? "text-[#e2d4b8]/55 hover:text-[#f5ead0]"
+    : onHero
+      ? "text-muted-foreground hover:text-foreground dark:text-white/70 dark:hover:text-white"
+      : "text-muted-foreground hover:text-foreground";
   const navBg = scrolled
     ? "bg-background/80 backdrop-blur-md"
+    : onDiary
+      ? "bg-black/10 backdrop-blur-[2px]"
     : "";
-  const mobilePanelClass = onHero
-    ? "bg-[hsl(35,30%,90%)]/95 text-foreground dark:bg-[hsl(30,15%,12%)]/95 dark:text-white"
-    : "bg-background/95 text-foreground";
+  const mobilePanelClass = onDiary
+    ? "border-[#e2d4b8]/10 bg-[#120c08]/95 text-[#f5ead0]"
+    : onHero
+      ? "bg-[hsl(35,30%,90%)]/95 text-foreground dark:bg-[hsl(30,15%,12%)]/95 dark:text-white"
+      : "bg-background/95 text-foreground";
 
   return (
     <nav ref={navRef} className={`site-nav fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${navBg}`}>
@@ -96,15 +106,31 @@ const SiteNav = ({ variant = "dark" }: SiteNavProps) => {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-muted-foreground transition-colors hover:text-foreground dark:text-white/70 dark:hover:text-white"
+                className={`transition-colors ${
+                  onDiary
+                    ? "text-[#e2d4b8]/65 hover:text-[#f5ead0]"
+                    : "text-muted-foreground hover:text-foreground dark:text-white/70 dark:hover:text-white"
+                }`}
                 onClick={() => setMenuOpen(false)}
               >
                 {link.label}
               </Link>
             ))}
-            <div className="flex items-center justify-between border-t border-border/50 pt-4 text-muted-foreground dark:text-white/70">
+            <div
+              className={`flex items-center justify-between border-t pt-4 ${
+                onDiary
+                  ? "border-[#e2d4b8]/10 text-[#e2d4b8]/65"
+                  : "border-border/50 text-muted-foreground dark:text-white/70"
+              }`}
+            >
               <span>Theme</span>
-              <ThemeToggle className="text-muted-foreground hover:text-foreground dark:text-white/70 dark:hover:text-white" />
+              <ThemeToggle
+                className={
+                  onDiary
+                    ? "text-[#e2d4b8]/65 hover:text-[#f5ead0]"
+                    : "text-muted-foreground hover:text-foreground dark:text-white/70 dark:hover:text-white"
+                }
+              />
             </div>
           </div>
         </div>

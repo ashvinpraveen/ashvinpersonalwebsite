@@ -23,6 +23,15 @@ const projects: ProjectItem[] = [
       "AI workspace for writing and thinking. 40,000+ users. Backed by Antler.",
   },
   {
+    name: "Tom Riddle Diary",
+    role: "Interactive web experiment",
+    logo: null,
+    initials: "TR",
+    href: "/diary",
+    description:
+      "A cinematic browser diary that writes back, flips pages, and hides an anagram in the cover.",
+  },
+  {
     name: "National AI Competition (NAIC)",
     role: "Director",
     logo: "/logo-naic.png",
@@ -64,56 +73,60 @@ const WorkSection = () => {
   return (
     <SectionBlock id="projects" label="Projects">
       <div className="grid gap-3 md:grid-cols-2">
-        {projects.map((item) => (
-          <div key={item.href} className={`group relative flex h-full flex-col ${cardCompact}`}>
-            <a
-              href={item.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="absolute inset-0 z-10 rounded-2xl"
-              aria-label={`View ${item.name}`}
-            />
-            <div className="relative z-20 flex items-start gap-3 mb-2 pointer-events-none">
-              {item.logo ? (
-                <img
-                  src={item.logo}
-                  alt={item.alt ?? item.name}
-                  className="w-9 h-9 rounded-xl object-contain shrink-0"
-                />
-              ) : (
-                <span className="flex w-9 h-9 items-center justify-center rounded-xl bg-muted font-mono text-xs font-semibold text-muted-foreground shrink-0">
-                  {item.initials}
+        {projects.map((item) => {
+          const isExternal = item.href.startsWith("http");
+
+          return (
+            <div key={item.href} className={`group relative flex h-full flex-col ${cardCompact}`}>
+              <a
+                href={item.href}
+                target={isExternal ? "_blank" : undefined}
+                rel={isExternal ? "noopener noreferrer" : undefined}
+                className="absolute inset-0 z-10 rounded-2xl"
+                aria-label={`View ${item.name}`}
+              />
+              <div className="relative z-20 flex items-start gap-3 mb-2 pointer-events-none">
+                {item.logo ? (
+                  <img
+                    src={item.logo}
+                    alt={item.alt ?? item.name}
+                    className="w-9 h-9 rounded-xl object-contain shrink-0"
+                  />
+                ) : (
+                  <span className="flex w-9 h-9 items-center justify-center rounded-xl bg-muted font-mono text-xs font-semibold text-muted-foreground shrink-0">
+                    {item.initials}
+                  </span>
+                )}
+                <div className="min-w-0 pt-0.5">
+                  <h3 className={`text-sm font-semibold ${heading}`}>
+                    {item.name}
+                  </h3>
+                  <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                    {item.role}
+                  </p>
+                </div>
+              </div>
+              <p className={`relative z-20 text-sm leading-relaxed pointer-events-none ${textSecondary}`}>
+                {item.description}
+              </p>
+              <div className="relative z-20 mt-auto pt-3 flex gap-4">
+                <span className="font-mono text-xs text-muted-foreground transition-colors group-hover:text-foreground">
+                  View →
                 </span>
-              )}
-              <div className="min-w-0 pt-0.5">
-                <h3 className={`text-sm font-semibold ${heading}`}>
-                  {item.name}
-                </h3>
-                <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-                  {item.role}
-                </p>
+                {item.githubHref && (
+                  <a
+                    href={item.githubHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    GitHub →
+                  </a>
+                )}
               </div>
             </div>
-            <p className={`relative z-20 text-sm leading-relaxed pointer-events-none ${textSecondary}`}>
-              {item.description}
-            </p>
-            <div className="relative z-20 mt-auto pt-3 flex gap-4">
-              <span className="font-mono text-xs text-muted-foreground transition-colors group-hover:text-foreground">
-                View →
-              </span>
-              {item.githubHref && (
-                <a
-                  href={item.githubHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  GitHub →
-                </a>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </SectionBlock>
   );
