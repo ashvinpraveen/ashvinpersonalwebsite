@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import SiteNav from "@/components/SiteNav";
 import { isConvexConfigured } from "@/lib/features";
 
 type Phase =
@@ -211,9 +212,7 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
         rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Caveat:wght@500&family=Cormorant+SC:wght@600;700&family=Tangerine:wght@700&display=swap"
       />
-      <a className="rd-back" href="/" aria-label="Leave the diary">
-        ←
-      </a>
+      <SiteNav variant="diary" />
 
       <div className={`rd-book${isOpen ? " rd-open" : ""}`}>
         <div className="rd-page">
@@ -338,27 +337,11 @@ function DiaryView({ askDiary }: { askDiary: AskDiary }) {
             url("/diary-background.png") center / cover no-repeat;
         }
 
-        .rd-back {
-          position: absolute;
-          top: max(14px, env(safe-area-inset-top));
-          left: 18px;
-          z-index: 10;
-          color: rgba(226, 212, 184, 0.35);
-          font-size: 22px;
-          line-height: 1;
-          text-decoration: none;
-          padding: 8px;
-          transition: color 0.3s ease;
-        }
-        .rd-back:hover,
-        .rd-back:focus-visible {
-          color: rgba(226, 212, 184, 0.8);
-        }
-
         .rd-book {
           position: relative;
           width: min(88vw, 60dvh, 430px);
           aspect-ratio: 5 / 7;
+          margin-top: 2rem;
           perspective: 1800px;
           filter: drop-shadow(0 30px 50px rgba(0, 0, 0, 0.65));
         }
