@@ -23,15 +23,6 @@ const projects: ProjectItem[] = [
       "AI workspace for writing and thinking. 40,000+ users. Backed by Antler.",
   },
   {
-    name: "Tom Riddle Diary",
-    role: "Interactive web experiment",
-    logo: null,
-    initials: "TR",
-    href: "/diary",
-    description:
-      "A cinematic browser diary that writes back, flips pages, and hides an anagram in the cover.",
-  },
-  {
     name: "National AI Competition (NAIC)",
     role: "Director",
     logo: "/logo-naic.png",
@@ -66,6 +57,14 @@ const projects: ProjectItem[] = [
     githubHref: "https://github.com/mfrashad/buildforpublic",
     description:
       "Community building practical public-interest projects in the open.",
+  },
+  {
+    name: "Tom Riddle's Diary",
+    role: "JUST FOR FUN",
+    logo: "/logo-riddle-diary.svg",
+    href: "/diary",
+    description:
+      "Write in a blank page and the ghost of Tom Riddle responds. A fun project I made with Claude Fable & GPT 5.5. Play around with it!",
   },
 ];
 
