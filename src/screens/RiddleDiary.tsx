@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import SiteNav from "@/components/SiteNav";
 import { isConvexConfigured } from "@/lib/features";
 
@@ -27,6 +28,8 @@ const PAPER_NOISE =
 
 const AUTO_SUBMIT_DELAY_MS = 3000;
 const REPLY_PAGE_CHAR_LIMIT = 270;
+const DIARY_CLIENT_ID_KEY = "riddle-diary-client-id";
+const DIARY_THREAD_ID_KEY = "riddle-diary-thread-id";
 
 type AskDiary = (entry: string, history: DiaryMessage[]) => Promise<string>;
 
@@ -82,6 +85,18 @@ function splitDiaryPages(text: string) {
   return pages;
 }
 
+function getOrCreateDiaryClientId() {
+  const existing = window.localStorage.getItem(DIARY_CLIENT_ID_KEY);
+  if (existing) return existing;
+
+  const randomId =
+    window.crypto?.randomUUID?.() ??
+    `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  const clientId = `diary-${randomId}`;
+  window.localStorage.setItem(DIARY_CLIENT_ID_KEY, clientId);
+  return clientId;
+}
+
 export default function RiddleDiary() {
   if (!isConvexConfigured) {
     return <DiaryView askDiary={async () => FALLBACK_REPLY} />;
@@ -91,12 +106,30 @@ export default function RiddleDiary() {
 
 function ConvexDiary() {
   const respond = useAction(api.diary.respond);
+  const [threadId, setThreadId] = useState<Id<"diaryThreads"> | undefined>();
+
+  useEffect(() => {
+    const savedThreadId = window.sessionStorage.getItem(DIARY_THREAD_ID_KEY);
+    if (savedThreadId) {
+      setThreadId(savedThreadId as Id<"diaryThreads">);
+    }
+  }, []);
+
   const askDiary = useCallback<AskDiary>(
     async (entry, history) => {
-      const result = await respond({ entry, history });
+      const result = await respond({
+        entry,
+        history,
+        clientId: getOrCreateDiaryClientId(),
+        threadId,
+      });
+      if (result.threadId) {
+        setThreadId(result.threadId);
+        window.sessionStorage.setItem(DIARY_THREAD_ID_KEY, result.threadId);
+      }
       return result.reply || FALLBACK_REPLY;
     },
-    [respond],
+    [respond, threadId],
   );
   return <DiaryView askDiary={askDiary} />;
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, ReactNode, useEffect, useState } from "react";
-import { LayoutDashboard, LogOut, MessageCircle, PencilLine } from "lucide-react";
+import { BookOpen, LayoutDashboard, LogOut, MessageCircle, PencilLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 export const ADMIN_SECRET_KEY = "postcard-admin-secret";
 
 type AdminShellProps = {
-  activePath: "/admin" | "/admin/dashboard" | "/admin/postcards";
+  activePath: "/admin" | "/admin/dashboard" | "/admin/diary" | "/admin/postcards";
   title: string;
   description?: string;
   children: (adminSecret: string) => ReactNode;
@@ -26,6 +26,11 @@ const adminNavItems = [
     href: "/admin",
     label: "Chats",
     icon: MessageCircle,
+  },
+  {
+    href: "/admin/diary",
+    label: "Diary",
+    icon: BookOpen,
   },
   {
     href: "/admin/postcards",
@@ -125,7 +130,7 @@ export default function AdminShell({
 
             <section className="min-h-0 min-w-0 overflow-hidden">{children(adminSecret)}</section>
 
-            <nav className="grid h-16 grid-cols-3 border-t border-border bg-background/95 px-3 py-2 lg:hidden">
+            <nav className="grid h-16 grid-cols-4 border-t border-border bg-background/95 px-3 py-2 lg:hidden">
               {adminNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activePath === item.href;

@@ -1,5 +1,8 @@
 import { v } from "convex/values";
-import { action, env } from "./_generated/server";
+import { action, env, internalMutation, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import type { Doc, Id } from "./_generated/dataModel";
+import { isAdmin, requireAdmin } from "./adminAuth";
 import {
   DEFAULT_GEMINI_MODEL,
   DEFAULT_ILMU_MODEL,
@@ -22,6 +25,10 @@ Voice:
 
 const FALLBACK_REPLY =
   "The ink stirs, but the words will not come. Write to me again.";
+const MAX_CLIENT_ID_LENGTH = 80;
+const MAX_ENTRY_LENGTH = 600;
+const ADMIN_THREAD_LIST_LIMIT = 80;
+const ADMIN_MESSAGE_LIST_LIMIT = 120;
 
 type DiaryMessage = {
   author: "visitor" | "diary";
@@ -32,6 +39,10 @@ function cleanReply(text: string) {
   const cleaned = text.replace(/[*_`#>]/g, "").trim();
   return cleaned ? cleaned.slice(0, 480) : FALLBACK_REPLY;
 }
+
+const normalizeClientId = (value: string) => value.trim().slice(0, MAX_CLIENT_ID_LENGTH);
+
+const normalizeEntry = (value: string) => value.trim().replace(/\r\n/g, "\n").slice(0, MAX_ENTRY_LENGTH);
 
 async function callIlmuDiary(apiKey: string, messages: DiaryMessage[]) {
   const response = await fetch(`${ILMU_BASE_URL}/chat/completions`, {
@@ -112,6 +123,8 @@ async function callGeminiDiary(apiKey: string, messages: DiaryMessage[]) {
 export const respond = action({
   args: {
     entry: v.string(),
+    clientId: v.optional(v.string()),
+    threadId: v.optional(v.id("diaryThreads")),
     history: v.optional(
       v.array(
         v.object({
@@ -121,16 +134,24 @@ export const respond = action({
       ),
     ),
   },
-  handler: async (_ctx, args): Promise<{ reply: string }> => {
-    const entry = args.entry.trim().slice(0, 600);
+  handler: async (ctx, args): Promise<{ reply: string; threadId: Id<"diaryThreads"> | null }> => {
+    const entry = normalizeEntry(args.entry);
     if (!entry) {
-      return { reply: FALLBACK_REPLY };
+      return { reply: FALLBACK_REPLY, threadId: null };
     }
+
+    const threadId = args.clientId
+      ? await ctx.runMutation(internal.diary.reserveVisitorMessage, {
+          clientId: args.clientId,
+          threadId: args.threadId,
+          body: entry,
+        })
+      : null;
 
     const messages: DiaryMessage[] = [
       ...(args.history ?? [])
         .slice(-8)
-        .map((message) => ({ author: message.author, body: message.body.trim().slice(0, 600) }))
+        .map((message) => ({ author: message.author, body: normalizeEntry(message.body) }))
         .filter((message) => message.body),
       { author: "visitor", body: entry },
     ];
@@ -140,7 +161,11 @@ export const respond = action({
 
     if (ilmuApiKey) {
       try {
-        return { reply: await callIlmuDiary(ilmuApiKey, messages) };
+        const reply = await callIlmuDiary(ilmuApiKey, messages);
+        if (threadId) {
+          await ctx.runMutation(internal.diary.addDiaryMessage, { threadId, body: reply });
+        }
+        return { reply, threadId };
       } catch (error) {
         if (!googleApiKey) throw error;
         console.warn(
@@ -154,6 +179,179 @@ export const respond = action({
       throw new Error("The diary is not configured yet.");
     }
 
-    return { reply: await callGeminiDiary(googleApiKey, messages) };
+    const reply = await callGeminiDiary(googleApiKey, messages);
+    if (threadId) {
+      await ctx.runMutation(internal.diary.addDiaryMessage, { threadId, body: reply });
+    }
+    return { reply, threadId };
+  },
+});
+
+export const reserveVisitorMessage = internalMutation({
+  args: {
+    clientId: v.string(),
+    threadId: v.optional(v.id("diaryThreads")),
+    body: v.string(),
+  },
+  handler: async (ctx, args): Promise<Id<"diaryThreads">> => {
+    const clientId = normalizeClientId(args.clientId);
+    const body = normalizeEntry(args.body);
+    if (!clientId || !body) {
+      throw new Error("Could not write in the diary.");
+    }
+
+    const now = Date.now();
+    const existingThread = args.threadId ? await ctx.db.get(args.threadId) : null;
+    const threadId: Id<"diaryThreads"> =
+      existingThread?.clientId === clientId
+        ? existingThread._id
+        : await ctx.db.insert("diaryThreads", {
+            clientId,
+            title: body.slice(0, 60),
+            lastMessageAt: now,
+            lastVisitorMessageAt: now,
+            createdAt: now,
+          });
+
+    if (existingThread?.clientId === clientId) {
+      await ctx.db.patch(threadId, {
+        title: existingThread.title ?? body.slice(0, 60),
+        lastMessageAt: now,
+        lastVisitorMessageAt: now,
+      });
+    }
+
+    await ctx.db.insert("diaryMessages", {
+      threadId,
+      author: "visitor",
+      body,
+      createdAt: now,
+    });
+
+    return threadId;
+  },
+});
+
+export const addDiaryMessage = internalMutation({
+  args: {
+    threadId: v.id("diaryThreads"),
+    body: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const body = cleanReply(args.body);
+    const now = Date.now();
+
+    await ctx.db.insert("diaryMessages", {
+      threadId: args.threadId,
+      author: "diary",
+      body,
+      createdAt: now,
+    });
+    await ctx.db.patch(args.threadId, {
+      lastMessageAt: now,
+    });
+  },
+});
+
+export const listForAdmin = query({
+  args: {
+    adminSecret: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (!isAdmin(args.adminSecret)) {
+      return null;
+    }
+
+    const threads = await ctx.db
+      .query("diaryThreads")
+      .withIndex("by_lastMessageAt")
+      .order("desc")
+      .take(ADMIN_THREAD_LIST_LIMIT);
+
+    return await Promise.all(
+      threads.map(async (thread) => {
+        const latestMessages = await ctx.db
+          .query("diaryMessages")
+          .withIndex("by_threadId_and_createdAt", (q) => q.eq("threadId", thread._id))
+          .order("desc")
+          .take(1);
+        const latestVisitorMessages = await ctx.db
+          .query("diaryMessages")
+          .withIndex("by_threadId_and_author_and_createdAt", (q) =>
+            q.eq("threadId", thread._id).eq("author", "visitor"),
+          )
+          .order("desc")
+          .take(1);
+        const latestMessage = latestMessages[0] ?? null;
+        const latestVisitorMessage = latestVisitorMessages[0] ?? null;
+        const lastVisitorMessageAt =
+          thread.lastVisitorMessageAt ?? latestVisitorMessage?.createdAt ?? null;
+
+        return {
+          ...thread,
+          latestMessage,
+          lastVisitorMessageAt,
+          unread: Boolean(
+            lastVisitorMessageAt && lastVisitorMessageAt > (thread.adminLastReadAt ?? 0),
+          ),
+        };
+      }),
+    );
+  },
+});
+
+export const getThreadForAdmin = query({
+  args: {
+    adminSecret: v.string(),
+    threadId: v.id("diaryThreads"),
+  },
+  handler: async (ctx, args) => {
+    if (!isAdmin(args.adminSecret)) {
+      return null;
+    }
+
+    const thread = await ctx.db.get(args.threadId);
+    if (!thread) return null;
+
+    const messages = await ctx.db
+      .query("diaryMessages")
+      .withIndex("by_threadId_and_createdAt", (q) => q.eq("threadId", thread._id))
+      .order("desc")
+      .take(ADMIN_MESSAGE_LIST_LIMIT);
+    const latestVisitorMessages = await ctx.db
+      .query("diaryMessages")
+      .withIndex("by_threadId_and_author_and_createdAt", (q) =>
+        q.eq("threadId", thread._id).eq("author", "visitor"),
+      )
+      .order("desc")
+      .take(1);
+    const latestVisitorMessage = latestVisitorMessages[0] ?? null;
+    const lastVisitorMessageAt =
+      thread.lastVisitorMessageAt ?? latestVisitorMessage?.createdAt ?? null;
+
+    return {
+      thread: {
+        ...thread,
+        lastVisitorMessageAt,
+        unread: Boolean(
+          lastVisitorMessageAt && lastVisitorMessageAt > (thread.adminLastReadAt ?? 0),
+        ),
+      },
+      messages: messages.reverse() as Doc<"diaryMessages">[],
+    };
+  },
+});
+
+export const markThreadReadForAdmin = mutation({
+  args: {
+    adminSecret: v.string(),
+    threadId: v.id("diaryThreads"),
+  },
+  handler: async (ctx, args) => {
+    requireAdmin(args.adminSecret);
+
+    await ctx.db.patch(args.threadId, {
+      adminLastReadAt: Date.now(),
+    });
   },
 });

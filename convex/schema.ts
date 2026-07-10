@@ -55,4 +55,24 @@ export default defineSchema({
     count: v.number(),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
+  diaryThreads: defineTable({
+    clientId: v.string(),
+    title: v.optional(v.string()),
+    adminLastReadAt: v.optional(v.number()),
+    lastMessageAt: v.number(),
+    lastVisitorMessageAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_clientId_and_lastMessageAt", ["clientId", "lastMessageAt"])
+    .index("by_lastMessageAt", ["lastMessageAt"])
+    .index("by_createdAt", ["createdAt"]),
+  diaryMessages: defineTable({
+    threadId: v.id("diaryThreads"),
+    author: v.union(v.literal("visitor"), v.literal("diary")),
+    body: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_threadId_and_createdAt", ["threadId", "createdAt"])
+    .index("by_threadId_and_author_and_createdAt", ["threadId", "author", "createdAt"])
+    .index("by_createdAt", ["createdAt"]),
 });
