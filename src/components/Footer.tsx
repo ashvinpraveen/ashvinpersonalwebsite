@@ -3,6 +3,7 @@ import { pageShellClassName } from "@/lib/layout";
 import { PlanetaryGearSystem } from "@/components/HeroSection";
 import { cuttingMatGridDark, cuttingMatGridLight, grainSvg } from "@/lib/visuals";
 import { isBlogEnabled, isPostcardsEnabled } from "@/lib/features";
+import ChatTrigger from "@/components/ChatTrigger";
 
 const Footer = () => {
   const year = new Date().getFullYear();
@@ -54,7 +55,7 @@ const Footer = () => {
             <div className="flex flex-col gap-2 text-muted-foreground">
               <a href="https://cal.com/ashvinpraveen" target="_blank" rel="noreferrer" className={linkSubtle}>Book a call</a>
               <a href="https://linkedin.com/in/ashvinpraveen" target="_blank" rel="noreferrer" className={linkSubtle}>LinkedIn</a>
-              <a href="/text" className={linkSubtle}>Text me</a>
+              <ChatTrigger className={`${linkSubtle} text-left`}>Chat with me</ChatTrigger>
             </div>
           </div>
           <div className="space-y-3">

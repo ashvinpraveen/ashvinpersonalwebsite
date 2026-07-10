@@ -35,6 +35,7 @@ import {
 import { Tool, ToolContent, ToolHeader } from "@/components/ai-elements/tool";
 import { Button } from "@/components/ui/button";
 import AshvinPet from "@/features/chat-widget/AshvinPet";
+import { OPEN_CHAT_EVENT } from "@/components/ChatTrigger";
 import {
   extractScreenToolCalls,
   toDisplayChatMessages,
@@ -139,6 +140,23 @@ function ChatWidgetInner() {
   useEffect(() => {
     setClientId(getOrCreateClientId());
     setModelProvider(getStoredModelProvider());
+  }, []);
+
+  useEffect(() => {
+    const openChat = () => {
+      if (sidePanelExitTimeoutRef.current) {
+        window.clearTimeout(sidePanelExitTimeoutRef.current);
+        sidePanelExitTimeoutRef.current = null;
+      }
+
+      setIsSidePanelOpen(false);
+      setIsSidePanelExiting(false);
+      setIsOpen(true);
+      window.setTimeout(() => inputRef.current?.focus(), 0);
+    };
+
+    window.addEventListener(OPEN_CHAT_EVENT, openChat);
+    return () => window.removeEventListener(OPEN_CHAT_EVENT, openChat);
   }, []);
 
   useEffect(() => {

@@ -20,7 +20,6 @@ export const SITE_ROUTES = [
   { path: "/diary", label: "Diary" },
   { path: "/blog", label: "Writing" },
   { path: "/resources", label: "Resources" },
-  { path: "/text", label: "Text me" },
   { path: "/postcard", label: "Postcard" },
   { path: "/postcards", label: "Postcards" },
 ] as const;

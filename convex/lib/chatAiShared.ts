@@ -34,7 +34,7 @@ export const FALLBACK_GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
 export const DEFAULT_ILMU_MODEL = "ilmu-mini-v3.3";
 export const ILMU_BASE_URL = "https://api.ilmu.ai/v1";
 export const RETRYABLE_GEMINI_STATUSES = new Set([408, 409, 429, 500, 502, 503, 504]);
-export const SAFE_SITE_PATHS = ["/", "/blog", "/resources", "/text", "/postcard", "/postcards"] as const;
+export const SAFE_SITE_PATHS = ["/", "/blog", "/resources", "/postcard", "/postcards"] as const;
 export const SAFE_SECTION_IDS = [
   "hero",
   "projects",

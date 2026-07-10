@@ -65,7 +65,7 @@ const chatTools = {
     description:
       "Navigate the visitor to another internal page on Ashvin's website. Use only when it directly helps answer the visitor.",
     inputSchema: z.object({
-      path: z.string().describe("One of /, /blog, /resources, /text, /postcard, or /postcards."),
+      path: z.string().describe("One of /, /blog, /resources, /postcard, or /postcards."),
       reason: z.string().optional().describe("Short visitor-facing reason for the navigation."),
     }),
     outputSchema: screenToolOutputSchema,

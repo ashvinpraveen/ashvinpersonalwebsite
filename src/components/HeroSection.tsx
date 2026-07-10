@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { pageShellClassName } from "@/lib/layout";
 import { heading } from "@/lib/styles";
 import { cuttingMatGridDark, cuttingMatGridLight, grainSvg } from "@/lib/visuals";
+import ChatTrigger from "@/components/ChatTrigger";
 
 const socials = [
   {
@@ -706,12 +707,11 @@ const HeroSection = () => {
             >
               Read my writing
             </a>
-            <a
-              href="/text"
+            <ChatTrigger
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full backdrop-blur-md bg-foreground/[0.08] dark:bg-white/10 text-sm font-medium text-foreground/80 dark:text-white/80 hover:bg-foreground/[0.12] dark:hover:bg-white/15 hover:text-foreground dark:hover:text-white transition-colors"
             >
-              Text me
-            </a>
+              Chat with me
+            </ChatTrigger>
           </motion.div>
           <motion.div
             className="mt-6 flex flex-wrap gap-2"

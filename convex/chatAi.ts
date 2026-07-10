@@ -124,7 +124,7 @@ const screenTools = [
           properties: {
             path: {
               type: "STRING",
-              description: "One of /, /blog, /resources, /text, /postcard, or /postcards.",
+              description: "One of /, /blog, /resources, /postcard, or /postcards.",
             },
             reason: {
               type: "STRING",
@@ -253,7 +253,7 @@ const openAiScreenTools = [
         properties: {
           path: {
             type: "string",
-            description: "One of /, /blog, /resources, /text, /postcard, or /postcards.",
+            description: "One of /, /blog, /resources, /postcard, or /postcards.",
           },
           reason: {
             type: "string",
