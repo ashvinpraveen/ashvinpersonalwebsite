@@ -1,0 +1,244 @@
+{"kind":"deck","id":"pr/7coaun","name":"Deck"}
+{"kind":"layout","layoutId":"7f691900-7239-4634-a3f0-278cbc5f36f3","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"42682bbe-409f-43ce-a825-ae3f25a24c55","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/501j8z","slide":1,"title":"ECOWORLD · AI IN CONTENT MARKETING","textShapes":5}
+{"kind":"textbox","id":"sh/lkzq5wja","slide":1,"name":"eyebrow","text":"ECOWORLD · AI IN CONTENT MARKETING","textPreview":"ECOWORLD · AI IN CONTENT MARKETING","textChars":34,"textLines":1,"bbox":[72,54,600,22]}
+{"kind":"textbox","id":"sh/kzq9wrip","slide":1,"name":"deck-title","text":"AI in\nContent Marketing","textPreview":"AI in | Content Marketing","textChars":23,"textLines":2,"bbox":[72,134,660,210]}
+{"kind":"textbox","id":"sh/bux8z21s","slide":1,"name":"deck-subtitle","text":"Build a content system that learns your brand,\nyour process, and your feedback.","textPreview":"Build a content system that learns your brand, | your process, and your feedback.","textChars":79,"textLines":2,"bbox":[76,377,620,78]}
+{"kind":"shape","id":"sh/ato7qx0n","slide":1,"name":"speaker-pill","bbox":[76,512,405,55]}
+{"kind":"textbox","id":"sh/xwzq1cjy","slide":1,"name":"speaker-name","text":"Ashvin Praveen  ·  Co-founder & CEO, Cleve.ai","textPreview":"Ashvin Praveen  ·  Co-founder & CEO, Cleve.ai","textChars":45,"textLines":1,"bbox":[99,529,360,22]}
+{"kind":"shape","id":"sh/cvqps7id","slide":1,"name":"portrait-frame","bbox":[805,82,360,493]}
+{"kind":"shape","id":"sh/2po7mx0b","slide":1,"name":"avatar-frame","bbox":[748,500,132,132]}
+{"kind":"textbox","id":"sh/l0fq50bq","slide":1,"text":"From chatbots to content engines","textPreview":"From chatbots to content engines","textChars":32,"textLines":1,"bbox":[906,603,270,25]}
+{"kind":"image","id":"im/7ap432pc","slide":1,"name":"","alt":"Warm cream graph-paper texture with subtle topographic contour lines","bbox":[0,0,1280,720]}
+{"kind":"image","id":"im/ahw32doj","slide":1,"name":"","geometry":"roundRect","alt":"Portrait of Ashvin Praveen","bbox":[816,93,338,471]}
+{"kind":"image","id":"im/bi9knu1k","slide":1,"name":"","alt":"Pixel-art avatar of Ashvin Praveen","bbox":[770,511,88,110]}
+{"kind":"notes","id":"nt/501j8z","slide":1,"text":""}
+{"kind":"slide","id":"sl/ot59ge","slide":2,"title":"WHY ME","textShapes":17}
+{"kind":"textbox","id":"sh/ih072tsn","slide":2,"name":"eyebrow","text":"WHY ME","textPreview":"WHY ME","textChars":6,"textLines":1,"bbox":[72,54,600,22]}
+{"kind":"textbox","id":"sh/ji9obyt8","slide":2,"name":"slide-title","text":"I build, teach, and test these systems in the real world.","textPreview":"I build, teach, and test these systems in the real world.","textChars":57,"textLines":1,"bbox":[72,92,1110,112]}
+{"kind":"shape","id":"sh/s72p8nap","slide":2,"name":"timeline-line","bbox":[118,350,1040,0]}
+{"kind":"shape","id":"sh/t8b6h8ba","slide":2,"name":"milestone-01","bbox":[130,314,72,72]}
+{"kind":"textbox","id":"sh/rmtofit4","slide":2,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[130,179,44,18]}
+{"kind":"textbox","id":"sh/gb2pcnal","slide":2,"text":"Learn the craft","textPreview":"Learn the craft","textChars":15,"textLines":1,"bbox":[130,210,230,32]}
+{"kind":"textbox","id":"sh/1cvqlsb6","slide":2,"text":"Tech + media,\nbuilding in public","textPreview":"Tech + media, | building in public","textChars":32,"textLines":2,"bbox":[130,251,230,58]}
+{"kind":"shape","id":"sh/5snq1wf6","slide":2,"name":"milestone-02","bbox":[406,314,72,72]}
+{"kind":"textbox","id":"sh/jq58zmx0","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[406,384,44,18]}
+{"kind":"textbox","id":"sh/ipc7qhwf","slide":2,"text":"Build the product","textPreview":"Build the product","textChars":17,"textLines":1,"bbox":[406,415,230,32]}
+{"kind":"textbox","id":"sh/twnq5wf2","slide":2,"text":"Cleve.ai\n40,000+ users · Antler-backed","textPreview":"Cleve.ai | 40,000+ users · Antler-backed","textChars":38,"textLines":2,"bbox":[406,456,230,58]}
+{"kind":"shape","id":"sh/svepwreh","slide":2,"name":"milestone-03","bbox":[682,314,72,72]}
+{"kind":"textbox","id":"sh/6tw7u1wb","slide":2,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[682,179,44,18]}
+{"kind":"textbox","id":"sh/903qtcfy","slide":2,"text":"Teach at scale","textPreview":"Teach at scale","textChars":14,"textLines":1,"bbox":[682,210,230,32]}
+{"kind":"textbox","id":"sh/8zupk7ed","slide":2,"text":"National AI Competition\nNearly 2,000 students","textPreview":"National AI Competition | Nearly 2,000 students","textChars":45,"textLines":2,"bbox":[682,251,230,58]}
+{"kind":"shape","id":"sh/0jypg7m9","slide":2,"name":"milestone-04","bbox":[958,314,72,72]}
+{"kind":"textbox","id":"sh/ehw7ex43","slide":2,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[958,384,44,18]}
+{"kind":"textbox","id":"sh/zi58725o","slide":2,"text":"Grow the ecosystem","textPreview":"Grow the ecosystem","textChars":18,"textLines":1,"bbox":[958,415,230,32]}
+{"kind":"textbox","id":"sh/o7y9krm5","slide":2,"text":"Malaysian.ai\nCommunity for AI builders","textPreview":"Malaysian.ai | Community for AI builders","textChars":38,"textLines":2,"bbox":[958,456,230,58]}
+{"kind":"textbox","id":"sh/987qdcnq","slide":2,"text":"The common thread: turning lived context into useful systems.","textPreview":"The common thread: turning lived context into useful systems.","textChars":61,"textLines":1,"bbox":[288,593,705,35]}
+{"kind":"textbox","id":"sh/m5g7ih4z","slide":2,"name":"footer-2","text":"ASHVIN PRAVEEN  ·  INTRODUCTION","textPreview":"ASHVIN PRAVEEN  ·  INTRODUCTION","textChars":31,"textLines":1,"bbox":[72,677,450,18]}
+{"kind":"textbox","id":"sh/n6p8bm5k","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1168,675,40,20]}
+{"kind":"image","id":"im/03upofu1","slide":2,"name":"","alt":"Warm cream graph-paper texture with subtle topographic contour lines","bbox":[0,0,1280,720]}
+{"kind":"image","id":"im/bel8badk","slide":2,"name":"","alt":"Pixel-art avatar of Ashvin Praveen","bbox":[132,314,58,72]}
+{"kind":"image","id":"im/vy1cvil0","slide":2,"name":"","alt":"Cleve.ai logo","bbox":[415,321,58,58]}
+{"kind":"image","id":"im/8vat032p","slide":2,"name":"","alt":"National AI Competition logo","bbox":[690,329,60,42]}
+{"kind":"image","id":"im/m94r2p0f","slide":2,"name":"","alt":"Malaysian.ai logo","bbox":[967,321,58,58]}
+{"kind":"notes","id":"nt/ot59ge","slide":2,"text":""}
+{"kind":"slide","id":"sl/9yllfv","slide":3,"title":"THE SHIFT","textShapes":17}
+{"kind":"textbox","id":"sh/redofe94","slide":3,"name":"eyebrow","text":"THE SHIFT","textPreview":"THE SHIFT","textChars":9,"textLines":1,"bbox":[72,54,600,22]}
+{"kind":"textbox","id":"sh/6d4nm98j","slide":3,"name":"slide-title","text":"A chatbot answers. A content engine improves.","textPreview":"A chatbot answers. A content engine improves.","textChars":45,"textLines":1,"bbox":[72,90,1090,112]}
+{"kind":"shape","id":"sh/5cb6d4ry","slide":3,"name":"chatbot-field","bbox":[72,207,410,413]}
+{"kind":"textbox","id":"sh/4b25kjqd","slide":3,"text":"CHATBOT","textPreview":"CHATBOT","textChars":7,"textLines":1,"bbox":[104,235,150,20]}
+{"kind":"textbox","id":"sh/jatobe98","slide":3,"text":"Starts from zero\nevery time.","textPreview":"Starts from zero | every time.","textChars":28,"textLines":2,"bbox":[104,270,310,82]}
+{"kind":"shape","id":"sh/i9kni98n","slide":3,"name":"one-off-prompt","bbox":[105,385,280,62]}
+{"kind":"textbox","id":"sh/h8b694r2","slide":3,"text":"“Write me a social post.”","textPreview":"“Write me a social post.”","textChars":25,"textLines":1,"bbox":[126,405,240,22]}
+{"kind":"shape","id":"sh/w725gzqh","slide":3,"name":"generic-draft","bbox":[181,505,224,55]}
+{"kind":"textbox","id":"sh/il4byd4r","slide":3,"text":"Generic draft","textPreview":"Generic draft","textChars":13,"textLines":1,"bbox":[207,522,174,22]}
+{"kind":"shape","id":"sh/jmds7ilc","slide":3,"bbox":[245,447,48,58]}
+{"kind":"textbox","id":"sh/knmt0nmx","slide":3,"text":"Then the context disappears.","textPreview":"Then the context disappears.","textChars":28,"textLines":1,"bbox":[105,575,300,23]}
+{"kind":"shape","id":"sh/5ova9s3i","slide":3,"name":"engine-field","bbox":[516,207,692,413]}
+{"kind":"textbox","id":"sh/ahkbud4v","slide":3,"text":"CONTENT ENGINE","textPreview":"CONTENT ENGINE","textChars":14,"textLines":1,"bbox":[552,235,210,20]}
+{"kind":"textbox","id":"sh/vits3ylg","slide":3,"text":"Carries your context forward.","textPreview":"Carries your context forward.","textChars":29,"textLines":1,"bbox":[552,270,570,44]}
+{"kind":"shape","id":"sh/wj2tw3m1","slide":3,"name":"engine-context","bbox":[558,370,142,56]}
+{"kind":"textbox","id":"sh/xkva583m","slide":3,"text":"Context","textPreview":"Context","textChars":7,"textLines":1,"bbox":[580,388,98,21]}
+{"kind":"shape","id":"sh/mdkrqt4z","slide":3,"name":"engine-memory","bbox":[748,336,142,56]}
+{"kind":"textbox","id":"sh/netszyl4","slide":3,"text":"Memory","textPreview":"Memory","textChars":6,"textLines":1,"bbox":[770,354,98,21]}
+{"kind":"shape","id":"sh/byp87u1w","slide":3,"name":"engine-feedback","bbox":[748,454,142,56]}
+{"kind":"textbox","id":"sh/qxg7ypkb","slide":3,"text":"Feedback","textPreview":"Feedback","textChars":8,"textLines":1,"bbox":[770,472,98,21]}
+{"kind":"shape","id":"sh/dkrq94j2","slide":3,"name":"engine-workflow","bbox":[938,370,142,56]}
+{"kind":"textbox","id":"sh/cjyp0z2h","slide":3,"text":"Workflow","textPreview":"Workflow","textChars":8,"textLines":1,"bbox":[960,388,98,21]}
+{"kind":"shape","id":"sh/zm98be18","slide":3,"name":"engine-output","bbox":[938,500,218,65]}
+{"kind":"textbox","id":"sh/yl0729kn","slide":3,"text":"On-brand content,\nfaster","textPreview":"On-brand content, | faster","textChars":24,"textLines":2,"bbox":[965,516,166,39]}
+{"kind":"shape","id":"sh/lorqd4je","slide":3,"bbox":[700,364,48,34]}
+{"kind":"shape","id":"sh/0nip4z2t","slide":3,"bbox":[890,364,48,34]}
+{"kind":"shape","id":"sh/fq5ozalo","slide":3,"bbox":[890,426,119,56]}
+{"kind":"shape","id":"sh/epw7q5kj","slide":3,"bbox":[629,426,119,56]}
+{"kind":"shape","id":"sh/kvu50bi1","slide":3,"bbox":[1009,426,38,74]}
+{"kind":"textbox","id":"sh/5w3m9gzm","slide":3,"text":"Each round leaves the system smarter.","textPreview":"Each round leaves the system smarter.","textChars":37,"textLines":1,"bbox":[558,560,350,23]}
+{"kind":"textbox","id":"sh/itsny10b","slide":3,"name":"footer-3","text":"ASHVIN PRAVEEN  ·  INTRODUCTION","textPreview":"ASHVIN PRAVEEN  ·  INTRODUCTION","textChars":31,"textLines":1,"bbox":[72,677,450,18]}
+{"kind":"textbox","id":"sh/jul476hg","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1168,675,40,20]}
+{"kind":"image","id":"im/lkb65c7a","slide":3,"name":"","alt":"Warm cream graph-paper texture with subtle topographic contour lines","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/9yllfv","slide":3,"text":""}
+{"kind":"slide","id":"sl/246wmx","slide":4,"title":"THE AI TEAM","textShapes":16}
+{"kind":"textbox","id":"sh/pcve54be","slide":4,"name":"eyebrow","text":"THE AI TEAM","textPreview":"THE AI TEAM","textChars":11,"textLines":1,"bbox":[72,54,600,22]}
+{"kind":"textbox","id":"sh/obmxczat","slide":4,"name":"slide-title","text":"The best AI setup works like a team, not a tool.","textPreview":"The best AI setup works like a team, not a tool.","textChars":48,"textLines":1,"bbox":[72,88,1120,112]}
+{"kind":"shape","id":"sh/bexw7et4","slide":4,"name":"team-field","bbox":[72,205,1136,423]}
+{"kind":"shape","id":"sh/adofe9sj","slide":4,"name":"creative-director","bbox":[530,315,220,220]}
+{"kind":"textbox","id":"sh/xgfe94ba","slide":4,"text":"YOU","textPreview":"YOU","textChars":3,"textLines":1,"bbox":[570,367,140,36]}
+{"kind":"textbox","id":"sh/cf6xgzap","slide":4,"text":"Creative director","textPreview":"Creative director","textChars":17,"textLines":1,"bbox":[560,414,160,26]}
+{"kind":"textbox","id":"sh/ritwvat0","slide":4,"text":"Sets the standard\nand makes the calls","textPreview":"Sets the standard | and makes the calls","textChars":37,"textLines":2,"bbox":[560,453,160,45]}
+{"kind":"shape","id":"sh/qhkv25sf","slide":4,"name":"role-researcher","bbox":[112,245,260,108]}
+{"kind":"textbox","id":"sh/oraxcv6t","slide":4,"text":"Researcher","textPreview":"Researcher","textChars":10,"textLines":1,"bbox":[136,265,212,30]}
+{"kind":"textbox","id":"sh/9sjy5gne","slide":4,"text":"Finds evidence, questions,\nand useful audience signals","textPreview":"Finds evidence, questions, | and useful audience signals","textChars":54,"textLines":2,"bbox":[136,301,212,43]}
+{"kind":"shape","id":"sh/mp8falon","slide":4,"name":"role-strategist","bbox":[908,245,260,108]}
+{"kind":"textbox","id":"sh/nqhg3q58","slide":4,"text":"Strategist","textPreview":"Strategist","textChars":10,"textLines":1,"bbox":[932,265,212,30]}
+{"kind":"textbox","id":"sh/wvaxgv65","slide":4,"text":"Turns goals into angles\nand campaign briefs","textPreview":"Turns goals into angles | and campaign briefs","textChars":43,"textLines":2,"bbox":[932,301,212,43]}
+{"kind":"shape","id":"sh/xwjy90na","slide":4,"name":"role-writer","bbox":[112,480,260,108]}
+{"kind":"textbox","id":"sh/atsfeloz","slide":4,"text":"Writer","textPreview":"Writer","textChars":6,"textLines":1,"bbox":[136,500,212,30]}
+{"kind":"textbox","id":"sh/bu1g7q5k","slide":4,"text":"Drafts in your voice,\nusing the shared context","textPreview":"Drafts in your voice, | using the shared context","textChars":46,"textLines":2,"bbox":[136,536,212,43]}
+{"kind":"shape","id":"sh/cz6x4b6l","slide":4,"name":"role-editor","bbox":[908,480,260,108]}
+{"kind":"textbox","id":"sh/d0zexwn6","slide":4,"text":"Editor","textPreview":"Editor","textChars":6,"textLines":1,"bbox":[932,500,212,30]}
+{"kind":"textbox","id":"sh/tgru1sfu","slide":4,"text":"Checks facts, tone,\nand fit before publishing","textPreview":"Checks facts, tone, | and fit before publishing","textChars":45,"textLines":2,"bbox":[932,536,212,43]}
+{"kind":"shape","id":"sh/svyd8nyp","slide":4,"bbox":[372,299,158,126]}
+{"kind":"shape","id":"sh/7upczih4","slide":4,"bbox":[750,299,158,126]}
+{"kind":"shape","id":"sh/6tgv6xgj","slide":4,"bbox":[372,425,158,109]}
+{"kind":"shape","id":"sh/hkre5cf6","slide":4,"bbox":[750,425,158,109]}
+{"kind":"textbox","id":"sh/gjidc7yl","slide":4,"text":"You set the standards. The AI team handles the repeatable work.","textPreview":"You set the standards. The AI team handles the repeatable work.","textChars":63,"textLines":1,"bbox":[330,645,620,24]}
+{"kind":"textbox","id":"sh/fi9w32x0","slide":4,"name":"footer-4","text":"ASHVIN PRAVEEN  ·  INTRODUCTION","textPreview":"ASHVIN PRAVEEN  ·  INTRODUCTION","textChars":31,"textLines":1,"bbox":[72,677,450,18]}
+{"kind":"textbox","id":"sh/uh0vaxgf","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1168,675,40,20]}
+{"kind":"image","id":"im/vu1o3m5c","slide":4,"name":"","alt":"Warm cream graph-paper texture with subtle topographic contour lines","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/246wmx","slide":4,"text":""}
+{"kind":"slide","id":"sl/o862ze","slide":5,"title":"ONE SOURCE OF TRUTH","textShapes":14}
+{"kind":"textbox","id":"sh/jal43uxw","slide":5,"name":"eyebrow","text":"ONE SOURCE OF TRUTH","textPreview":"ONE SOURCE OF TRUTH","textChars":19,"textLines":1,"bbox":[72,54,600,22]}
+{"kind":"textbox","id":"sh/i9snupgr","slide":5,"name":"slide-title","text":"One update. Every channel gets smarter.","textPreview":"One update. Every channel gets smarter.","textChars":39,"textLines":1,"bbox":[72,90,1080,112]}
+{"kind":"shape","id":"sh/h8jm1kf6","slide":5,"name":"shared-source","bbox":[85,265,332,252]}
+{"kind":"textbox","id":"sh/wna5szyl","slide":5,"text":"SHARED CONTEXT","textPreview":"SHARED CONTEXT","textChars":14,"textLines":1,"bbox":[116,293,210,20]}
+{"kind":"textbox","id":"sh/vm14zux0","slide":5,"text":"Change the\nmessage here","textPreview":"Change the | message here","textChars":23,"textLines":2,"bbox":[116,335,250,83]}
+{"kind":"textbox","id":"sh/ulsnqpgf","slide":5,"text":"Brand voice · product facts\ncampaign brief · latest decisions","textPreview":"Brand voice · product facts | campaign brief · latest decisions","textChars":61,"textLines":2,"bbox":[116,445,260,46]}
+{"kind":"shape","id":"sh/14n6dofa","slide":5,"name":"propagation-hub","bbox":[530,321,150,150]}
+{"kind":"textbox","id":"sh/g3e54jyp","slide":5,"text":"SYSTEM\nMEMORY","textPreview":"SYSTEM | MEMORY","textChars":13,"textLines":2,"bbox":[558,365,94,53]}
+{"kind":"shape","id":"sh/y9kfut83","slide":5,"name":"channel-1","bbox":[825,223,300,57]}
+{"kind":"textbox","id":"sh/jatgnypo","slide":5,"text":"Website   ✓ updated","textPreview":"Website   ✓ updated","textChars":19,"textLines":1,"bbox":[852,240,246,24]}
+{"kind":"shape","id":"sh/kb2xw3q9","slide":5,"name":"channel-2","bbox":[825,302,300,57]}
+{"kind":"textbox","id":"sh/lcbypo7u","slide":5,"text":"Email   ✓ updated","textPreview":"Email   ✓ updated","textChars":17,"textLines":1,"bbox":[852,319,246,24]}
+{"kind":"shape","id":"sh/a50fq987","slide":5,"name":"channel-3","bbox":[825,381,300,57]}
+{"kind":"textbox","id":"sh/b69wjeps","slide":5,"text":"Social   ✓ updated","textPreview":"Social   ✓ updated","textChars":18,"textLines":1,"bbox":[852,398,246,24]}
+{"kind":"shape","id":"sh/w7ixsjqx","slide":5,"name":"channel-4","bbox":[825,460,300,57]}
+{"kind":"textbox","id":"sh/x8bylo7i","slide":5,"text":"Ads   ✓ updated","textPreview":"Ads   ✓ updated","textChars":15,"textLines":1,"bbox":[852,477,246,24]}
+{"kind":"shape","id":"sh/u14f2d8b","slide":5,"name":"channel-5","bbox":[825,539,300,57]}
+{"kind":"textbox","id":"sh/f2dgvipw","slide":5,"text":"Sales materials   ✓ updated","textPreview":"Sales materials   ✓ updated","textChars":27,"textLines":1,"bbox":[852,556,246,24]}
+{"kind":"shape","id":"sh/rm5cna58","slide":5,"bbox":[417,391,113,5]}
+{"kind":"shape","id":"sh/qlwve5on","slide":5,"bbox":[680,251.5,145,144.5]}
+{"kind":"shape","id":"sh/do7upkne","slide":5,"bbox":[680,330.5,145,65.5]}
+{"kind":"shape","id":"sh/cnedgf6t","slide":5,"bbox":[680,396,145,13.5]}
+{"kind":"shape","id":"sh/zqpcra5k","slide":5,"bbox":[680,396,145,92.5]}
+{"kind":"shape","id":"sh/epgvi5oz","slide":5,"bbox":[680,396,145,171.5]}
+{"kind":"textbox","id":"sh/1c7utkna","slide":5,"text":"Consistency becomes a system property — not a memory test.","textPreview":"Consistency becomes a system property — not a memory test.","textChars":58,"textLines":1,"bbox":[85,584,600,28]}
+{"kind":"textbox","id":"sh/0bydkf6p","slide":5,"name":"footer-5","text":"ASHVIN PRAVEEN  ·  INTRODUCTION","textPreview":"ASHVIN PRAVEEN  ·  INTRODUCTION","textChars":31,"textLines":1,"bbox":[72,677,450,18]}
+{"kind":"textbox","id":"sh/nepcvu5g","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1168,675,40,20]}
+{"kind":"image","id":"im/tkvixkbq","slide":5,"name":"","alt":"Warm cream graph-paper texture with subtle topographic contour lines","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/o862ze","slide":5,"text":""}
+{"kind":"slide","id":"sl/xz7olq","slide":6,"title":"BUILD THE OPERATING SYSTEM","textShapes":18}
+{"kind":"textbox","id":"sh/szedkba1","slide":6,"name":"eyebrow","text":"BUILD THE OPERATING SYSTEM","textPreview":"BUILD THE OPERATING SYSTEM","textChars":26,"textLines":1,"bbox":[72,54,600,22]}
+{"kind":"textbox","id":"sh/t0netgbm","slide":6,"name":"slide-title","text":"A useful content engine is built in three loops.","textPreview":"A useful content engine is built in three loops.","textChars":48,"textLines":1,"bbox":[72,90,1040,112]}
+{"kind":"textbox","id":"sh/i9cve1cz","slide":6,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[78,246,90,76]}
+{"kind":"textbox","id":"sh/jalwn6t4","slide":6,"text":"Capture context","textPreview":"Capture context","textChars":15,"textLines":1,"bbox":[78,348,300,38]}
+{"kind":"textbox","id":"sh/kbudgbup","slide":6,"text":"Voice, audience, offers,\nproof, examples, and SOPs.","textPreview":"Voice, audience, offers, | proof, examples, and SOPs.","textChars":51,"textLines":2,"bbox":[78,410,305,74]}
+{"kind":"shape","id":"sh/5c3epgba","slide":6,"name":"step-divider-1","bbox":[420,242,0,255]}
+{"kind":"textbox","id":"sh/a5svahcn","slide":6,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[464,246,90,76]}
+{"kind":"textbox","id":"sh/v6lcjmt8","slide":6,"text":"Create with roles","textPreview":"Create with roles","textChars":17,"textLines":1,"bbox":[464,348,300,38]}
+{"kind":"textbox","id":"sh/7uhcnu1w","slide":6,"text":"Brief → research → draft →\nedit with clear responsibilities.","textPreview":"Brief → research → draft → | edit with clear responsibilities.","textChars":60,"textLines":2,"bbox":[464,410,305,74]}
+{"kind":"shape","id":"sh/6t8bepkb","slide":6,"name":"step-divider-2","bbox":[806,242,0,255]}
+{"kind":"textbox","id":"sh/twzupkj2","slide":6,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[850,246,90,76]}
+{"kind":"textbox","id":"sh/8vqtgf2h","slide":6,"text":"Retain the learning","textPreview":"Retain the learning","textChars":19,"textLines":1,"bbox":[850,348,300,38]}
+{"kind":"textbox","id":"sh/vi1cru1s","slide":6,"text":"Save feedback, decisions,\nand winning examples.","textPreview":"Save feedback, decisions, | and winning examples.","textChars":47,"textLines":2,"bbox":[850,410,305,74]}
+{"kind":"shape","id":"sh/uh8vipk7","slide":6,"name":"system-summary","bbox":[78,547,1124,80]}
+{"kind":"textbox","id":"sh/hkjut4jy","slide":6,"text":"Context in","textPreview":"Context in","textChars":10,"textLines":1,"bbox":[124,574,220,28]}
+{"kind":"textbox","id":"sh/gjadkzid","slide":6,"text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[362,570,50,32]}
+{"kind":"textbox","id":"sh/bmxcfq1o","slide":6,"text":"Content out","textPreview":"Content out","textChars":11,"textLines":1,"bbox":[430,574,220,28]}
+{"kind":"textbox","id":"sh/alob65k3","slide":6,"text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[670,570,50,32]}
+{"kind":"textbox","id":"sh/ehwfed4r","slide":6,"text":"Learning retained","textPreview":"Learning retained","textChars":17,"textLines":1,"bbox":[738,574,410,28]}
+{"kind":"textbox","id":"sh/zi5wnylc","slide":6,"name":"footer-6","text":"ASHVIN PRAVEEN  ·  MARKETING OPERATING SYSTEM","textPreview":"ASHVIN PRAVEEN  ·  MARKETING OPERATING SYSTEM","textChars":45,"textLines":1,"bbox":[72,677,450,18]}
+{"kind":"textbox","id":"sh/0jexg32x","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1168,675,40,20]}
+{"kind":"image","id":"im/qxo7apgf","slide":6,"name":"","alt":"Warm cream graph-paper texture with subtle topographic contour lines","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/xz7olq","slide":6,"text":""}
+{"kind":"slide","id":"sl/smpbr1","slide":7,"title":"THE ONBOARDING ANALOGY","textShapes":17}
+{"kind":"textbox","id":"sh/4vu1wvad","slide":7,"name":"eyebrow","text":"THE ONBOARDING ANALOGY","textPreview":"THE ONBOARDING ANALOGY","textChars":22,"textLines":1,"bbox":[72,54,600,22]}
+{"kind":"textbox","id":"sh/5w32p0ri","slide":7,"name":"slide-title","text":"Treat AI like a new hire, not a mind reader.","textPreview":"Treat AI like a new hire, not a mind reader.","textChars":44,"textLines":1,"bbox":[72,90,1040,112]}
+{"kind":"shape","id":"sh/u5sjqlsv","slide":7,"name":"day-one-field","bbox":[78,220,430,390]}
+{"kind":"textbox","id":"sh/v610jqtg","slide":7,"text":"DAY ONE","textPreview":"DAY ONE","textChars":7,"textLines":1,"bbox":[112,250,150,20]}
+{"kind":"textbox","id":"sh/w7a1sva1","slide":7,"text":"“Write me\na post.”","textPreview":"“Write me | a post.”","textChars":18,"textLines":2,"bbox":[112,300,300,112]}
+{"kind":"textbox","id":"sh/hsj2lgrm","slide":7,"text":"No brand context.\nNo good examples.\nNo memory of feedback.","textPreview":"No brand context. | No good examples. | No memory of feedback.","textChars":58,"textLines":3,"bbox":[112,455,280,95]}
+{"kind":"shape","id":"sh/e1wj25sf","slide":7,"name":"onboarding-field","bbox":[542,220,660,390]}
+{"kind":"textbox","id":"sh/f25kva90","slide":7,"text":"A BETTER FIRST WEEK","textPreview":"A BETTER FIRST WEEK","textChars":19,"textLines":1,"bbox":[582,250,250,20]}
+{"kind":"textbox","id":"sh/jyxo7ehk","slide":7,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[582,312,45,24]}
+{"kind":"textbox","id":"sh/ixone90z","slide":7,"text":"Share the context","textPreview":"Share the context","textChars":17,"textLines":1,"bbox":[645,310,480,30]}
+{"kind":"shape","id":"sh/50f69ozq","slide":7,"bbox":[582,353,548,0]}
+{"kind":"textbox","id":"sh/kz65gji5","slide":7,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[582,378,45,24]}
+{"kind":"textbox","id":"sh/72hobehg","slide":7,"text":"Show good examples","textPreview":"Show good examples","textChars":18,"textLines":1,"bbox":[645,376,480,30]}
+{"kind":"shape","id":"sh/61oni90v","slide":7,"bbox":[582,419,548,0]}
+{"kind":"textbox","id":"sh/t4z6dozm","slide":7,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[582,444,45,24]}
+{"kind":"textbox","id":"sh/s3q5kji1","slide":7,"text":"Explain the SOP","textPreview":"Explain the SOP","textChars":15,"textLines":1,"bbox":[645,442,480,30]}
+{"kind":"shape","id":"sh/f6hofyhs","slide":7,"bbox":[582,485,548,0]}
+{"kind":"textbox","id":"sh/u58nmt07","slide":7,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[582,510,45,24]}
+{"kind":"textbox","id":"sh/q1crexkf","slide":7,"text":"Review — and save the feedback","textPreview":"Review — and save the feedback","textChars":30,"textLines":1,"bbox":[645,508,480,30]}
+{"kind":"textbox","id":"sh/bml8n210","slide":7,"text":"Prompts are instructions. Context is onboarding.","textPreview":"Prompts are instructions. Context is onboarding.","textChars":48,"textLines":1,"bbox":[582,565,540,27]}
+{"kind":"textbox","id":"sh/cnu9g72l","slide":7,"name":"footer-7","text":"ASHVIN PRAVEEN  ·  MARKETING OPERATING SYSTEM","textPreview":"ASHVIN PRAVEEN  ·  MARKETING OPERATING SYSTEM","textChars":45,"textLines":1,"bbox":[72,677,450,18]}
+{"kind":"textbox","id":"sh/do3qpcjq","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1168,675,40,20]}
+{"kind":"image","id":"im/65s7e9oz","slide":7,"name":"","alt":"Warm cream graph-paper texture with subtle topographic contour lines","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/smpbr1","slide":7,"text":""}
+{"kind":"slide","id":"sl/ix6ig7","slide":8,"title":"THE KNOWLEDGE FLYWHEEL","textShapes":11}
+{"kind":"textbox","id":"sh/n6tszy5g","slide":8,"name":"eyebrow","text":"THE KNOWLEDGE FLYWHEEL","textPreview":"THE KNOWLEDGE FLYWHEEL","textChars":22,"textLines":1,"bbox":[72,54,600,22]}
+{"kind":"textbox","id":"sh/m5kr6tov","slide":8,"name":"slide-title","text":"Every review should make the next draft better.","textPreview":"Every review should make the next draft better.","textChars":47,"textLines":1,"bbox":[72,90,1040,112]}
+{"kind":"shape","id":"sh/14raxo7a","slide":8,"name":"flywheel-field","bbox":[390,215,812,410]}
+{"kind":"shape","id":"sh/03i94j6p","slide":8,"name":"flywheel-brief","bbox":[455,260,190,62]}
+{"kind":"shape","id":"sh/z29svep4","slide":8,"name":"flywheel-draft","bbox":[945,260,190,62]}
+{"kind":"shape","id":"sh/e10r29oj","slide":8,"name":"flywheel-review","bbox":[945,502,190,62]}
+{"kind":"shape","id":"sh/50va98ne","slide":8,"name":"flywheel-capture","bbox":[455,502,190,62]}
+{"kind":"shape","id":"sh/kzmtgn6t","slide":8,"name":"shared-memory","bbox":[682,346,226,138]}
+{"kind":"shape","id":"sh/ylgbqtwf","slide":8,"bbox":[645,291,300,0]}
+{"kind":"shape","id":"sh/zmpczyd0","slide":8,"bbox":[1040,322,0,180]}
+{"kind":"shape","id":"sh/knyts3e5","slide":8,"bbox":[645,533,300,0]}
+{"kind":"shape","id":"sh/lo7u18vq","slide":8,"bbox":[550,322,0,180]}
+{"kind":"textbox","id":"sh/qhwbmtw3","slide":8,"text":"Brief","textPreview":"Brief","textChars":5,"textLines":1,"bbox":[490,279,120,25]}
+{"kind":"textbox","id":"sh/bi5cvydo","slide":8,"text":"Draft","textPreview":"Draft","textChars":5,"textLines":1,"bbox":[980,279,120,25]}
+{"kind":"textbox","id":"sh/cjyto3e9","slide":8,"text":"Review","textPreview":"Review","textChars":6,"textLines":1,"bbox":[980,521,120,25]}
+{"kind":"textbox","id":"sh/dk7uxovu","slide":8,"text":"Capture","textPreview":"Capture","textChars":7,"textLines":1,"bbox":[490,521,120,25]}
+{"kind":"textbox","id":"sh/ud0bydwn","slide":8,"text":"SHARED\nMEMORY","textPreview":"SHARED | MEMORY","textChars":13,"textLines":2,"bbox":[724,383,142,57]}
+{"kind":"textbox","id":"sh/ve9c7ids","slide":8,"text":"The real asset\nisn’t the post.","textPreview":"The real asset | isn’t the post.","textChars":30,"textLines":2,"bbox":[78,265,270,88]}
+{"kind":"textbox","id":"sh/ry18jatk","slide":8,"text":"It’s what the system\nlearned while making it.","textPreview":"It’s what the system | learned while making it.","textChars":45,"textLines":2,"bbox":[78,398,275,75]}
+{"kind":"textbox","id":"sh/6xsrq5cz","slide":8,"name":"footer-8","text":"ASHVIN PRAVEEN  ·  MARKETING OPERATING SYSTEM","textPreview":"ASHVIN PRAVEEN  ·  MARKETING OPERATING SYSTEM","textChars":45,"textLines":1,"bbox":[72,677,450,18]}
+{"kind":"textbox","id":"sh/tk3qlkba","slide":8,"text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1168,675,40,20]}
+{"kind":"image","id":"im/9s3a9k76","slide":8,"name":"","alt":"Warm cream graph-paper texture with subtle topographic contour lines","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/ix6ig7","slide":8,"text":""}
+{"kind":"slide","id":"sl/bf0s9n","slide":9,"title":"MAKE CONTEXT VISIBLE","textShapes":23}
+{"kind":"textbox","id":"sh/je1c7ax0","slide":9,"name":"eyebrow","text":"MAKE CONTEXT VISIBLE","textPreview":"MAKE CONTEXT VISIBLE","textChars":20,"textLines":1,"bbox":[72,54,600,22]}
+{"kind":"textbox","id":"sh/idsby5wf","slide":9,"name":"slide-title","text":"Your AI gets better when the context is organised.","textPreview":"Your AI gets better when the context is organised.","textChars":50,"textLines":1,"bbox":[72,90,1060,112]}
+{"kind":"shape","id":"sh/xsja50fu","slide":9,"name":"workspace-window","bbox":[78,208,1124,420]}
+{"kind":"shape","id":"sh/wrqtwve9","slide":9,"name":"workspace-toolbar","bbox":[78,208,1124,52]}
+{"kind":"textbox","id":"sh/vqhs3qxo","slide":9,"text":"CONTENT ENGINE  /  EXAMPLE WORKSPACE","textPreview":"CONTENT ENGINE  /  EXAMPLE WORKSPACE","textChars":36,"textLines":1,"bbox":[110,225,410,20]}
+{"kind":"textbox","id":"sh/ap8bulw3","slide":9,"text":"●  ●  ●","textPreview":"●  ●  ●","textChars":7,"textLines":1,"bbox":[1080,225,80,20]}
+{"kind":"shape","id":"sh/ho3uhkvy","slide":9,"name":"folder-tree","bbox":[78,250,388,378]}
+{"kind":"textbox","id":"sh/gnut8zet","slide":9,"text":"FOLDERS","textPreview":"FOLDERS","textChars":7,"textLines":1,"bbox":[110,280,120,20]}
+{"kind":"textbox","id":"sh/yxc7elwb","slide":9,"text":"▸  00  Start here","textPreview":"▸  00  Start here","textChars":17,"textLines":1,"bbox":[116,334,292,22]}
+{"kind":"shape","id":"sh/jil8nqdw","slide":9,"name":"selected-folder","bbox":[98,368,338,34]}
+{"kind":"textbox","id":"sh/kjupgveh","slide":9,"text":"▸  01  Brand voice","textPreview":"▸  01  Brand voice","textChars":18,"textLines":1,"bbox":[116,376,292,22]}
+{"kind":"textbox","id":"sh/lk3qp0v2","slide":9,"text":"▸  02  Audience & personas","textPreview":"▸  02  Audience & personas","textChars":26,"textLines":1,"bbox":[116,418,292,22]}
+{"kind":"textbox","id":"sh/atc7alwf","slide":9,"text":"▸  03  Products & proof","textPreview":"▸  03  Products & proof","textChars":23,"textLines":1,"bbox":[116,460,292,22]}
+{"kind":"textbox","id":"sh/bul8jqx0","slide":9,"text":"▸  04  SOPs & workflows","textPreview":"▸  04  SOPs & workflows","textChars":23,"textLines":1,"bbox":[116,502,292,22]}
+{"kind":"textbox","id":"sh/wvupcbe5","slide":9,"text":"▸  05  Best examples","textPreview":"▸  05  Best examples","textChars":20,"textLines":1,"bbox":[116,544,292,22]}
+{"kind":"textbox","id":"sh/xw3qlgfq","slide":9,"text":"▸  06  Feedback & decisions","textPreview":"▸  06  Feedback & decisions","textChars":27,"textLines":1,"bbox":[116,586,292,22]}
+{"kind":"textbox","id":"sh/upwrm5wj","slide":9,"text":"01 BRAND VOICE  /  VOICE-GUIDE.TXT","textPreview":"01 BRAND VOICE  /  VOICE-GUIDE.TXT","textChars":34,"textLines":1,"bbox":[510,285,430,20]}
+{"kind":"textbox","id":"sh/fq58vad4","slide":9,"text":"Voice guide","textPreview":"Voice guide","textChars":11,"textLines":1,"bbox":[510,329,330,38]}
+{"kind":"textbox","id":"sh/rixwri94","slide":9,"text":"SOUNDS LIKE","textPreview":"SOUNDS LIKE","textChars":11,"textLines":1,"bbox":[510,403,130,20]}
+{"kind":"textbox","id":"sh/qhovyd8j","slide":9,"text":"Warm, clear, quietly confident","textPreview":"Warm, clear, quietly confident","textChars":30,"textLines":1,"bbox":[664,401,440,28]}
+{"kind":"shape","id":"sh/dkfet8ra","slide":9,"bbox":[510,441,600,0]}
+{"kind":"textbox","id":"sh/sj6d0nqp","slide":9,"text":"PREFER","textPreview":"PREFER","textChars":6,"textLines":1,"bbox":[510,473,130,20]}
+{"kind":"textbox","id":"sh/fmxwvipg","slide":9,"text":"Specifics, proof, useful examples","textPreview":"Specifics, proof, useful examples","textChars":33,"textLines":1,"bbox":[664,471,440,28]}
+{"kind":"shape","id":"sh/elof2d8v","slide":9,"bbox":[510,511,600,0]}
+{"kind":"textbox","id":"sh/1ozexs76","slide":9,"text":"AVOID","textPreview":"AVOID","textChars":5,"textLines":1,"bbox":[510,543,130,20]}
+{"kind":"textbox","id":"sh/0n6x4nq1","slide":9,"text":"Hype, jargon, generic superlatives","textPreview":"Hype, jargon, generic superlatives","textChars":34,"textLines":1,"bbox":[664,541,440,28]}
+{"kind":"textbox","id":"sh/nqhwz2pc","slide":9,"text":"One place for context. One source of truth.","textPreview":"One place for context. One source of truth.","textChars":43,"textLines":1,"bbox":[730,594,420,24]}
+{"kind":"textbox","id":"sh/2p8f6x8r","slide":9,"name":"footer-9","text":"ASHVIN PRAVEEN  ·  MARKETING OPERATING SYSTEM","textPreview":"ASHVIN PRAVEEN  ·  MARKETING OPERATING SYSTEM","textChars":45,"textLines":1,"bbox":[72,677,450,18]}
+{"kind":"textbox","id":"sh/kfadw765","slide":9,"text":"09","textPreview":"09","textChars":2,"textLines":1,"bbox":[1168,675,40,20]}
+{"kind":"image","id":"im/dovels7u","slide":9,"name":"","alt":"Warm cream graph-paper texture with subtle topographic contour lines","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/bf0s9n","slide":9,"text":""}
