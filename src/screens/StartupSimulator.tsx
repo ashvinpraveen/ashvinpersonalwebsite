@@ -1,7 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type WheelEvent } from "react";
+import AshvinPet from "@/features/chat-widget/AshvinPet";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+  type PointerEvent,
+  type WheelEvent,
+} from "react";
 
 type StationId = "service" | "investors" | "product" | "marketing" | "sales" | "support";
 type TeamRole = "product" | "marketing" | "sales" | "support";
@@ -18,6 +28,7 @@ type ActionId =
   | "buildLandingPage"
   | "improveLandingPage"
   | "createEvergreenContent"
+  | "writeSeoArticle"
   | "launchCampaign"
   | "hireMarketer"
   | "hireContentCreator"
@@ -39,14 +50,18 @@ type Activity = {
 };
 
 type GameState = {
+  started: boolean;
   day: number;
   cash: number;
+  uncollectedCash: number;
   leads: number;
   leadPatience: number[];
   customers: number;
   issues: number;
   lostUsers: number;
   attention: number;
+  socialMomentum: number;
+  lastSocialPostDay: number | null;
   product: number;
   reputation: number;
   ownership: number;
@@ -57,6 +72,7 @@ type GameState = {
   landingPageLevel: number;
   evergreenContent: number;
   seoArticles: number;
+  campaignsRun: number;
   contentCreators: number;
   blogWriters: number;
   helpDocs: boolean;
@@ -64,7 +80,10 @@ type GameState = {
   team: Record<TeamRole, number>;
   activity: Activity | null;
   lastEvent: string;
+  recentLeads: number;
   recentArrivals: number;
+  recentIssues: number;
+  recentResolved: number;
   recentDepartures: number;
   bankrupt: boolean;
 };
@@ -99,14 +118,31 @@ type GameToast = {
   message: string;
 };
 
+type WorldWalker = {
+  id: number;
+  emoji: string;
+  startX: number;
+  startY: number;
+  walkX: number;
+  walkY: number;
+  quarterX: number;
+  quarterY: number;
+  midX: number;
+  midY: number;
+  threeQuarterX: number;
+  threeQuarterY: number;
+  durationMs: number;
+  delayMs: number;
+};
+
 const stations: Station[] = [
   {
     id: "investors",
     emoji: "🏦",
     label: "Investors",
     subtitle: "Cash for ownership",
-    x: 14,
-    y: 23,
+    x: 90,
+    y: 76,
     color: "border-amber-300/80 bg-amber-50/90",
   },
   {
@@ -114,8 +150,8 @@ const stations: Station[] = [
     emoji: "💻",
     label: "Product",
     subtitle: "Quality and retention",
-    x: 50,
-    y: 20,
+    x: 68,
+    y: 58,
     color: "border-sky-300/80 bg-sky-50/90",
     teamRole: "product",
   },
@@ -124,10 +160,9 @@ const stations: Station[] = [
     emoji: "📣",
     label: "Marketing",
     subtitle: "Bring people in",
-    x: 86,
-    y: 23,
+    x: 34,
+    y: 58,
     color: "border-fuchsia-300/80 bg-fuchsia-50/90",
-    queue: (game) => game.leads,
     teamRole: "marketing",
   },
   {
@@ -135,8 +170,8 @@ const stations: Station[] = [
     emoji: "🧾",
     label: "Client work",
     subtitle: "Reliable early cash",
-    x: 14,
-    y: 76,
+    x: 90,
+    y: 90,
     color: "border-emerald-300/80 bg-emerald-50/90",
   },
   {
@@ -144,8 +179,8 @@ const stations: Station[] = [
     emoji: "🤝",
     label: "Sales",
     subtitle: "Turn interest into users",
-    x: 50,
-    y: 80,
+    x: 54,
+    y: 58,
     color: "border-orange-300/80 bg-orange-50/90",
     queue: (game) => game.leads,
     teamRole: "sales",
@@ -155,8 +190,8 @@ const stations: Station[] = [
     emoji: "🛟",
     label: "Support",
     subtitle: "Keep users happy",
-    x: 86,
-    y: 76,
+    x: 83,
+    y: 58,
     color: "border-rose-300/80 bg-rose-50/90",
     queue: (game) => game.issues,
     teamRole: "support",
@@ -164,14 +199,18 @@ const stations: Station[] = [
 ];
 
 const initialGame: GameState = {
+  started: false,
   day: 1,
   cash: 0,
+  uncollectedCash: 0,
   leads: 0,
   leadPatience: [],
   customers: 0,
   issues: 0,
   lostUsers: 0,
   attention: 0,
+  socialMomentum: 0,
+  lastSocialPostDay: null,
   product: 0,
   reputation: 72,
   ownership: 100,
@@ -182,6 +221,7 @@ const initialGame: GameState = {
   landingPageLevel: 0,
   evergreenContent: 0,
   seoArticles: 0,
+  campaignsRun: 0,
   contentCreators: 0,
   blogWriters: 0,
   helpDocs: false,
@@ -189,10 +229,16 @@ const initialGame: GameState = {
   team: { product: 0, marketing: 0, sales: 0, support: 0 },
   activity: null,
   lastEvent: "One founder, an empty field, and as long as the runway lasts.",
+  recentLeads: 0,
   recentArrivals: 0,
+  recentIssues: 0,
+  recentResolved: 0,
   recentDepartures: 0,
   bankrupt: false,
 };
+
+const eventToastsEnabled = false;
+const cashPilePosition = { x: 75, y: 66 };
 
 const wages: Record<TeamRole, number> = {
   product: 12,
@@ -211,13 +257,25 @@ const formatMoney = (amount: number) =>
     maximumFractionDigits: 0,
   }).format(amount);
 
-const formatCompactMoney = (amount: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(amount);
+const formatCompactMoney = (amount: number) => {
+  const absoluteAmount = Math.abs(amount);
+  const sign = amount < 0 ? "-" : "";
+  if (absoluteAmount < 1000) return `${sign}$${Math.round(absoluteAmount)}`;
+
+  const [divisor, suffix] =
+    absoluteAmount >= 1_000_000_000
+      ? [1_000_000_000, "B"]
+      : absoluteAmount >= 1_000_000
+        ? [1_000_000, "M"]
+        : [1000, "K"];
+  const compactValue = absoluteAmount / divisor;
+  const formattedValue =
+    compactValue >= 100
+      ? Math.round(compactValue).toString()
+      : compactValue.toFixed(1).replace(/\.0$/, "");
+
+  return `${sign}$${formattedValue}${suffix}`;
+};
 
 const getStation = (id: StationId) =>
   stations.find((station) => station.id === id) ?? stations[0];
@@ -228,10 +286,21 @@ const payrollPerDay = (game: GameState) =>
     0,
   );
 
-const revenuePerDay = (game: GameState) => game.customers * 8;
+const revenuePerDay = (game: GameState) => game.customers * (20 / 30);
 
 const landingPageLevelOf = (game: GameState) =>
   game.landingPageLevel ?? (game.landingPage ? 1 : 0);
+
+const monthlyChurnRateOf = (game: GameState) =>
+  game.product === 0
+    ? 100
+    : clamp(Math.round(125 - game.product * 1.25), 5, 90);
+
+const REFERRAL_QUALITY_THRESHOLD = 70;
+const referralRateOf = (game: GameState) =>
+  game.product < REFERRAL_QUALITY_THRESHOLD
+    ? 0
+    : clamp(Math.round((game.product - 60) * 0.75), 8, 30);
 
 const contentCreatorCountOf = (game: GameState) => game.contentCreators ?? 0;
 const blogWriterCountOf = (game: GameState) => game.blogWriters ?? 0;
@@ -242,6 +311,48 @@ const demandMarketerCountOf = (game: GameState) =>
       contentCreatorCountOf(game) -
       blogWriterCountOf(game),
   );
+
+const hasMarketingInvestment = (game: GameState) =>
+  game.attention > 0 ||
+  game.landingPage ||
+  (game.evergreenContent ?? 0) > 0 ||
+  (game.seoArticles ?? 0) > 0 ||
+  (game.campaignsRun ?? 0) > 0 ||
+  game.team.marketing > 0 ||
+  game.leads > 0 ||
+  game.customers > 0;
+
+const isStationVisible = (game: GameState, stationId: StationId) => {
+  if (stationId === "sales") return hasMarketingInvestment(game);
+  if (stationId === "support") {
+    return (
+      game.customers > 0 ||
+      game.issues > 0 ||
+      game.helpDocs ||
+      game.team.support > 0
+    );
+  }
+  return true;
+};
+
+const visibleMarketingPlotPositions = (game: GameState) =>
+  [
+    { x: 24, y: 58, visible: true },
+    {
+      x: 15,
+      y: 38,
+      visible:
+        (game.evergreenContent ?? 0) > 0 || contentCreatorCountOf(game) > 0,
+    },
+    {
+      x: 15,
+      y: 78,
+      visible: (game.seoArticles ?? 0) > 0 || blogWriterCountOf(game) > 0,
+    },
+    { x: 33, y: 38, visible: referralRateOf(game) > 0 },
+    { x: 42, y: 58, visible: game.landingPage },
+    { x: 30, y: 78, visible: (game.campaignsRun ?? 0) > 0 },
+  ].filter((plot) => plot.visible);
 
 const actionConfigs: Record<StationId, ActionConfig[]> = {
   service: [
@@ -333,7 +444,7 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
     {
       id: "postContent",
       title: "Post something useful",
-      description: "Create attention. A landing page captures more of it.",
+      description: "Spike social reach and traffic. Momentum fades if you stop posting.",
       emoji: "✍️",
       days: 3,
       cost: 0,
@@ -364,13 +475,23 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
     },
     {
       id: "createEvergreenContent",
-      title: "Create YouTube / SEO content",
-      description: "Build an evergreen asset that keeps bringing new people over time.",
+      title: "Create an evergreen video",
+      description: "Open a video plot that keeps bringing new people over time.",
       emoji: "🎥",
       days: 10,
       cost: 100,
       disabled: (game) => (game.evergreenContent ?? 0) >= 12,
       disabledReason: () => "Evergreen library is full for now",
+    },
+    {
+      id: "writeSeoArticle",
+      title: "Invest in SEO",
+      description: "Open a search plot that compounds into a steady customer stream.",
+      emoji: "🔎",
+      days: 9,
+      cost: 100,
+      disabled: (game) => (game.seoArticles ?? 0) >= 18,
+      disabledReason: () => "SEO library is full for now",
     },
     {
       id: "launchCampaign",
@@ -503,6 +624,7 @@ const beginAction = (game: GameState, stationId: StationId, action: ActionConfig
 
   return {
     ...game,
+    started: true,
     cash: game.cash - action.cost,
     activity: {
       actionId: action.id,
@@ -528,6 +650,7 @@ const addLeads = (game: GameState, count: number): GameState => {
     ...game,
     leads: game.leads + count,
     leadPatience: [...existingPatience, ...newPatience],
+    recentLeads: (game.recentLeads ?? 0) + count,
   };
 };
 
@@ -595,8 +718,10 @@ const applyCompletedAction = (game: GameState, actionId: ActionId): GameState =>
     case "postContent": {
       const newLeads = next.landingPage ? 6 : 3;
       next.attention = clamp(next.attention + 12, 0, 100);
+      next.socialMomentum = clamp(next.socialMomentum + 34, 0, 100);
+      next.lastSocialPostDay = next.day;
       next = addLeads(next, newLeads);
-      next.lastEvent = `${newLeads} curious people arrived from your post. Someone still needs to sell to them.`;
+      next.lastEvent = `${newLeads} curious people arrived. Social reach jumped to ${next.socialMomentum}%, but it will fade without another post.`;
       break;
     }
     case "buildLandingPage":
@@ -614,9 +739,15 @@ const applyCompletedAction = (game: GameState, actionId: ActionId): GameState =>
       next.attention = clamp(next.attention + 6, 0, 100);
       next.lastEvent = `Evergreen asset ${next.evergreenContent}/12 published. It will keep attracting people automatically.`;
       break;
+    case "writeSeoArticle":
+      next.seoArticles = Math.min(18, (next.seoArticles ?? 0) + 1);
+      next.attention = clamp(next.attention + 4, 0, 100);
+      next.lastEvent = `SEO plot planted with ${next.seoArticles} searchable ${next.seoArticles === 1 ? "article" : "articles"}. It will compound into traffic.`;
+      break;
     case "launchCampaign": {
       const newLeads = next.landingPage ? 15 : 9;
       next.attention = clamp(next.attention + 22, 0, 100);
+      next.campaignsRun = (next.campaignsRun ?? 0) + 1;
       next = addLeads(next, newLeads);
       next.lastEvent = `${newLeads} people joined the queue. Can sales and product keep up?`;
       break;
@@ -661,8 +792,9 @@ const applyCompletedAction = (game: GameState, actionId: ActionId): GameState =>
     case "answerUsers": {
       const helped = Math.min(next.issues, 5);
       next.issues -= helped;
+      next.recentResolved += helped;
       next.reputation = clamp(next.reputation + helped * 2, 0, 100);
-      next.lastEvent = `${helped} ${helped === 1 ? "user is" : "users are"} happy again.`;
+      next.lastEvent = `${helped} ${helped === 1 ? "user is" : "users are"} happy and returning to the product.`;
       break;
     }
     case "writeHelpDocs":
@@ -679,7 +811,7 @@ const applyCompletedAction = (game: GameState, actionId: ActionId): GameState =>
 };
 
 const advanceGame = (current: GameState): GameState => {
-  if (current.bankrupt) return current;
+  if (!current.started || current.bankrupt) return current;
 
   const day = current.day + 1;
   const payroll = payrollPerDay(current);
@@ -687,8 +819,12 @@ const advanceGame = (current: GameState): GameState => {
   let next: GameState = {
     ...current,
     day,
-    cash: current.cash + revenue - payroll,
+    cash: current.cash - payroll,
+    uncollectedCash: current.uncollectedCash + revenue,
+    recentLeads: 0,
     recentArrivals: 0,
+    recentIssues: 0,
+    recentResolved: 0,
     recentDepartures: 0,
   };
 
@@ -725,11 +861,40 @@ const advanceGame = (current: GameState): GameState => {
     next.product = clamp(next.product + 2, 0, 100);
   }
 
+  const daysSinceSocialPost =
+    next.lastSocialPostDay === null
+      ? Number.POSITIVE_INFINITY
+      : day - next.lastSocialPostDay;
+  if (next.socialMomentum > 0) {
+    const momentumDecay = daysSinceSocialPost > 3 ? 3 : 1;
+    next.socialMomentum = clamp(
+      next.socialMomentum - momentumDecay,
+      0,
+      100,
+    );
+
+    if (day % 3 === 0 && next.socialMomentum > 0) {
+      const landingMultiplier = next.landingPage ? 1.35 : 1;
+      const generated = Math.max(
+        1,
+        Math.ceil((next.socialMomentum / 32) * landingMultiplier),
+      );
+      next = addLeads(next, generated);
+      next.lastEvent = `${generated} ${generated === 1 ? "person arrived" : "people arrived"} from your recent social posts. Reach is now ${next.socialMomentum}%.`;
+    }
+  }
+
   const demandMarketers = demandMarketerCountOf(next);
   if (demandMarketers > 0 && day % 5 === 0) {
     const generated = demandMarketers * (next.landingPage ? 3 : 2);
     next = addLeads(next, generated);
     next.attention = clamp(next.attention + demandMarketers * 2, 0, 100);
+    next.socialMomentum = clamp(
+      next.socialMomentum + demandMarketers * 14,
+      0,
+      100,
+    );
+    next.lastSocialPostDay = day;
     next.lastEvent = `${demandMarketers} ${demandMarketers === 1 ? "marketer brought" : "marketers brought"} ${generated} more people into the queue.`;
   }
 
@@ -774,6 +939,16 @@ const advanceGame = (current: GameState): GameState => {
     next.lastEvent = `${generated} ${generated === 1 ? "person arrived" : "people arrived"} from your growing SEO library.`;
   }
 
+  const referralRate = referralRateOf(next);
+  if (referralRate > 0 && next.customers > 0 && day % 10 === 0) {
+    const generated = Math.max(
+      1,
+      Math.ceil((next.customers * referralRate) / 300),
+    );
+    next = addLeads(next, generated);
+    next.lastEvent = `${generated} warm ${generated === 1 ? "lead arrived" : "leads arrived"} through customer referrals—for free.`;
+  }
+
   if (
     next.team.sales > 0 &&
     day % 3 === 0 &&
@@ -809,12 +984,14 @@ const advanceGame = (current: GameState): GameState => {
     const qualityRisk = Math.max(0.15, (100 - next.product) / 100);
     const newIssues = Math.max(1, Math.floor(next.customers * qualityRisk * 0.2));
     next.issues += newIssues;
+    next.recentIssues += newIssues;
     next.lastEvent = `${newIssues} ${newIssues === 1 ? "user needs" : "users need"} help.`;
   }
 
   if (next.team.support > 0 && next.issues > 0) {
     const resolved = Math.min(next.issues, next.team.support);
     next.issues -= resolved;
+    next.recentResolved += resolved;
     if (day % 4 === 0) {
       next.reputation = clamp(next.reputation + 1, 0, 100);
     }
@@ -845,28 +1022,12 @@ const advanceGame = (current: GameState): GameState => {
     }
   }
 
+  if (referralRateOf(current) === 0 && referralRateOf(next) > 0) {
+    next.lastEvent = `Referrals unlocked. Customers now recommend the product at a ${referralRateOf(next)}% rate.`;
+  }
+
   return next;
 };
-
-const leadPositions = [
-  { left: 42, top: 84 },
-  { left: 47, top: 85 },
-  { left: 53, top: 85 },
-  { left: 58, top: 84 },
-  { left: 39, top: 79 },
-  { left: 61, top: 79 },
-  { left: 44, top: 89 },
-  { left: 56, top: 89 },
-];
-
-const issuePositions = [
-  { left: 77, top: 65 },
-  { left: 82, top: 62 },
-  { left: 88, top: 64 },
-  { left: 80, top: 57 },
-  { left: 87, top: 56 },
-  { left: 92, top: 61 },
-];
 
 const StartupSimulator = () => {
   const [game, setGame] = useState<GameState>(initialGame);
@@ -877,12 +1038,30 @@ const StartupSimulator = () => {
   const [retiredActionIds, setRetiredActionIds] = useState<ActionId[]>([]);
   const [showStats, setShowStats] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [worldZoom, setWorldZoom] = useState(1);
+  const [isDraggingWorld, setIsDraggingWorld] = useState(false);
+  const [isFounderMoving, setIsFounderMoving] = useState(false);
+  const [founderFacing, setFounderFacing] = useState<1 | -1>(1);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [toasts, setToasts] = useState<GameToast[]>([]);
+  const [worldWalkers, setWorldWalkers] = useState<WorldWalker[]>([]);
   const previousGameRef = useRef(initialGame);
   const audioContextRef = useRef<AudioContext | null>(null);
   const toastIdRef = useRef(0);
+  const walkerIdRef = useRef(0);
   const toastTimersRef = useRef<number[]>([]);
+  const walkerTimersRef = useRef<number[]>([]);
+  const founderMoveTimerRef = useRef<number | null>(null);
+  const previousPlayerRef = useRef(initialGame.player);
+  const worldDragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    playerX: number;
+    playerY: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressWorldClickRef = useRef(false);
 
   const selectedStation = selectedStationId ? getStation(selectedStationId) : null;
   const selectedActions = useMemo(
@@ -896,8 +1075,14 @@ const StartupSimulator = () => {
   );
   const isAtSelectedStation =
     selectedStation !== null &&
-    Math.abs(game.player.x - selectedStation.x) < 10 &&
-    Math.abs(game.player.y - selectedStation.y) < 10;
+    (selectedStation.id === "marketing"
+      ? visibleMarketingPlotPositions(game).some(
+          (plot) =>
+            Math.abs(game.player.x - plot.x) < 15 &&
+            Math.abs(game.player.y - plot.y) < 15,
+        )
+      : Math.abs(game.player.x - selectedStation.x) < 15 &&
+        Math.abs(game.player.y - selectedStation.y) < 15);
 
   const progressPercent = game.activity
     ? Math.round((game.activity.elapsedDays / game.activity.totalDays) * 100)
@@ -917,16 +1102,25 @@ const StartupSimulator = () => {
   const dayOfYear = ((game.day - 1) % 365) + 1;
   const teamSize = Object.values(game.team).reduce((sum, count) => sum + count, 0);
   const productStage = game.product >= 70 ? 3 : game.product >= 45 ? 2 : 1;
-  const productStageEmoji = productStage === 3 ? "🏬" : productStage === 2 ? "🏢" : "🏠";
   const productStageLabel = productStage === 3 ? "loved product" : productStage === 2 ? "growing product" : "MVP";
   const churnRisk = game.product >= 70 ? "low" : game.product >= 45 ? "medium" : "high";
-  const productRooms = Array.from(
-    { length: Math.min(9, Math.max(3, Math.ceil(Math.max(game.customers, 1) / 2))) },
+  const monthlyChurnRate = monthlyChurnRateOf(game);
+  const referralRate = referralRateOf(game);
+  const settledCustomers = Math.max(
+    0,
+    game.customers - game.issues - game.recentArrivals,
+  );
+  const visibleCustomers = Array.from(
+    { length: Math.min(settledCustomers, 8) },
     (_, index) => index,
   );
-  const settledCustomers = Math.max(0, game.customers - game.recentArrivals);
-  const recentWalkingPeople = Array.from(
-    { length: Math.min(game.recentArrivals, 5) },
+  const visibleCash = Array.from(
+    {
+      length:
+        game.uncollectedCash > 0
+          ? Math.min(12, Math.max(1, Math.ceil(game.uncollectedCash / 24)))
+          : 0,
+    },
     (_, index) => index,
   );
   const visibleLeads = useMemo(
@@ -935,14 +1129,113 @@ const StartupSimulator = () => {
         game.leadPatience ??
         Array.from({ length: game.leads }, () => 20)
       )
-        .slice(0, leadPositions.length)
+        .slice(0, 8)
         .map((patience, index) => ({ index, patience })),
     [game.leadPatience, game.leads],
   );
   const visibleIssues = useMemo(
-    () => Array.from({ length: Math.min(game.issues, issuePositions.length) }, (_, index) => index),
+    () => Array.from({ length: Math.min(game.issues, 8) }, (_, index) => index),
     [game.issues],
   );
+  const followerCount =
+    game.attention * 12 +
+    (game.evergreenContent ?? 0) * 40 +
+    (game.seoArticles ?? 0) * 25;
+  const marketingChannels = [
+    {
+      id: "social",
+      emoji: "📱",
+      label: "Social",
+      x: 24,
+      y: 58,
+      unlocked:
+        game.attention > 0 ||
+        game.socialMomentum > 0 ||
+        demandMarketerCountOf(game) > 0 ||
+        game.leads > 0 ||
+        game.customers > 0,
+      strength: Math.max(
+        1,
+        Math.ceil((game.attention + game.socialMomentum) / 30),
+      ),
+      detail: `${followerCount.toLocaleString()} followers · ${game.socialMomentum}% reach`,
+    },
+    {
+      id: "video",
+      emoji: "🎥",
+      label: "Video",
+      x: 15,
+      y: 38,
+      unlocked:
+        (game.evergreenContent ?? 0) > 0 || contentCreatorCountOf(game) > 0,
+      strength: (game.evergreenContent ?? 0) + contentCreatorCountOf(game),
+      detail: `${game.evergreenContent ?? 0} evergreen`,
+    },
+    {
+      id: "seo",
+      emoji: "🔎",
+      label: "Search",
+      x: 15,
+      y: 78,
+      unlocked: (game.seoArticles ?? 0) > 0 || blogWriterCountOf(game) > 0,
+      strength: (game.seoArticles ?? 0) + blogWriterCountOf(game),
+      detail: `${game.seoArticles ?? 0} articles`,
+    },
+    {
+      id: "referrals",
+      emoji: "🗣️",
+      label: "Referrals",
+      x: 33,
+      y: 38,
+      unlocked: referralRate > 0,
+      strength: Math.max(1, Math.ceil(referralRate / 5)),
+      detail: `${referralRate}% referral rate`,
+    },
+    {
+      id: "landing",
+      emoji: "🪧",
+      label: "Landing",
+      x: 42,
+      y: 58,
+      unlocked: game.landingPage,
+      strength: landingPageLevelOf(game),
+      detail: `level ${landingPageLevelOf(game)}`,
+    },
+    {
+      id: "paid",
+      emoji: "📮",
+      label: "Campaigns",
+      x: 30,
+      y: 78,
+      unlocked: (game.campaignsRun ?? 0) > 0,
+      strength: game.campaignsRun ?? 0,
+      detail: `${game.campaignsRun ?? 0} launched`,
+    },
+  ];
+  const activeMarketingSources = marketingChannels.filter(
+    (channel) => channel.unlocked && channel.id !== "landing",
+  );
+  const visibleMarketingChannels = marketingChannels.filter(
+    (channel) => channel.id === "social" || channel.unlocked,
+  );
+  const marketingFieldBounds = {
+    left: Math.max(
+      7,
+      Math.min(...visibleMarketingChannels.map((channel) => channel.x)) - 7,
+    ),
+    top: Math.max(
+      12,
+      Math.min(...visibleMarketingChannels.map((channel) => channel.y)) - 9,
+    ),
+    right: Math.min(
+      48,
+      Math.max(...visibleMarketingChannels.map((channel) => channel.x)) + 7,
+    ),
+    bottom: Math.min(
+      86,
+      Math.max(...visibleMarketingChannels.map((channel) => channel.y)) + 9,
+    ),
+  };
 
   useEffect(() => {
     const unlockAudio = () => {
@@ -966,9 +1259,35 @@ const StartupSimulator = () => {
   useEffect(
     () => () => {
       toastTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      walkerTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      if (founderMoveTimerRef.current !== null) {
+        window.clearTimeout(founderMoveTimerRef.current);
+      }
     },
     [],
   );
+
+  useEffect(() => {
+    const previous = previousPlayerRef.current;
+    if (previous.x === game.player.x && previous.y === game.player.y) return;
+
+    if (game.player.x !== previous.x) {
+      setFounderFacing(game.player.x > previous.x ? 1 : -1);
+    }
+    previousPlayerRef.current = {
+      x: game.player.x,
+      y: game.player.y,
+    };
+    setIsFounderMoving(true);
+
+    if (founderMoveTimerRef.current !== null) {
+      window.clearTimeout(founderMoveTimerRef.current);
+    }
+    founderMoveTimerRef.current = window.setTimeout(() => {
+      setIsFounderMoving(false);
+      founderMoveTimerRef.current = null;
+    }, 620);
+  }, [game.player.x, game.player.y]);
 
   useEffect(() => {
     const previous = previousGameRef.current;
@@ -1023,18 +1342,20 @@ const StartupSimulator = () => {
       title = "Work started";
     }
 
-    const id = ++toastIdRef.current;
-    setToasts((current) => [...current.slice(-2), { id, icon, title, message }]);
+    if (eventToastsEnabled) {
+      const id = ++toastIdRef.current;
+      setToasts((current) => [...current.slice(-2), { id, icon, title, message }]);
 
-    const timer = window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
-      toastTimersRef.current = toastTimersRef.current.filter(
-        (activeTimer) => activeTimer !== timer,
-      );
-    }, 3800);
-    toastTimersRef.current.push(timer);
+      const timer = window.setTimeout(() => {
+        setToasts((current) => current.filter((toast) => toast.id !== id));
+        toastTimersRef.current = toastTimersRef.current.filter(
+          (activeTimer) => activeTimer !== timer,
+        );
+      }, 3800);
+      toastTimersRef.current.push(timer);
+    }
 
-    if (cashGain >= 100 && soundEnabled && audioContextRef.current) {
+    if (cashGain > 0 && soundEnabled && audioContextRef.current) {
       const audioContext = audioContextRef.current;
       if (audioContext.state === "suspended") {
         void audioContext.resume();
@@ -1061,14 +1382,232 @@ const StartupSimulator = () => {
   ]);
 
   useEffect(() => {
-    if (paused || game.bankrupt) return;
+    if (!game.started || paused || game.bankrupt) return;
 
     const timer = window.setInterval(() => {
       setGame((current) => advanceGame(current));
     }, 1500);
 
     return () => window.clearInterval(timer);
-  }, [paused, game.bankrupt]);
+  }, [game.started, paused, game.bankrupt]);
+
+  useEffect(() => {
+    if (
+      game.uncollectedCash <= 0 ||
+      Math.abs(game.player.x - cashPilePosition.x) >= 7 ||
+      Math.abs(game.player.y - cashPilePosition.y) >= 7
+    ) {
+      return;
+    }
+
+    setGame((current) => {
+      if (current.uncollectedCash <= 0) return current;
+      const collected = current.uncollectedCash;
+      return {
+        ...current,
+        cash: current.cash + collected,
+        uncollectedCash: 0,
+        lastEvent: `${formatMoney(collected)} collected from the product.`,
+      };
+    });
+  }, [game.player.x, game.player.y, game.uncollectedCash]);
+
+  useEffect(() => {
+    const walkers: WorldWalker[] = [];
+    const addWalker = ({
+      emoji,
+      startX,
+      startY,
+      endX,
+      endY,
+      quarterX,
+      quarterY,
+      midX,
+      midY,
+      threeQuarterX,
+      threeQuarterY,
+      durationMs,
+      delayMs,
+    }: {
+      emoji: string;
+      startX: number;
+      startY: number;
+      endX: number;
+      endY: number;
+      quarterX: number;
+      quarterY: number;
+      midX: number;
+      midY: number;
+      threeQuarterX: number;
+      threeQuarterY: number;
+      durationMs: number;
+      delayMs: number;
+    }) => {
+      walkers.push({
+        id: ++walkerIdRef.current,
+        emoji,
+        startX,
+        startY,
+        walkX: (endX - startX) * 1.2,
+        walkY: (endY - startY) * 1.2,
+        quarterX: (quarterX - startX) * 1.2,
+        quarterY: (quarterY - startY) * 1.2,
+        midX: (midX - startX) * 1.2,
+        midY: (midY - startY) * 1.2,
+        threeQuarterX: (threeQuarterX - startX) * 1.2,
+        threeQuarterY: (threeQuarterY - startY) * 1.2,
+        durationMs,
+        delayMs,
+      });
+    };
+
+    if (game.recentLeads > 0) {
+      const sources = [
+        { x: 24, y: 58 },
+        ...((game.evergreenContent ?? 0) > 0 || (game.contentCreators ?? 0) > 0
+          ? [{ x: 15, y: 38 }]
+          : []),
+        ...((game.seoArticles ?? 0) > 0 || (game.blogWriters ?? 0) > 0
+          ? [{ x: 15, y: 78 }]
+          : []),
+        ...(referralRate > 0 ? [{ x: 33, y: 38 }] : []),
+        ...((game.campaignsRun ?? 0) > 0 ? [{ x: 30, y: 78 }] : []),
+      ];
+
+      Array.from({ length: Math.min(game.recentLeads, 6) }, (_, index) => {
+        const source = sources[(game.day + index) % sources.length];
+        const isSocialSource = source.x === 24 && source.y === 58;
+        const isCampaignSource = source.x === 30 && source.y === 78;
+        const isReferralSource = source.x === 33 && source.y === 38;
+        const startX = isCampaignSource
+          ? 30
+          : isReferralSource
+            ? 33
+            : source.x + 4.2;
+        const startY =
+          (isCampaignSource
+            ? 73.8
+            : isReferralSource
+              ? 42.2
+              : source.y) +
+          (index % 2) * 1.2;
+        addWalker({
+          emoji: index % 2 === 0 ? "🧑" : "👩",
+          startX,
+          startY,
+          endX: 50.5,
+          endY: 58,
+          quarterX: isSocialSource
+            ? 33
+            : isCampaignSource
+              ? 28.2
+              : isReferralSource
+                ? 31
+                : 19.8,
+          quarterY: isReferralSource ? 48 : 58,
+          midX: isSocialSource
+            ? game.landingPage
+              ? 42
+              : 37
+            : isReferralSource
+              ? 28.2
+              : 24,
+          midY: 58,
+          threeQuarterX: isSocialSource
+            ? game.landingPage
+              ? 46
+              : 44
+            : game.landingPage
+              ? 42
+              : 44,
+          threeQuarterY: 58,
+          durationMs: game.landingPage ? 4800 : 4100,
+          delayMs: index * 180,
+        });
+      });
+    }
+
+    Array.from({ length: Math.min(game.recentArrivals, 6) }, (_, index) => {
+      addWalker({
+        emoji: index % 2 === 0 ? "🧑" : "👩",
+        startX: 58.2,
+        startY: 58 + (index % 2) * 1.2,
+        endX: 64.5,
+        endY: 58,
+        quarterX: 59.8,
+        quarterY: 57.5,
+        midX: 61.3,
+        midY: 57,
+        threeQuarterX: 63,
+        threeQuarterY: 57.5,
+        durationMs: 3200,
+        delayMs: index * 180,
+      });
+    });
+
+    Array.from({ length: Math.min(game.recentIssues, 6) }, (_, index) => {
+      addWalker({
+        emoji: "🙋",
+        startX: 72.2,
+        startY: 58 + (index % 2) * 1.2,
+        endX: 79.2,
+        endY: 58,
+        quarterX: 74,
+        quarterY: 57.5,
+        midX: 75.7,
+        midY: 57,
+        threeQuarterX: 77.5,
+        threeQuarterY: 57.5,
+        durationMs: 3600,
+        delayMs: index * 180,
+      });
+    });
+
+    Array.from({ length: Math.min(game.recentResolved, 6) }, (_, index) => {
+      addWalker({
+        emoji: index % 2 === 0 ? "🧑" : "👩",
+        startX: 79.2,
+        startY: 58 + (index % 2) * 1.2,
+        endX: 72.2,
+        endY: 58,
+        quarterX: 77.5,
+        quarterY: 57.5,
+        midX: 75.7,
+        midY: 57,
+        threeQuarterX: 74,
+        threeQuarterY: 57.5,
+        durationMs: 3600,
+        delayMs: index * 180,
+      });
+    });
+
+    if (walkers.length === 0) return;
+    setWorldWalkers((current) => [...current.slice(-18), ...walkers]);
+    walkers.forEach((walker) => {
+      const timer = window.setTimeout(() => {
+        setWorldWalkers((current) =>
+          current.filter((activeWalker) => activeWalker.id !== walker.id),
+        );
+        walkerTimersRef.current = walkerTimersRef.current.filter(
+          (activeTimer) => activeTimer !== timer,
+        );
+      }, walker.durationMs + walker.delayMs + 150);
+      walkerTimersRef.current.push(timer);
+    });
+  }, [
+    game.blogWriters,
+    game.campaignsRun,
+    game.contentCreators,
+    game.day,
+    game.evergreenContent,
+    game.landingPage,
+    game.recentArrivals,
+    game.recentIssues,
+    game.recentLeads,
+    game.recentResolved,
+    game.seoArticles,
+    referralRate,
+  ]);
 
   useEffect(() => {
     if (game.product === 0 || retiredActionIds.includes("buildMvp")) return;
@@ -1160,11 +1699,34 @@ const StartupSimulator = () => {
   ]);
 
   useEffect(() => {
-    const nearbyStation = stations.find(
-      (station) =>
-        Math.abs(game.player.x - station.x) < 10 &&
-        Math.abs(game.player.y - station.y) < 10,
-    );
+    const nearbyStation = [
+      ...stations
+        .filter(
+          (station) =>
+            station.id !== "marketing" &&
+            isStationVisible(game, station.id),
+        )
+        .map((station) => ({
+          id: station.id,
+          x: station.x,
+          y: station.y,
+        })),
+      ...visibleMarketingPlotPositions(game).map((plot) => ({
+        id: "marketing" as const,
+        x: plot.x,
+        y: plot.y,
+      })),
+    ]
+      .filter(
+        (station) =>
+          Math.abs(game.player.x - station.x) < 15 &&
+          Math.abs(game.player.y - station.y) < 15,
+      )
+      .sort(
+        (a, b) =>
+          Math.hypot(game.player.x - a.x, game.player.y - a.y) -
+          Math.hypot(game.player.x - b.x, game.player.y - b.y),
+      )[0];
 
     if (!nearbyStation) {
       if (selectedStationId) {
@@ -1181,9 +1743,14 @@ const StartupSimulator = () => {
       setHighlightedActionIndex(0);
       setActionNavigationActive(false);
     }
-  }, [dismissedStationId, game.player.x, game.player.y, selectedStationId]);
+  }, [dismissedStationId, game, selectedStationId]);
 
   const handleWorldClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (suppressWorldClickRef.current) {
+      suppressWorldClickRef.current = false;
+      return;
+    }
+
     const bounds = event.currentTarget.getBoundingClientRect();
     const horizontalMove = ((event.clientX - bounds.left - bounds.width / 2) / bounds.width) * (100 / 1.2);
     const verticalMove = ((event.clientY - bounds.top - bounds.height / 2) / bounds.height) * (100 / 1.2);
@@ -1196,9 +1763,74 @@ const StartupSimulator = () => {
     }));
   };
 
-  const handleWorldWheel = (event: WheelEvent<HTMLDivElement>) => {
-    if (event.ctrlKey) return;
+  const handleWorldPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (
+      event.button !== 0 ||
+      (event.target as HTMLElement).closest("button, a, aside")
+    ) {
+      return;
+    }
+
     event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    worldDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      playerX: game.player.x,
+      playerY: game.player.y,
+      moved: false,
+    };
+    setIsDraggingWorld(true);
+  };
+
+  const handleWorldPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = worldDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - drag.startX;
+    const deltaY = event.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(deltaX, deltaY) > 4) {
+      drag.moved = true;
+      setActionNavigationActive(false);
+    }
+    if (!drag.moved) return;
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const horizontalMove =
+      (deltaX / bounds.width) * (100 / (1.2 * worldZoom));
+    const verticalMove =
+      (deltaY / bounds.height) * (100 / (1.2 * worldZoom));
+    setGame((current) => ({
+      ...current,
+      player: {
+        x: clamp(drag.playerX - horizontalMove, 5, 95),
+        y: clamp(drag.playerY - verticalMove, 8, 92),
+      },
+    }));
+  };
+
+  const finishWorldDrag = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = worldDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    suppressWorldClickRef.current = drag.moved;
+    worldDragRef.current = null;
+    setIsDraggingWorld(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const handleWorldWheel = (event: WheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (event.ctrlKey) {
+      setWorldZoom((current) =>
+        clamp(current - event.deltaY * 0.004, 0.6, 1.45),
+      );
+      return;
+    }
+
     const sensitivity = event.deltaMode === 1 ? 0.8 : event.deltaMode === 2 ? 20 : 0.035;
     setActionNavigationActive(false);
     setGame((current) => ({
@@ -1210,7 +1842,11 @@ const StartupSimulator = () => {
     }));
   };
 
-  const selectStation = (stationId: StationId, event?: MouseEvent) => {
+  const selectStation = (
+    stationId: StationId,
+    event?: MouseEvent,
+    position?: { x: number; y: number },
+  ) => {
     event?.stopPropagation();
     const station = getStation(stationId);
     setDismissedStationId(null);
@@ -1219,7 +1855,7 @@ const StartupSimulator = () => {
     setActionNavigationActive(false);
     setGame((current) => ({
       ...current,
-      player: { x: station.x, y: station.y + (station.y < 50 ? 9 : -9) },
+      player: position ?? { x: station.x, y: station.y },
     }));
   };
 
@@ -1239,6 +1875,9 @@ const StartupSimulator = () => {
     setGame(initialGame);
     previousGameRef.current = initialGame;
     setToasts([]);
+    setWorldWalkers([]);
+    walkerTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    walkerTimersRef.current = [];
     setSelectedStationId(null);
     setHighlightedActionIndex(0);
     setActionNavigationActive(false);
@@ -1246,6 +1885,14 @@ const StartupSimulator = () => {
     setRetiredActionIds([]);
     setShowStats(false);
     setPaused(false);
+    setWorldZoom(1);
+    setIsFounderMoving(false);
+    setFounderFacing(1);
+    previousPlayerRef.current = initialGame.player;
+    if (founderMoveTimerRef.current !== null) {
+      window.clearTimeout(founderMoveTimerRef.current);
+      founderMoveTimerRef.current = null;
+    }
   };
 
   const score = Math.max(
@@ -1271,15 +1918,12 @@ const StartupSimulator = () => {
           from { transform: translate(0, 0); opacity: 1; }
           to { transform: translate(100px, -20px); opacity: 0; }
         }
-        @keyframes startup-build {
-          0% { transform: translate(-50%, -50%) scale(.25); opacity: 0; }
-          70% { transform: translate(-50%, -50%) scale(1.06); opacity: 1; }
-          100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-        }
-        @keyframes startup-walk-product {
+        @keyframes startup-city-walk {
           0% { transform: translateY(0) scale(.9); opacity: 1; }
-          78% { transform: translateY(-16vh) scale(1); opacity: 1; }
-          100% { transform: translateY(-18vh) scale(.75); opacity: 0; }
+          28% { transform: translate(var(--walk-quarter-x), var(--walk-quarter-y)) scale(1); opacity: 1; }
+          56% { transform: translate(var(--walk-mid-x), var(--walk-mid-y)) scale(.94); opacity: 1; }
+          78% { transform: translate(var(--walk-three-quarter-x), var(--walk-three-quarter-y)) scale(1); opacity: 1; }
+          100% { transform: translate(var(--walk-x), var(--walk-y)) scale(.78); opacity: 0; }
         }
         @keyframes startup-retire-action {
           0% { width: 220px; min-width: 220px; opacity: 1; transform: translateY(0); }
@@ -1290,12 +1934,29 @@ const StartupSimulator = () => {
           0% { opacity: 0; transform: translateY(-10px) scale(.96); }
           100% { opacity: 1; transform: translateY(0) scale(1); }
         }
+        @keyframes startup-plot-grow {
+          0% { opacity: 0; transform: scale(.2) rotate(-2deg); }
+          65% { opacity: 1; transform: scale(1.05) rotate(.5deg); }
+          100% { opacity: 1; transform: scale(1) rotate(0); }
+        }
+        @keyframes startup-founder-jog {
+          0%, 32% { background-position: 0% 0; }
+          33%, 65% { background-position: 50% 0; }
+          66%, 100% { background-position: 100% 0; }
+        }
       `}</style>
 
       <section
-        className="relative h-full w-full overflow-hidden bg-[#a9d477]"
+        className={`relative h-full w-full select-none overflow-hidden bg-[#a9d477] ${
+          isDraggingWorld ? "cursor-grabbing" : "cursor-grab"
+        }`}
+        style={{ touchAction: "none" }}
         aria-label="Open startup grassland. Click anywhere to walk."
         onClick={handleWorldClick}
+        onPointerDown={handleWorldPointerDown}
+        onPointerMove={handleWorldPointerMove}
+        onPointerUp={finishWorldDrag}
+        onPointerCancel={finishWorldDrag}
         onWheel={handleWorldWheel}
       >
         <div
@@ -1399,45 +2060,47 @@ const StartupSimulator = () => {
           </div>
         </div>
 
-        <div
-          className="pointer-events-none absolute left-1/2 top-20 z-50 flex w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-2 sm:top-24"
-          aria-live="polite"
-          aria-atomic="false"
-        >
-          {toasts.map((toast) => (
-            <div
-              key={toast.id}
-              className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-white/85 bg-[#fffdf7]/95 px-3.5 py-3 shadow-xl backdrop-blur-md"
-              style={{ animation: "startup-toast-in 240ms ease-out both" }}
-            >
-              <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eef6e6] text-xl"
-                aria-hidden="true"
+        {eventToastsEnabled ? (
+          <div
+            className="pointer-events-none absolute left-1/2 top-20 z-50 flex w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-2 sm:top-24"
+            aria-live="polite"
+            aria-atomic="false"
+          >
+            {toasts.map((toast) => (
+              <div
+                key={toast.id}
+                className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-white/85 bg-[#fffdf7]/95 px-3.5 py-3 shadow-xl backdrop-blur-md"
+                style={{ animation: "startup-toast-in 240ms ease-out both" }}
               >
-                {toast.icon}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold">{toast.title}</p>
-                <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-[#688071]">
-                  {toast.message}
-                </p>
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eef6e6] text-xl"
+                  aria-hidden="true"
+                >
+                  {toast.icon}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold">{toast.title}</p>
+                  <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-[#688071]">
+                    {toast.message}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setToasts((current) =>
+                      current.filter((currentToast) => currentToast.id !== toast.id),
+                    );
+                  }}
+                  className="self-start px-1 text-[#789080] transition hover:text-[#24352b]"
+                  aria-label="Dismiss notification"
+                >
+                  ×
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setToasts((current) =>
-                    current.filter((currentToast) => currentToast.id !== toast.id),
-                  );
-                }}
-                className="self-start px-1 text-[#789080] transition hover:text-[#24352b]"
-                aria-label="Dismiss notification"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : null}
 
         {showStats ? (
           <div
@@ -1490,232 +2153,487 @@ const StartupSimulator = () => {
         ) : null}
 
         <div
-          className="absolute h-[120vh] w-[120vw] transition-[left,top] duration-150 ease-out"
+          className={`absolute h-[120vh] w-[120vw] ${
+            isDraggingWorld
+              ? ""
+              : "transition-[left,top,transform] duration-300 ease-out"
+          }`}
           style={{
-            left: `calc(-10vw + ${(50 - game.player.x) * 1.2}vw)`,
-            top: `calc(-10vh + ${(50 - game.player.y) * 1.2}vh)`,
+            left: `${50 - game.player.x * 1.2 * worldZoom}vw`,
+            top: `${50 - game.player.y * 1.2 * worldZoom}vh`,
+            transform: `scale(${worldZoom})`,
+            transformOrigin: "top left",
           }}
           aria-label="Moving startup world"
         >
-        <div className="pointer-events-none absolute left-[7%] top-[45%] text-2xl opacity-70">🪨 🌿</div>
-        <div className="pointer-events-none absolute left-[27%] top-[91%] text-xl opacity-65">🌱 🌼</div>
-        <div className="pointer-events-none absolute left-[70%] top-[46%] text-2xl opacity-70">🌼 🌿</div>
-        <div className="pointer-events-none absolute left-[92%] top-[37%] text-2xl opacity-65">🌳</div>
-        <div className="pointer-events-none absolute left-[34%] top-[12%] text-xl opacity-60">🪨</div>
-        <div className="pointer-events-none absolute left-[66%] top-[90%] text-xl opacity-65">🌱 🪨</div>
-        {stations.map((station) => {
-          const selected = station.id === selectedStationId;
-          const queue = station.queue?.(game) ?? 0;
-          const operatorCount = station.teamRole ? game.team[station.teamRole] : 0;
-          const salesAutomated = station.id === "sales" && game.selfServeCheckout;
-          const marketingAutomated =
-            station.id === "marketing" &&
-            ((game.evergreenContent ?? 0) > 0 ||
-              (game.seoArticles ?? 0) > 0 ||
-              game.team.marketing > 0);
-          const automated = salesAutomated || marketingAutomated;
+          <div className="pointer-events-none absolute left-[7%] top-[45%] text-2xl opacity-70">🪨 🌿</div>
+          <div className="pointer-events-none absolute left-[27%] top-[91%] text-xl opacity-65">🌱 🌼</div>
+          <div className="pointer-events-none absolute left-[72%] top-[78%] text-2xl opacity-70">🌼 🌿</div>
+          <div className="pointer-events-none absolute left-[94%] top-[28%] text-2xl opacity-65">🌳</div>
+          <div className="pointer-events-none absolute left-[34%] top-[12%] text-xl opacity-60">🪨</div>
+          <div className="pointer-events-none absolute left-[66%] top-[90%] text-xl opacity-65">🌱 🪨</div>
 
-          return (
-            <button
-              key={station.id}
-              type="button"
-              onClick={(event) => selectStation(station.id, event)}
-              className="group absolute z-10 w-28 -translate-x-1/2 -translate-y-1/2 text-center transition hover:-translate-y-[calc(50%+4px)]"
-              style={{ left: `${station.x}%`, top: `${station.y}%` }}
-              aria-label={`Walk to ${station.label}`}
-              title={station.subtitle}
-            >
-              <div className={`relative mx-auto flex h-[74px] w-[74px] items-center justify-center rounded-[24px] border-2 text-4xl shadow-lg transition group-hover:shadow-xl ${station.color} ${selected ? "ring-4 ring-white/90 ring-offset-2 ring-offset-[#a9d477]" : ""}`}>
-                <span aria-hidden="true">{station.emoji}</span>
-                {queue > 0 ? (
-                  <span className="absolute -right-2 -top-2 min-w-6 rounded-full border-2 border-white bg-[#24352b] px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
-                    {queue}
-                  </span>
-                ) : null}
-                {operatorCount > 0 || automated ? (
-                  <span
-                    className="absolute -bottom-2 -right-2 rounded-full border-2 border-white bg-[#fffdf7] px-1.5 py-0.5 text-xs shadow-sm"
-                    title={automated ? "Automated growth running" : "Team member working"}
-                  >
-                    {operatorCount > 0 ? `👤${operatorCount > 1 ? operatorCount : ""}` : ""}{salesAutomated ? "⚡" : ""}{marketingAutomated ? "♻️" : ""}
-                  </span>
-                ) : null}
-              </div>
-              <p className="mx-auto mt-2 w-fit rounded-full border border-white/80 bg-[#fffdf7]/90 px-3 py-1 text-[10px] font-semibold shadow-sm backdrop-blur-sm">
-                {station.label}
-              </p>
-            </button>
-          );
-        })}
-
-        {game.product > 0 ? (
           <div
-            key={`product-stage-${productStage}`}
-            className={`pointer-events-none absolute left-1/2 top-1/2 z-[8] h-[32vh] min-h-[190px] max-h-[250px] w-[32vw] min-w-[220px] max-w-[310px] overflow-hidden rounded-[28px] border-4 shadow-xl ${
-              productStage === 3
-                ? "border-violet-300 bg-violet-50/90"
-                : productStage === 2
-                  ? "border-sky-300 bg-sky-50/90"
-                  : "border-amber-300 bg-amber-50/90"
-            }`}
-            style={{ animation: "startup-build .7s ease-out both" }}
-            aria-label={`${productStageLabel}: ${game.customers} subscribers inside, ${churnRisk} churn risk`}
+            className="pointer-events-none absolute z-[3] rounded-[28px] border-2 border-dashed border-[#6f8e56]/60 transition-[left,top,width,height] duration-500"
+            style={{
+              left: `${marketingFieldBounds.left}%`,
+              top: `${marketingFieldBounds.top}%`,
+              width: `${marketingFieldBounds.right - marketingFieldBounds.left}%`,
+              height: `${marketingFieldBounds.bottom - marketingFieldBounds.top}%`,
+            }}
           >
-            <div className="absolute inset-x-0 top-0 flex items-center justify-between border-b border-[#24352b]/10 bg-white/55 px-4 py-2 backdrop-blur-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl" aria-hidden="true">{productStageEmoji}</span>
-                <div>
-                  <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#66816f]">your product</p>
-                  <p className="text-xs font-semibold">{productStageLabel}</p>
-                </div>
-              </div>
-              <span className="rounded-full bg-white/80 px-2 py-1 font-mono text-[9px] font-semibold">
-                {game.product}%
-              </span>
-            </div>
+            <span className="absolute left-5 top-0 -translate-y-1/2 bg-[#a9d477] px-2 font-mono text-[9px] uppercase tracking-[0.18em] text-[#54704e]">
+              Marketing field
+            </span>
+          </div>
 
-            <div className="absolute inset-x-4 bottom-12 top-14 grid grid-cols-3 gap-2" aria-hidden="true">
-              {productRooms.map((room) => {
-                const occupants = Math.min(2, Math.max(0, settledCustomers - room * 2));
+          <div className="pointer-events-none absolute left-[82%] top-[67%] z-[3] h-[31%] w-[16%] rounded-[28px] border-2 border-dashed border-[#6f8e56]/45">
+            <span className="absolute left-5 top-0 -translate-y-1/2 bg-[#a9d477] px-2 font-mono text-[9px] uppercase tracking-[0.18em] text-[#54704e]">
+              Funding corner
+            </span>
+          </div>
+
+          <svg
+            className="pointer-events-none absolute inset-0 z-[4] h-full w-full overflow-visible"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            {game.landingPage ? (
+              <g>
+                <path
+                  d="M 45.5 58 L 50.2 58"
+                  fill="none"
+                  stroke="#765337"
+                  strokeWidth="9"
+                  opacity="0.48"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M 45.5 58 L 50.2 58"
+                  fill="none"
+                  stroke="#d8b978"
+                  strokeWidth="6.5"
+                  opacity="0.95"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+              </g>
+            ) : null}
+
+            {hasMarketingInvestment(game) ? (
+              <g>
+                <path
+                  d="M 58.2 58 L 63.8 58"
+                  fill="none"
+                  stroke="#765337"
+                  strokeWidth="9"
+                  opacity="0.48"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M 58.2 58 L 63.8 58"
+                  fill="none"
+                  stroke="#d8b978"
+                  strokeWidth="6.5"
+                  opacity="0.95"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+              </g>
+            ) : null}
+
+            {isStationVisible(game, "support") ? (
+              <g>
+                <path
+                  d="M 72.2 58 L 79.2 58"
+                  fill="none"
+                  stroke="#765337"
+                  strokeWidth="9"
+                  opacity="0.48"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M 72.2 58 L 79.2 58"
+                  fill="none"
+                  stroke="#d8b978"
+                  strokeWidth="6.5"
+                  opacity="0.95"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+              </g>
+            ) : null}
+
+            {activeMarketingSources.length > 0 ? (
+              <g>
+                <path
+                  d={`M 28.2 58 L ${game.landingPage ? 38.5 : 50.2} 58`}
+                  fill="none"
+                  stroke="#765337"
+                  strokeWidth="7"
+                  opacity="0.42"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+                <path
+                  d={`M 28.2 58 L ${game.landingPage ? 38.5 : 50.2} 58`}
+                  fill="none"
+                  stroke="#d8b978"
+                  strokeWidth="4.8"
+                  opacity="0.92"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+              </g>
+            ) : null}
+
+            {activeMarketingSources
+              .filter((channel) => channel.id !== "social")
+              .map((channel) => {
+                const path =
+                  channel.id === "paid"
+                    ? "M 30 73.8 C 30 68, 28.2 65, 28.2 62.2"
+                    : channel.id === "referrals"
+                      ? "M 33 42.2 C 33 49, 28.2 51, 28.2 55.8"
+                    : `M 19.2 ${channel.y} C 20.5 ${channel.y}, 19.8 52, 19.8 58`;
                 return (
-                  <div
-                    key={room}
-                    className={`flex items-center justify-center rounded-xl border border-[#24352b]/15 text-sm transition-colors ${
-                      occupants > 0 ? "bg-emerald-50/90" : "bg-white/55"
-                    }`}
-                  >
-                    {occupants > 0
-                      ? Array.from(
-                          { length: occupants },
-                          (_, personIndex) => (room + personIndex) % 2 === 0 ? "🧑" : "👩",
-                        ).join("")
-                      : "🪟"}
-                  </div>
+                  <g key={channel.id}>
+                    <path
+                      d={path}
+                      fill="none"
+                      stroke="#765337"
+                      strokeWidth="7"
+                      opacity="0.42"
+                      vectorEffect="non-scaling-stroke"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d={path}
+                      fill="none"
+                      stroke="#d8b978"
+                      strokeWidth="4.8"
+                      opacity="0.92"
+                      vectorEffect="non-scaling-stroke"
+                      strokeLinecap="round"
+                    />
+                  </g>
                 );
               })}
-            </div>
 
-            <div className="absolute inset-x-3 bottom-3 flex items-center justify-between rounded-full bg-[#24352b]/85 px-3 py-1.5 text-[9px] font-semibold text-white shadow-sm">
-              <span>🧑‍🤝‍🧑 {game.customers} subscribed</span>
-              <span>+{formatMoney(revenue)}/day</span>
-              <span>churn {churnRisk}</span>
-            </div>
-          </div>
-        ) : (
-          <div
-            className="pointer-events-none absolute left-1/2 top-1/2 z-[7] flex h-[25vh] min-h-[160px] max-h-[210px] w-[27vw] min-w-[190px] max-w-[260px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[28px] border-2 border-dashed border-[#6d9d5d]/60 bg-[#d9eaae]/25 text-center"
-            aria-label="Empty product plot"
-          >
-            <div>
-              <div className="text-3xl opacity-70" aria-hidden="true">🏗️</div>
-              <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.16em] text-[#5d775f]">empty product plot</p>
-              <p className="mt-1 text-[10px] text-[#66816f]">build the MVP to open</p>
-            </div>
-          </div>
-        )}
+          </svg>
 
-        <div
-          className="fixed left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2"
-          aria-label="Founder"
-        >
-          <div className="relative flex h-12 w-12 items-center justify-center rounded-full border-4 border-white bg-[#fff7d6] text-2xl shadow-lg sm:h-14 sm:w-14 sm:text-3xl">
-            🧑‍💻
-            {game.activity ? (
-              <span className="absolute -right-2 -top-2 rounded-full border-2 border-white bg-[#24352b] px-1.5 py-0.5 text-[9px] font-semibold text-white">
-                {progressPercent}%
-              </span>
-            ) : null}
-          </div>
-        </div>
+          {visibleMarketingChannels.map((channel) => {
+            const crowdSize = channel.unlocked
+              ? Math.min(8, Math.max(1, channel.strength))
+              : 0;
+            const plotLevel = channel.unlocked
+              ? Math.min(6, Math.max(1, channel.strength))
+              : 1;
+            const plotSize = 80 + plotLevel * 9;
+            const isStarterPlot = channel.id === "social" && !channel.unlocked;
+            return (
+              <button
+                key={channel.id}
+                type="button"
+                onClick={(event) =>
+                  selectStation("marketing", event, {
+                    x: channel.x,
+                    y: channel.y,
+                  })
+                }
+                className="group absolute z-10 -translate-x-1/2 -translate-y-1/2 text-center transition hover:-translate-y-[calc(50%+3px)]"
+                style={{
+                  left: `${channel.x}%`,
+                  top: `${channel.y}%`,
+                  width: `${plotSize}px`,
+                }}
+                aria-label={`${channel.unlocked ? "Open" : "Invest in"} ${channel.label} marketing`}
+              >
+                <div
+                  className={`relative mx-auto overflow-hidden rounded-[14px] border-2 transition-[width,height] duration-500 ${
+                    channel.unlocked
+                      ? "border-[#70472b] shadow-[inset_0_0_0_2px_rgba(245,209,142,0.18)]"
+                      : "border-dashed border-[#8d6b43]/80"
+                  }`}
+                  style={{
+                    width: `${plotSize}px`,
+                    height: `${plotSize}px`,
+                    backgroundColor: channel.unlocked ? "#a97343" : "#bd9462",
+                    backgroundImage:
+                      "repeating-linear-gradient(90deg, transparent 0 12px, rgba(92,55,28,.22) 12px 15px)",
+                    animation: channel.unlocked
+                      ? "startup-plot-grow .55s ease-out both"
+                      : undefined,
+                  }}
+                >
+                  <div className="absolute left-2 top-2 z-10 rounded-md border border-[#70472b] bg-[#f0d596] px-2 py-0.5 text-[8px] font-bold">
+                    {isStarterPlot ? "Marketing" : channel.label}
+                  </div>
+                  {channel.unlocked
+                    ? Array.from({ length: crowdSize }, (_, personIndex) => (
+                      <span
+                        key={personIndex}
+                        className="absolute text-sm"
+                        style={{
+                          left: `${10 + (personIndex % 4) * 23}%`,
+                          top: `${52 + Math.floor(personIndex / 4) * 18}%`,
+                          animation: `startup-bob ${1.7 + personIndex * 0.12}s ease-in-out ${personIndex * 0.1}s infinite`,
+                        }}
+                        aria-hidden="true"
+                      >
+                        {personIndex % 2 === 0 ? "🧑" : "👩"}
+                      </span>
+                    ))
+                    : null}
+                  <p className="absolute inset-x-1.5 bottom-1.5 rounded-md bg-[#f8e9c4]/90 px-1 py-0.5 font-mono text-[7px] text-[#5f452e]">
+                    {channel.unlocked ? channel.detail : "start your first channel"}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
 
-        <div
-          className="pointer-events-none absolute inset-0 z-[14]"
-          aria-label={`${game.recentArrivals} people walking into the product`}
-        >
-          {recentWalkingPeople.map((person, index) => (
+          {stations
+            .filter(
+              (station) =>
+                station.id !== "marketing" &&
+                isStationVisible(game, station.id),
+            )
+            .map((station) => {
+              const operatorCount = station.teamRole ? game.team[station.teamRole] : 0;
+              const status =
+                station.id === "product"
+                  ? game.product > 0
+                    ? `${game.customers} ${game.customers === 1 ? "subscriber" : "subscribers"} · ${monthlyChurnRate}% churn after 1 month`
+                    : "empty product plot"
+                  : station.id === "sales"
+                    ? `${game.leads} waiting${game.selfServeCheckout ? " · self-serve" : ""}`
+                    : station.id === "support"
+                      ? `${game.issues} need help`
+                      : station.subtitle;
+              const plotLevel =
+                station.id === "product"
+                  ? Math.ceil(game.product / 20)
+                  : station.id === "sales"
+                    ? game.salesProcess + game.team.sales + (game.selfServeCheckout ? 1 : 0)
+                    : station.id === "support"
+                      ? game.team.support + (game.helpDocs ? 1 : 0)
+                      : 1;
+              const plotSize =
+                station.id === "product" && game.product === 0
+                  ? 88
+                  : Math.min(136, 98 + Math.max(1, plotLevel) * 8);
+              const isEmptyProduct =
+                station.id === "product" && game.product === 0;
+
+              return (
+                <button
+                  key={station.id}
+                  type="button"
+                  onClick={(event) => selectStation(station.id, event)}
+                  className="group absolute z-10 -translate-x-1/2 -translate-y-1/2 text-center transition hover:-translate-y-[calc(50%+3px)]"
+                  style={{
+                    left: `${station.x}%`,
+                    top: `${station.y}%`,
+                    width: `${plotSize}px`,
+                  }}
+                  aria-label={`Walk to ${station.label}`}
+                  title={station.subtitle}
+                >
+                  <div
+                    className={`relative mx-auto overflow-hidden rounded-[14px] border-2 transition-[width,height] duration-500 ${
+                      isEmptyProduct
+                        ? "border-dashed border-[#8d6b43]/80"
+                        : "border-[#70472b] shadow-[inset_0_0_0_2px_rgba(245,209,142,0.18)]"
+                    }`}
+                    style={{
+                      width: `${plotSize}px`,
+                      height: `${plotSize}px`,
+                      backgroundColor: isEmptyProduct ? "#bd9462" : "#a97343",
+                      backgroundImage:
+                        "repeating-linear-gradient(90deg, transparent 0 13px, rgba(92,55,28,.22) 13px 16px)",
+                      animation:
+                        station.id === "sales" || station.id === "support"
+                          ? "startup-plot-grow .6s ease-out both"
+                          : undefined,
+                    }}
+                  >
+                    <div className="absolute left-2 top-2 z-10 rounded-md border border-[#70472b] bg-[#f0d596] px-2 py-0.5 text-[8px] font-bold">
+                      {station.label}
+                    </div>
+
+                    {station.id === "product" && game.product > 0
+                      ? visibleCustomers.map((customer, index) => (
+                          <span
+                            key={customer}
+                            className="absolute text-base"
+                            style={{
+                              left: `${8 + (index % 4) * 24}%`,
+                              top: `${54 + Math.floor(index / 4) * 17}%`,
+                            }}
+                            aria-hidden="true"
+                          >
+                            {index % 2 === 0 ? "🧑" : "👩"}
+                          </span>
+                        ))
+                      : null}
+                    {operatorCount > 0 ? (
+                      <span className="absolute right-1.5 top-1.5 z-20 rounded-full border border-[#70472b] bg-[#f8e9c4]/95 px-1.5 py-0.5 text-[9px]">
+                        🧑‍🔧{operatorCount > 1 ? operatorCount : ""}
+                      </span>
+                    ) : null}
+                    <p className="absolute inset-x-1.5 bottom-1.5 rounded-md bg-[#f8e9c4]/90 px-1 py-0.5 font-mono text-[7px] text-[#5f452e]">
+                      {status}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+
+          {visibleLeads.map((lead, index) => (
             <span
-              key={`walking-${game.day}-${person}`}
-              className="absolute text-xl drop-shadow-sm sm:text-2xl"
+              key={`sales-queue-${lead.index}`}
+              className="pointer-events-none absolute z-[13] text-lg drop-shadow-sm"
               style={{
-                left: `${47 + index * 2.5}%`,
-                top: `${78 + (index % 2) * 2}%`,
-                animation: `startup-walk-product 1.3s ease-in ${index * 0.08}s both`,
+                left: `${49.5 - (index % 4) * 1.15}%`,
+                top: `${55.4 + Math.floor(index / 4) * 2.2}%`,
+                animation: `startup-bob ${1.7 + index * 0.08}s ease-in-out ${index * 0.06}s infinite`,
               }}
+              title={`${lead.patience} patience left`}
               aria-hidden="true"
             >
               {index % 2 === 0 ? "🧑" : "👩"}
             </span>
           ))}
-        </div>
 
-        <div className="pointer-events-none absolute inset-0 z-[11]" aria-label={`${game.leads} people waiting for sales`}>
-          {visibleLeads.map((lead, index) => {
-            const position = leadPositions[index];
-            const patiencePercent = clamp((lead.patience / 28) * 100, 0, 100);
-            return (
-              <div
-                key={`lead-${lead.index}`}
-                className="absolute flex w-8 flex-col items-center text-lg opacity-95 drop-shadow-sm sm:text-xl"
-                style={{
-                  left: `${position.left}%`,
-                  top: `${position.top}%`,
-                  animation: `startup-bob 2s ease-in-out ${index * 0.2}s infinite`,
-                }}
-                aria-hidden="true"
-              >
-                {index % 2 === 0 ? "🧑" : "👩"}
-                <span className="mt-0.5 h-1 w-7 overflow-hidden rounded-full bg-white/80 shadow-sm">
-                  <span
-                    className={`block h-full rounded-full ${
-                      patiencePercent > 50
-                        ? "bg-emerald-500"
-                        : patiencePercent > 25
-                          ? "bg-amber-500"
-                          : "bg-rose-500"
-                    }`}
-                    style={{ width: `${patiencePercent}%` }}
-                  />
-                </span>
-              </div>
-            );
-          })}
-          {game.leads > visibleLeads.length ? (
-            <span className="absolute left-[63%] top-[88%] rounded-full bg-white/75 px-2 py-1 text-[10px] font-semibold shadow-sm">
-              +{game.leads - visibleLeads.length}
+          {visibleIssues.map((issue, index) => (
+            <span
+              key={`support-queue-${issue}`}
+              className="pointer-events-none absolute z-[13] text-lg drop-shadow-sm"
+              style={{
+                left: `${78.7 - (index % 4) * 1.35}%`,
+                top: `${55.4 + Math.floor(index / 4) * 2.2}%`,
+                animation: `startup-bob ${1.55 + index * 0.08}s ease-in-out ${index * 0.06}s infinite`,
+              }}
+              aria-hidden="true"
+            >
+              🙋
             </span>
-          ) : null}
-        </div>
+          ))}
 
-        <div className="pointer-events-none absolute inset-0 z-[13]" aria-label={`${game.issues} users need help`}>
-          {visibleIssues.map((issue, index) => {
-            const position = issuePositions[index];
-            return (
+          {game.uncollectedCash > 0 ? (
+            <button
+              type="button"
+              className="absolute z-[13] h-20 w-24 -translate-x-1/2 -translate-y-1/2 transition hover:scale-105"
+              style={{
+                left: `${cashPilePosition.x}%`,
+                top: `${cashPilePosition.y}%`,
+              }}
+              onClick={(event) => {
+                event.stopPropagation();
+                setGame((current) => ({
+                  ...current,
+                  player: { ...cashPilePosition },
+                }));
+              }}
+              aria-label={`Walk over to collect ${formatMoney(game.uncollectedCash)}`}
+            >
+              {visibleCash.map((cash, index) => (
+                <span
+                  key={cash}
+                  className="absolute text-lg drop-shadow-sm"
+                  style={{
+                    left: `${8 + (index % 4) * 22}%`,
+                    top: `${4 + Math.floor(index / 4) * 20}%`,
+                    transform: `rotate(${(index % 3 - 1) * 9}deg)`,
+                    animation: `startup-bob ${1.4 + index * 0.08}s ease-in-out ${index * 0.05}s infinite`,
+                  }}
+                  aria-hidden="true"
+                >
+                  {index % 3 === 0 ? "💵" : "🪙"}
+                </span>
+              ))}
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-[#8b6a3f] bg-[#f8e9c4]/95 px-2 py-0.5 font-mono text-[8px] text-[#5f452e]">
+                collect {formatMoney(game.uncollectedCash)}
+              </span>
+            </button>
+          ) : null}
+
+          <div
+            className="pointer-events-none absolute inset-0 z-[14]"
+            aria-label={`${worldWalkers.length} people moving through the startup`}
+          >
+            {worldWalkers.map((walker) => (
               <span
-                key={`issue-${issue}`}
+                key={walker.id}
                 className="absolute text-xl drop-shadow-sm sm:text-2xl"
-                style={{
-                  left: `${position.left}%`,
-                  top: `${position.top}%`,
-                  animation: `startup-bob 1.3s ease-in-out ${index * 0.12}s infinite`,
-                }}
+                style={
+                  {
+                    left: `${walker.startX}%`,
+                    top: `${walker.startY}%`,
+                    "--walk-x": `${walker.walkX}vw`,
+                    "--walk-y": `${walker.walkY}vh`,
+                    "--walk-quarter-x": `${walker.quarterX}vw`,
+                    "--walk-quarter-y": `${walker.quarterY}vh`,
+                    "--walk-mid-x": `${walker.midX}vw`,
+                    "--walk-mid-y": `${walker.midY}vh`,
+                    "--walk-three-quarter-x": `${walker.threeQuarterX}vw`,
+                    "--walk-three-quarter-y": `${walker.threeQuarterY}vh`,
+                    animation: `startup-city-walk ${walker.durationMs}ms linear ${walker.delayMs}ms both`,
+                  } as CSSProperties
+                }
                 aria-hidden="true"
               >
-                🙋
+                {walker.emoji}
               </span>
-            );
-          })}
-        </div>
+            ))}
+          </div>
 
         {game.recentDepartures > 0 ? (
           <div
             key={`departures-${game.day}`}
-            className="pointer-events-none absolute right-[8%] top-[49%] z-20 text-2xl"
+            className="pointer-events-none absolute left-[87%] top-[59%] z-20 text-2xl"
             style={{ animation: "startup-leave .8s ease-in forwards" }}
             aria-label={`${game.recentDepartures} users left`}
           >
             😤{game.recentDepartures > 1 ? ` ×${game.recentDepartures}` : ""}
           </div>
         ) : null}
+        </div>
+
+        <div
+          className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2"
+          aria-label="Founder"
+        >
+          <div className="relative h-16 w-16 drop-shadow-[0_6px_5px_rgba(45,61,35,0.3)] [&_.ashvin-pet]:!w-16">
+            {isFounderMoving ? (
+              <span
+                className="block h-16 w-16 bg-no-repeat [image-rendering:pixelated]"
+                style={{
+                  backgroundImage:
+                    'url("/ai-ashvin-running-spritesheet.png")',
+                  backgroundPosition: "0% 0",
+                  backgroundSize: "300% 100%",
+                  animation:
+                    "startup-founder-jog 780ms steps(1, end) infinite",
+                  transform: `scale(1.34) scaleX(${founderFacing})`,
+                  transformOrigin: "50% 82%",
+                }}
+                aria-hidden="true"
+              />
+            ) : (
+              <AshvinPet animation={game.activity ? "chat" : "idle"} />
+            )}
+            {game.activity ? (
+              <span className="absolute -right-2 -top-2 rounded-full border-2 border-white bg-[#24352b] px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                {progressPercent}%
+              </span>
+            ) : null}
+          </div>
         </div>
 
         {game.activity ? (
@@ -1755,7 +2673,7 @@ const StartupSimulator = () => {
                       : "founder operated"}
                 </p>
                 <h2 className="mt-0.5 text-sm font-semibold">
-                  {selectedStation.emoji} {selectedStation.label}
+                  {selectedStation.label}
                 </h2>
               </div>
               <p className="min-w-0 flex-1 truncate text-[11px] text-[#6b7d70]">
