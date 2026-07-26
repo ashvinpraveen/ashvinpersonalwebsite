@@ -11,6 +11,7 @@ export const metadata: Metadata = createMetadata({
   description,
   path: "/startup",
   image: "/og-startup.png",
+  imageAlt: "Startup Simulator — grow a pixel-art startup by managing marketing, product, and sales",
 });
 
 export default function StartupPage() {
