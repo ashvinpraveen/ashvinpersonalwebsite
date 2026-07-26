@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import AshvinPet from "@/features/chat-widget/AshvinPet";
+import posthog from "posthog-js";
 import {
   useEffect,
   useMemo,
@@ -12,34 +12,131 @@ import {
   type PointerEvent,
   type WheelEvent,
 } from "react";
+import { isPostHogEnabled } from "@/lib/features";
 
-type StationId = "service" | "investors" | "product" | "marketing" | "sales" | "support";
-type TeamRole = "product" | "marketing" | "sales" | "support";
+type StationId =
+  | "service"
+  | "investors"
+  | "bank"
+  | "privateEquity"
+  | "ma"
+  | "investmentBank"
+  | "product"
+  | "marketing"
+  | "sales"
+  | "support";
+type TeamRole = "product" | "marketing" | "sdr" | "sales" | "support";
+type StaffRole =
+  | "engineer"
+  | "marketer"
+  | "creator"
+  | "writer"
+  | "sdr"
+  | "sales"
+  | "support";
+
+type MonthlyMetric = {
+  month: number;
+  day: number;
+  revenue: number;
+  cashBurn: number;
+  netBurn: number;
+  cash: number;
+  subscribers: number;
+  payroll: number;
+  paidMedia: number;
+};
 type ActionId =
   | "clientWork"
   | "pitchPreseed"
   | "pitchSeed"
+  | "pitchSeriesA"
+  | "pitchSeriesB"
+  | "pitchSeriesC"
+  | "takeBusinessLoan"
+  | "takePeInvestment"
+  | "acquireCompany"
+  | "acceptAcquisition"
+  | "goPublic"
   | "buildMvp"
   | "improveProduct"
   | "expandCapacity"
   | "fixBugs"
   | "hireEngineer"
+  | "fireEngineer"
   | "postContent"
   | "buildLandingPage"
   | "improveLandingPage"
   | "createEvergreenContent"
   | "writeSeoArticle"
   | "launchCampaign"
+  | "increasePaidMediaBudget"
+  | "optimizePaidMedia"
   | "hireMarketer"
+  | "fireMarketer"
   | "hireContentCreator"
+  | "fireContentCreator"
   | "hireBlogWriter"
+  | "fireBlogWriter"
+  | "doOutreach"
+  | "hireSdr"
+  | "fireSdr"
   | "closeLeads"
   | "improveSales"
   | "buildSelfServeCheckout"
+  | "improveSelfServeCheckout"
   | "hireSalesperson"
+  | "fireSalesperson"
   | "answerUsers"
   | "writeHelpDocs"
-  | "hireSupport";
+  | "improveSupport"
+  | "hireSupport"
+  | "fireSupport";
+
+type SelectedNodeId =
+  | "social"
+  | "video"
+  | "seo"
+  | "referrals"
+  | "landing"
+  | "paid"
+  | "sales"
+  | "outreach"
+  | "selfserve";
+
+const nodeActionIds: Partial<Record<SelectedNodeId, ActionId[]>> = {
+  social: ["postContent"],
+  video: [
+    "createEvergreenContent",
+    "hireContentCreator",
+    "fireContentCreator",
+  ],
+  seo: ["writeSeoArticle", "hireBlogWriter", "fireBlogWriter"],
+  referrals: [],
+  landing: ["buildLandingPage", "improveLandingPage"],
+  paid: [
+    "launchCampaign",
+    "increasePaidMediaBudget",
+    "optimizePaidMedia",
+    "hireMarketer",
+    "fireMarketer",
+  ],
+  sales: ["closeLeads", "improveSales", "hireSalesperson", "fireSalesperson"],
+  outreach: ["doOutreach", "hireSdr", "fireSdr"],
+  selfserve: ["buildSelfServeCheckout", "improveSelfServeCheckout"],
+};
+
+const nodeLabels: Record<SelectedNodeId, string> = {
+  social: "Social",
+  video: "Video",
+  seo: "Search",
+  referrals: "Referrals",
+  landing: "Landing",
+  paid: "Paid media",
+  sales: "Sales",
+  outreach: "Outreach",
+  selfserve: "Self-serve",
+};
 
 type Activity = {
   actionId: ActionId;
@@ -66,22 +163,43 @@ type GameState = {
   reputation: number;
   ownership: number;
   valuation: number;
+  fundingStage: number;
+  debt: number;
+  debtPaymentPerDay: number;
+  bankLoans: number;
+  peDealDone: boolean;
+  acquisitions: number;
+  outcome: "acquired" | "public" | null;
+  exitValue: number;
   salesProcess: number;
+  outreachStarted: boolean;
   selfServeCheckout: boolean;
+  selfServeLevel: number;
+  selfServeConversionProgress: number;
   landingPage: boolean;
   landingPageLevel: number;
+  landingConversionProgress: number;
   evergreenContent: number;
   seoArticles: number;
   campaignsRun: number;
+  paidMediaBudget: number;
+  paidMediaStartDay: number | null;
+  paidMediaOptimization: number;
+  paidMediaOptimizationProgress: number;
   contentCreators: number;
   blogWriters: number;
+  staffHiredDays: Record<StaffRole, number[]>;
+  monthlyMetrics: MonthlyMetric[];
   helpDocs: boolean;
+  supportProcess: number;
   player: { x: number; y: number };
   team: Record<TeamRole, number>;
   activity: Activity | null;
   lastEvent: string;
   recentLeads: number;
+  recentOutreachLeads: number;
   recentArrivals: number;
+  recentSelfServeArrivals: number;
   recentIssues: number;
   recentResolved: number;
   recentDepartures: number;
@@ -91,10 +209,13 @@ type GameState = {
 type ActionConfig = {
   id: ActionId;
   title: string;
+  titleFor?: (game: GameState) => string;
   description: string;
   emoji: string;
   days: number;
   cost: number;
+  costFor?: (game: GameState) => number;
+  monthlyCost?: number;
   disabled?: (game: GameState) => boolean;
   disabledReason?: (game: GameState) => string;
 };
@@ -118,6 +239,8 @@ type GameToast = {
   message: string;
 };
 
+type ExitIntent = "website" | "history";
+
 type WorldWalker = {
   id: number;
   emoji: string;
@@ -135,15 +258,72 @@ type WorldWalker = {
   delayMs: number;
 };
 
+const STARTUP_SAVE_KEY = "ashvin-startup-game-v1";
+const STARTUP_SAVE_VERSION = 1;
+
+type StartupSave = {
+  version: number;
+  savedAt: number;
+  game: GameState;
+};
+
+const captureStartupEvent = (
+  event: string,
+  properties: Record<string, string | number | boolean | null> = {},
+) => {
+  if (!isPostHogEnabled) return;
+  posthog.capture(event, {
+    game: "startup_simulator",
+    save_version: STARTUP_SAVE_VERSION,
+    ...properties,
+  });
+};
+
 const stations: Station[] = [
   {
     id: "investors",
     emoji: "🏦",
     label: "Investors",
     subtitle: "Cash for ownership",
-    x: 90,
-    y: 76,
+    x: 66,
+    y: 90,
     color: "border-amber-300/80 bg-amber-50/90",
+  },
+  {
+    id: "bank",
+    emoji: "🏛️",
+    label: "Business bank",
+    subtitle: "Borrow without giving up equity",
+    x: 66,
+    y: 100,
+    color: "border-blue-300/80 bg-blue-50/90",
+  },
+  {
+    id: "privateEquity",
+    emoji: "💼",
+    label: "Private equity",
+    subtitle: "Large capital for meaningful ownership",
+    x: 74,
+    y: 100,
+    color: "border-violet-300/80 bg-violet-50/90",
+  },
+  {
+    id: "ma",
+    emoji: "🤝",
+    label: "M&A",
+    subtitle: "Buy a company—or sell yours",
+    x: 82,
+    y: 90,
+    color: "border-orange-300/80 bg-orange-50/90",
+  },
+  {
+    id: "investmentBank",
+    emoji: "🏙️",
+    label: "Investment bank",
+    subtitle: "Prepare the company for public markets",
+    x: 82,
+    y: 100,
+    color: "border-slate-300/80 bg-slate-50/90",
   },
   {
     id: "product",
@@ -170,7 +350,7 @@ const stations: Station[] = [
     emoji: "🧾",
     label: "Client work",
     subtitle: "Reliable early cash",
-    x: 90,
+    x: 74,
     y: 90,
     color: "border-emerald-300/80 bg-emerald-50/90",
   },
@@ -198,6 +378,15 @@ const stations: Station[] = [
   },
 ];
 
+const capitalStationIds: StationId[] = [
+  "investors",
+  "service",
+  "bank",
+  "privateEquity",
+  "ma",
+  "investmentBank",
+];
+
 const initialGame: GameState = {
   started: false,
   day: 1,
@@ -215,36 +404,352 @@ const initialGame: GameState = {
   reputation: 72,
   ownership: 100,
   valuation: 0,
+  fundingStage: 0,
+  debt: 0,
+  debtPaymentPerDay: 0,
+  bankLoans: 0,
+  peDealDone: false,
+  acquisitions: 0,
+  outcome: null,
+  exitValue: 0,
   salesProcess: 0,
+  outreachStarted: false,
   selfServeCheckout: false,
+  selfServeLevel: 0,
+  selfServeConversionProgress: 0,
   landingPage: false,
   landingPageLevel: 0,
+  landingConversionProgress: 0,
   evergreenContent: 0,
   seoArticles: 0,
   campaignsRun: 0,
+  paidMediaBudget: 0,
+  paidMediaStartDay: null,
+  paidMediaOptimization: 0,
+  paidMediaOptimizationProgress: 0,
   contentCreators: 0,
   blogWriters: 0,
+  staffHiredDays: {
+    engineer: [],
+    marketer: [],
+    creator: [],
+    writer: [],
+    sdr: [],
+    sales: [],
+    support: [],
+  },
+  monthlyMetrics: [],
   helpDocs: false,
+  supportProcess: 0,
   player: { x: 50, y: 50 },
-  team: { product: 0, marketing: 0, sales: 0, support: 0 },
+  team: { product: 0, marketing: 0, sdr: 0, sales: 0, support: 0 },
   activity: null,
   lastEvent: "One founder, an empty field, and as long as the runway lasts.",
   recentLeads: 0,
+  recentOutreachLeads: 0,
   recentArrivals: 0,
+  recentSelfServeArrivals: 0,
   recentIssues: 0,
   recentResolved: 0,
   recentDepartures: 0,
   bankrupt: false,
 };
 
+const finiteNumber = (value: unknown, fallback: number) =>
+  typeof value === "number" && Number.isFinite(value) ? value : fallback;
+
+const normalizedStaffHiredDays = (
+  value: unknown,
+  count: number,
+  currentDay: number,
+) => {
+  const existing = Array.isArray(value)
+    ? value
+        .map((day) => finiteNumber(day, Math.max(1, currentDay - 30)))
+        .slice(0, count)
+    : [];
+  return existing.concat(
+    Array.from(
+      { length: Math.max(0, count - existing.length) },
+      () => Math.max(1, currentDay - 30),
+    ),
+  );
+};
+
+const normalizeGameState = (game: GameState): GameState => {
+  const currentDay = finiteNumber(game.day, initialGame.day);
+  const contentCreators = finiteNumber(
+    game.contentCreators,
+    initialGame.contentCreators,
+  );
+  const blogWriters = finiteNumber(
+    game.blogWriters,
+    initialGame.blogWriters,
+  );
+  const team = {
+    product: finiteNumber(game.team?.product, initialGame.team.product),
+    marketing: finiteNumber(game.team?.marketing, initialGame.team.marketing),
+    sdr: finiteNumber(game.team?.sdr, initialGame.team.sdr),
+    sales: finiteNumber(game.team?.sales, initialGame.team.sales),
+    support: finiteNumber(game.team?.support, initialGame.team.support),
+  };
+  const performanceMarketers = Math.max(
+    0,
+    team.marketing - contentCreators - blogWriters,
+  );
+
+  return {
+  ...initialGame,
+  ...game,
+  day: currentDay,
+  cash: finiteNumber(game.cash, initialGame.cash),
+  uncollectedCash: finiteNumber(
+    game.uncollectedCash,
+    initialGame.uncollectedCash,
+  ),
+  leads: finiteNumber(game.leads, initialGame.leads),
+  leadPatience: Array.isArray(game.leadPatience)
+    ? game.leadPatience.map((patience) => finiteNumber(patience, 20))
+    : [],
+  customers: finiteNumber(game.customers, initialGame.customers),
+  issues: finiteNumber(game.issues, initialGame.issues),
+  lostUsers: finiteNumber(game.lostUsers, initialGame.lostUsers),
+  attention: finiteNumber(game.attention, initialGame.attention),
+  socialMomentum: finiteNumber(
+    game.socialMomentum,
+    initialGame.socialMomentum,
+  ),
+  lastSocialPostDay:
+    game.lastSocialPostDay === null
+      ? null
+      : finiteNumber(game.lastSocialPostDay, initialGame.day),
+  product: finiteNumber(game.product, initialGame.product),
+  reputation: finiteNumber(game.reputation, initialGame.reputation),
+  ownership: finiteNumber(game.ownership, initialGame.ownership),
+  valuation: finiteNumber(game.valuation, initialGame.valuation),
+  fundingStage: finiteNumber(game.fundingStage, initialGame.fundingStage),
+  debt: finiteNumber(game.debt, initialGame.debt),
+  debtPaymentPerDay: finiteNumber(
+    game.debtPaymentPerDay,
+    initialGame.debtPaymentPerDay,
+  ),
+  bankLoans: finiteNumber(game.bankLoans, initialGame.bankLoans),
+  acquisitions: finiteNumber(game.acquisitions, initialGame.acquisitions),
+  exitValue: finiteNumber(game.exitValue, initialGame.exitValue),
+  salesProcess: finiteNumber(game.salesProcess, initialGame.salesProcess),
+  selfServeLevel: finiteNumber(
+    game.selfServeLevel,
+    game.selfServeCheckout ? 1 : initialGame.selfServeLevel,
+  ),
+  selfServeConversionProgress: finiteNumber(
+    game.selfServeConversionProgress,
+    initialGame.selfServeConversionProgress,
+  ),
+  landingPageLevel: finiteNumber(
+    game.landingPageLevel,
+    game.landingPage ? 1 : initialGame.landingPageLevel,
+  ),
+  landingConversionProgress: finiteNumber(
+    game.landingConversionProgress,
+    initialGame.landingConversionProgress,
+  ),
+  evergreenContent: finiteNumber(
+    game.evergreenContent,
+    initialGame.evergreenContent,
+  ),
+  seoArticles: finiteNumber(game.seoArticles, initialGame.seoArticles),
+  campaignsRun: finiteNumber(game.campaignsRun, initialGame.campaignsRun),
+  paidMediaBudget: finiteNumber(
+    game.paidMediaBudget,
+    finiteNumber(game.campaignsRun, 0) * 1000,
+  ),
+  paidMediaStartDay:
+    game.paidMediaStartDay === null
+      ? null
+      : finiteNumber(game.paidMediaStartDay, finiteNumber(game.day, 1)),
+  paidMediaOptimization: finiteNumber(game.paidMediaOptimization, 0),
+  paidMediaOptimizationProgress: finiteNumber(
+    game.paidMediaOptimizationProgress,
+    0,
+  ),
+  contentCreators,
+  blogWriters,
+  staffHiredDays: {
+    engineer: normalizedStaffHiredDays(
+      game.staffHiredDays?.engineer,
+      team.product,
+      currentDay,
+    ),
+    marketer: normalizedStaffHiredDays(
+      game.staffHiredDays?.marketer,
+      performanceMarketers,
+      currentDay,
+    ),
+    creator: normalizedStaffHiredDays(
+      game.staffHiredDays?.creator,
+      contentCreators,
+      currentDay,
+    ),
+    writer: normalizedStaffHiredDays(
+      game.staffHiredDays?.writer,
+      blogWriters,
+      currentDay,
+    ),
+    sdr: normalizedStaffHiredDays(
+      game.staffHiredDays?.sdr,
+      team.sdr,
+      currentDay,
+    ),
+    sales: normalizedStaffHiredDays(
+      game.staffHiredDays?.sales,
+      team.sales,
+      currentDay,
+    ),
+    support: normalizedStaffHiredDays(
+      game.staffHiredDays?.support,
+      team.support,
+      currentDay,
+    ),
+  },
+  monthlyMetrics: Array.isArray(game.monthlyMetrics)
+    ? game.monthlyMetrics
+        .map((metric) => ({
+          month: Math.max(1, finiteNumber(metric?.month, 1)),
+          day: Math.max(1, finiteNumber(metric?.day, currentDay)),
+          revenue: Math.max(0, finiteNumber(metric?.revenue, 0)),
+          cashBurn: Math.max(0, finiteNumber(metric?.cashBurn, 0)),
+          netBurn: Math.max(0, finiteNumber(metric?.netBurn, 0)),
+          cash: Math.max(0, finiteNumber(metric?.cash, 0)),
+          subscribers: Math.max(0, finiteNumber(metric?.subscribers, 0)),
+          payroll: Math.max(0, finiteNumber(metric?.payroll, 0)),
+          paidMedia: Math.max(0, finiteNumber(metric?.paidMedia, 0)),
+        }))
+        .slice(-24)
+    : [],
+  supportProcess: finiteNumber(
+    game.supportProcess,
+    initialGame.supportProcess,
+  ),
+  player: {
+    x: finiteNumber(game.player?.x, initialGame.player.x),
+    y: finiteNumber(game.player?.y, initialGame.player.y),
+  },
+  team,
+  activity: game.activity
+    ? {
+        ...game.activity,
+        totalDays: Math.max(1, finiteNumber(game.activity.totalDays, 1)),
+        elapsedDays: Math.max(
+          0,
+          finiteNumber(game.activity.elapsedDays, 0),
+        ),
+      }
+    : null,
+  recentLeads: finiteNumber(game.recentLeads, initialGame.recentLeads),
+  recentOutreachLeads: finiteNumber(
+    game.recentOutreachLeads,
+    initialGame.recentOutreachLeads,
+  ),
+  recentArrivals: finiteNumber(
+    game.recentArrivals,
+    initialGame.recentArrivals,
+  ),
+  recentSelfServeArrivals: finiteNumber(
+    game.recentSelfServeArrivals,
+    initialGame.recentSelfServeArrivals,
+  ),
+  recentIssues: finiteNumber(game.recentIssues, initialGame.recentIssues),
+  recentResolved: finiteNumber(
+    game.recentResolved,
+    initialGame.recentResolved,
+  ),
+  recentDepartures: finiteNumber(
+    game.recentDepartures,
+    initialGame.recentDepartures,
+  ),
+  };
+};
+
+const readSavedStartupGame = (): StartupSave | null => {
+  try {
+    const raw = window.localStorage.getItem(STARTUP_SAVE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<StartupSave>;
+    if (
+      parsed.version !== STARTUP_SAVE_VERSION ||
+      !parsed.game ||
+      typeof parsed.game !== "object"
+    ) {
+      return null;
+    }
+
+    return {
+      version: STARTUP_SAVE_VERSION,
+      savedAt: finiteNumber(parsed.savedAt, Date.now()),
+      game: normalizeGameState(parsed.game as GameState),
+    };
+  } catch {
+    return null;
+  }
+};
+
+const saveStartupGame = (game: GameState) => {
+  if (!game.started) return;
+
+  try {
+    window.localStorage.setItem(
+      STARTUP_SAVE_KEY,
+      JSON.stringify({
+        version: STARTUP_SAVE_VERSION,
+        savedAt: Date.now(),
+        game,
+      } satisfies StartupSave),
+    );
+  } catch {
+    // Private browsing or storage limits should not interrupt the game.
+  }
+};
+
+const clearSavedStartupGame = () => {
+  try {
+    window.localStorage.removeItem(STARTUP_SAVE_KEY);
+  } catch {
+    // Private browsing or storage limits should not interrupt the game.
+  }
+};
+
 const eventToastsEnabled = false;
 const cashPilePosition = { x: 75, y: 66 };
 
 const wages: Record<TeamRole, number> = {
-  product: 12,
-  marketing: 8,
-  sales: 9,
-  support: 7,
+  product: 150,
+  marketing: 100,
+  sdr: 100,
+  sales: 120,
+  support: 100,
+};
+
+const severanceCostFor = (role: TeamRole) => wages[role] * 30 * 3;
+
+const staffRoles: StaffRole[] = [
+  "engineer",
+  "marketer",
+  "creator",
+  "writer",
+  "sdr",
+  "sales",
+  "support",
+];
+
+const staffTeamRole: Record<StaffRole, TeamRole> = {
+  engineer: "product",
+  marketer: "marketing",
+  creator: "marketing",
+  writer: "marketing",
+  sdr: "sdr",
+  sales: "sales",
+  support: "support",
 };
 
 const clamp = (value: number, min: number, max: number) =>
@@ -255,11 +760,12 @@ const formatMoney = (amount: number) =>
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(finiteNumber(amount, 0));
 
 const formatCompactMoney = (amount: number) => {
-  const absoluteAmount = Math.abs(amount);
-  const sign = amount < 0 ? "-" : "";
+  const safeAmount = finiteNumber(amount, 0);
+  const absoluteAmount = Math.abs(safeAmount);
+  const sign = safeAmount < 0 ? "-" : "";
   if (absoluteAmount < 1000) return `${sign}$${Math.round(absoluteAmount)}`;
 
   const [divisor, suffix] =
@@ -277,53 +783,600 @@ const formatCompactMoney = (amount: number) => {
   return `${sign}$${formattedValue}${suffix}`;
 };
 
+type GameSound = "coin" | "cash" | "success" | "start" | "alert" | "fail";
+
+const playGameSound = (audioContext: AudioContext | null, sound: GameSound) => {
+  if (!audioContext) return;
+  if (audioContext.state === "suspended") {
+    void audioContext.resume();
+  }
+
+  const now = audioContext.currentTime;
+  const playTone = ({
+    frequency,
+    endFrequency = frequency,
+    start,
+    duration,
+    type,
+    volume,
+  }: {
+    frequency: number;
+    endFrequency?: number;
+    start: number;
+    duration: number;
+    type: OscillatorType;
+    volume: number;
+  }) => {
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const toneStart = now + start;
+    const toneEnd = toneStart + duration;
+
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, toneStart);
+    if (endFrequency !== frequency) {
+      oscillator.frequency.exponentialRampToValueAtTime(endFrequency, toneEnd);
+    }
+    gain.gain.setValueAtTime(0.0001, toneStart);
+    gain.gain.exponentialRampToValueAtTime(volume, toneStart + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, toneEnd);
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(toneStart);
+    oscillator.stop(toneEnd + 0.02);
+  };
+
+  switch (sound) {
+    case "coin":
+      playTone({ frequency: 1175, start: 0, duration: 0.1, type: "square", volume: 0.035 });
+      playTone({ frequency: 1760, start: 0.08, duration: 0.22, type: "triangle", volume: 0.045 });
+      break;
+    case "cash":
+      playTone({ frequency: 220, endFrequency: 330, start: 0, duration: 0.18, type: "triangle", volume: 0.035 });
+      playTone({ frequency: 440, start: 0.12, duration: 0.18, type: "sine", volume: 0.03 });
+      break;
+    case "success":
+      playTone({ frequency: 523, start: 0, duration: 0.11, type: "sine", volume: 0.035 });
+      playTone({ frequency: 659, start: 0.08, duration: 0.16, type: "sine", volume: 0.04 });
+      break;
+    case "start":
+      playTone({ frequency: 330, endFrequency: 440, start: 0, duration: 0.12, type: "sine", volume: 0.025 });
+      break;
+    case "alert":
+      playTone({ frequency: 260, start: 0, duration: 0.13, type: "sawtooth", volume: 0.025 });
+      playTone({ frequency: 220, start: 0.14, duration: 0.16, type: "sawtooth", volume: 0.025 });
+      break;
+    case "fail":
+      playTone({ frequency: 330, endFrequency: 180, start: 0, duration: 0.3, type: "triangle", volume: 0.035 });
+      break;
+  }
+};
+
+const scheduleAmbientTone = (
+  audioContext: AudioContext,
+  frequency: number,
+  start: number,
+  duration: number,
+  volume: number,
+  type: OscillatorType,
+  endFrequency = frequency,
+  baseTime = audioContext.currentTime + 0.05,
+) => {
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  const toneStart = baseTime + start;
+  const toneEnd = toneStart + duration;
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, toneStart);
+  if (endFrequency !== frequency) {
+    oscillator.frequency.exponentialRampToValueAtTime(endFrequency, toneEnd);
+  }
+  gain.gain.setValueAtTime(0.0001, toneStart);
+  gain.gain.exponentialRampToValueAtTime(volume, toneStart + 0.12);
+  gain.gain.exponentialRampToValueAtTime(0.0001, toneEnd);
+  oscillator.connect(gain);
+  gain.connect(audioContext.destination);
+  oscillator.start(toneStart);
+  oscillator.stop(toneEnd + 0.02);
+
+  return oscillator;
+};
+
+const playAmbientMusicLoop = (audioContext: AudioContext) => {
+  const beat = 60 / 92;
+  const bar = beat * 4;
+  const loopStart = audioContext.currentTime + 0.05;
+  const progression = [
+    { root: 65.41, chord: [261.63, 329.63, 392, 493.88] },
+    { root: 55, chord: [220, 261.63, 329.63, 392] },
+    { root: 43.65, chord: [174.61, 220, 261.63, 329.63] },
+    { root: 49, chord: [196, 246.94, 293.66, 329.63] },
+    { root: 65.41, chord: [261.63, 329.63, 392, 493.88] },
+    { root: 55, chord: [220, 261.63, 329.63, 392] },
+    { root: 43.65, chord: [174.61, 220, 261.63, 329.63] },
+    { root: 49, chord: [196, 246.94, 293.66, 329.63] },
+    { root: 55, chord: [220, 261.63, 329.63, 392] },
+    { root: 43.65, chord: [174.61, 220, 261.63, 329.63] },
+    { root: 41.2, chord: [164.81, 261.63, 329.63, 392] },
+    { root: 49, chord: [196, 246.94, 293.66, 329.63] },
+    { root: 43.65, chord: [174.61, 220, 261.63, 329.63] },
+    { root: 49, chord: [196, 246.94, 293.66, 329.63] },
+    { root: 55, chord: [220, 261.63, 329.63, 392] },
+    { root: 49, chord: [196, 246.94, 293.66, 329.63] },
+  ];
+  const arpPatterns = [
+    [0, 1, 2, 3, 2, 1, 2, 3],
+    [0, 2, 1, 3, 2, 1, 3, 2],
+    [0, 1, 3, 2, 1, 2, 3, 1],
+    [0, 2, 3, 1, 2, 3, 1, 2],
+  ];
+  const nodes: OscillatorNode[] = [];
+
+  progression.forEach(({ root, chord }, barIndex) => {
+    const barStart = barIndex * bar;
+
+    chord.forEach((frequency) => {
+      nodes.push(
+        scheduleAmbientTone(
+          audioContext,
+          frequency,
+          barStart,
+          bar * 0.94,
+          0.0038,
+          "triangle",
+          frequency,
+          loopStart,
+        ),
+      );
+    });
+
+    nodes.push(
+      scheduleAmbientTone(
+        audioContext,
+        root,
+        barStart,
+        beat * 1.45,
+        0.014,
+        "sine",
+        root * 0.72,
+        loopStart,
+      ),
+      scheduleAmbientTone(
+        audioContext,
+        root,
+        barStart + beat * 2,
+        beat * 0.85,
+        0.008,
+        "sine",
+        root * 0.82,
+        loopStart,
+      ),
+    );
+
+    const arp = arpPatterns[barIndex % arpPatterns.length];
+    arp.forEach((noteIndex, step) => {
+      const frequency = chord[noteIndex] * (step === 7 ? 2 : 1);
+      nodes.push(
+        scheduleAmbientTone(
+          audioContext,
+          frequency,
+          barStart + step * (beat / 2),
+          beat * 0.32,
+          0.008,
+          "sine",
+          frequency,
+          loopStart,
+        ),
+      );
+    });
+
+    [0, 2.5].forEach((beatOffset) => {
+      nodes.push(
+        scheduleAmbientTone(
+          audioContext,
+          112,
+          barStart + beat * beatOffset,
+          0.18,
+          0.006,
+          "sine",
+          52,
+          loopStart,
+        ),
+      );
+    });
+
+    [1, 3].forEach((beatOffset) => {
+      nodes.push(
+        scheduleAmbientTone(
+          audioContext,
+          880,
+          barStart + beat * beatOffset,
+          0.06,
+          0.0018,
+          "triangle",
+          660,
+          loopStart,
+        ),
+      );
+    });
+  });
+
+  return nodes;
+};
+
+const ambientMusicLoopDurationMs = 16 * 4 * (60 / 92) * 1000;
+
 const getStation = (id: StationId) =>
   stations.find((station) => station.id === id) ?? stations[0];
 
-const payrollPerDay = (game: GameState) =>
-  (Object.keys(game.team) as TeamRole[]).reduce(
+const payrollPerDay = (unsafeGame: GameState) => {
+  const game = normalizeGameState(unsafeGame);
+  return (Object.keys(game.team) as TeamRole[]).reduce(
     (total, role) => total + game.team[role] * wages[role],
     0,
   );
+};
 
-const revenuePerDay = (game: GameState) => game.customers * (20 / 30);
+const dayOfMonth = (day: number) => ((Math.max(1, day) - 1) % 30) + 1;
+const isSalaryPayday = (day: number) => dayOfMonth(day) === 25;
+const salaryPaymentDueOn = (unsafeGame: GameState, payday: number) => {
+  if (!isSalaryPayday(payday)) return 0;
+  const game = normalizeGameState(unsafeGame);
+  const previousPayday = payday - 30;
+
+  return staffRoles.reduce((total, role) => {
+    const wage = wages[staffTeamRole[role]];
+    const hiredDays = game.staffHiredDays[role].slice(
+      0,
+      staffCountOf(game, role),
+    );
+    return (
+      total +
+      hiredDays.reduce((roleTotal, hiredDay) => {
+        const billableDays = clamp(
+          payday - Math.max(hiredDay, previousPayday),
+          0,
+          30,
+        );
+        return roleTotal + wage * billableDays;
+      }, 0)
+    );
+  }, 0);
+};
+
+const revenuePerDay = (game: GameState) =>
+  finiteNumber(game.customers, 0) * (20 / 30);
+const annualRecurringRevenue = (game: GameState) =>
+  finiteNumber(game.customers, 0) * 20 * 12;
+
+const monthlyMetricOf = (unsafeGame: GameState): MonthlyMetric => {
+  const game = normalizeGameState(unsafeGame);
+  const revenue = revenuePerDay(game) * 30;
+  const payroll = payrollPerDay(game) * 30;
+  const debtPayments =
+    Math.min(game.debt, game.debtPaymentPerDay * 30);
+  const paidMedia = finiteNumber(game.paidMediaBudget, 0);
+  const cashBurn = payroll + debtPayments + paidMedia;
+
+  return {
+    month: Math.max(1, Math.ceil(game.day / 30)),
+    day: game.day,
+    revenue,
+    cashBurn,
+    netBurn: Math.max(0, cashBurn - revenue),
+    cash: Math.max(0, game.cash),
+    subscribers: Math.max(0, game.customers),
+    payroll,
+    paidMedia,
+  };
+};
+
+const fundingOffer = (
+  unsafeGame: GameState,
+  stage: "preseed" | "seed" | "seriesA" | "seriesB" | "seriesC",
+) => {
+  normalizeGameState(unsafeGame);
+  const offers = {
+    preseed: {
+      valuation: 1_000_000,
+      amount: 100_000,
+      dilution: 10,
+    },
+    seed: {
+      valuation: 10_000_000,
+      amount: 1_000_000,
+      dilution: 10,
+    },
+    seriesA: {
+      valuation: 100_000_000,
+      amount: 10_000_000,
+      dilution: 10,
+    },
+    seriesB: {
+      valuation: 1_000_000_000,
+      amount: 100_000_000,
+      dilution: 10,
+    },
+    seriesC: {
+      valuation: 5_000_000_000,
+      amount: 250_000_000,
+      dilution: 5,
+    },
+  };
+
+  return offers[stage];
+};
+
+const companyValueOf = (unsafeGame: GameState) => {
+  const game = normalizeGameState(unsafeGame);
+  return Math.max(
+    game.valuation,
+    Math.max(0, game.cash) +
+      game.customers * 1200 +
+      game.product * 100 +
+      game.acquisitions * 5_000_000 -
+      game.debt,
+  );
+};
+
+const businessLoanOffer = (game: GameState) =>
+  Math.max(
+    10_000,
+    Math.min(
+      50_000_000,
+      Math.round(
+        Math.max(companyValueOf(game) * 0.08, annualRecurringRevenue(game)),
+      ),
+    ),
+  );
+
+const peOffer = (game: GameState) => {
+  const valuation = Math.max(10_000_000, companyValueOf(game) * 1.15);
+  return {
+    valuation,
+    amount: Math.round(valuation * 0.2),
+    dilution: 20,
+  };
+};
+
+const acquisitionOffer = (game: GameState) =>
+  Math.round(companyValueOf(game) * 1.25);
+
+const acquisitionCost = (game: GameState) =>
+  Math.round(Math.max(1_000_000, companyValueOf(game) * 0.08));
 
 const landingPageLevelOf = (game: GameState) =>
-  game.landingPageLevel ?? (game.landingPage ? 1 : 0);
+  finiteNumber(game.landingPageLevel, game.landingPage ? 1 : 0);
+
+const landingConversionRateOf = (game: GameState) => {
+  const level = landingPageLevelOf(game);
+  if (level === 0) return 8;
+  if (level === 1) return 15;
+  if (level === 2) return 23;
+  if (level === 3) return 30;
+  return clamp(30 + level - 3, 0, 95);
+};
+
+const salesConversionRateOf = (game: GameState) => {
+  const level = finiteNumber(game.salesProcess, 0);
+  if (level === 0) return 20;
+  if (level === 1) return 25;
+  if (level === 2) return 30;
+  return clamp(30 + level - 2, 0, 90);
+};
+
+const selfServeLevelOf = (game: GameState) =>
+  finiteNumber(game.selfServeLevel, game.selfServeCheckout ? 1 : 0);
+
+const selfServeConversionRateOf = (game: GameState) => {
+  const level = selfServeLevelOf(game);
+  if (level === 0) return 0;
+  if (level === 1) return 12;
+  if (level === 2) return 21;
+  if (level === 3) return 30;
+  return clamp(30 + level - 3, 0, 90);
+};
+
+const supportResolutionRateOf = (game: GameState) => {
+  const level = finiteNumber(game.supportProcess, 0);
+  const docsBonus = game.helpDocs ? 8 : 0;
+  const rate =
+    level === 0
+      ? 35
+      : level === 1
+        ? 52
+        : level === 2
+          ? 68
+          : 68 + (level - 2) * 2;
+  return clamp(rate + docsBonus, 0, 95);
+};
+
+const paidMediaEfficiencyMultiplierOf = (game: GameState) => {
+  const level = Math.max(0, finiteNumber(game.paidMediaOptimization, 0));
+  return clamp(
+    1 + Math.min(level, 5) * 0.2 + Math.max(0, level - 5) * 0.05,
+    1,
+    5,
+  );
+};
+
+const campaignLeadsPerMonthOf = (game: GameState) => {
+  const budget = finiteNumber(game.paidMediaBudget, 0);
+  if (budget <= 0) return 0;
+  const startDay =
+    game.paidMediaStartDay === null
+      ? finiteNumber(game.day, 1)
+      : finiteNumber(game.paidMediaStartDay, finiteNumber(game.day, 1));
+  const elapsedDays = Math.max(
+    0,
+    finiteNumber(game.day, 1) - startDay,
+  );
+  const monthsRunning = Math.max(
+    0,
+    Math.ceil(elapsedDays / 30) - 1,
+  );
+  const learningMultiplier =
+    monthsRunning >= 3
+      ? 1
+      : monthsRunning === 2
+        ? 0.5
+        : monthsRunning === 1
+          ? 0.25
+          : 0.1;
+  return Math.max(
+    1,
+    Math.round(
+      (budget / 1000) *
+        30 *
+        learningMultiplier *
+        paidMediaEfficiencyMultiplierOf(game),
+    ),
+  );
+};
+
+const paidMediaLearningMonthOf = (game: GameState) => {
+  if (finiteNumber(game.paidMediaBudget, 0) <= 0) return 0;
+  const startDay =
+    game.paidMediaStartDay === null
+      ? finiteNumber(game.day, 1)
+      : finiteNumber(game.paidMediaStartDay, finiteNumber(game.day, 1));
+  const elapsedDays = Math.max(
+    0,
+    finiteNumber(game.day, 1) - startDay,
+  );
+  return clamp(
+    Math.floor(Math.max(0, elapsedDays - 1) / 30) + 1,
+    1,
+    4,
+  );
+};
+
+const landingUpgradeCost = (game: GameState) => {
+  const level = landingPageLevelOf(game);
+  return level < 3 ? 200 + Math.max(0, level - 1) * 150 : 550 + (level - 3) * 250;
+};
+
+const salesUpgradeCost = (game: GameState) =>
+  finiteNumber(game.salesProcess, 0) < 2
+    ? 250 + finiteNumber(game.salesProcess, 0) * 200
+    : 650 + (finiteNumber(game.salesProcess, 0) - 2) * 300;
+
+const selfServeUpgradeCost = (game: GameState) => {
+  const level = selfServeLevelOf(game);
+  return level < 3 ? 350 + Math.max(0, level - 1) * 250 : 900 + (level - 3) * 350;
+};
+
+const supportUpgradeCost = (game: GameState) =>
+  finiteNumber(game.supportProcess, 0) < 2
+    ? 200 + finiteNumber(game.supportProcess, 0) * 175
+    : 550 + (finiteNumber(game.supportProcess, 0) - 2) * 250;
 
 const monthlyChurnRateOf = (game: GameState) =>
-  game.product === 0
+  finiteNumber(game.product, 0) === 0
     ? 100
-    : clamp(Math.round(125 - game.product * 1.25), 5, 90);
+    : clamp(
+        Math.round(125 - finiteNumber(game.product, 0) * 1.25),
+        5,
+        90,
+      );
 
 const REFERRAL_QUALITY_THRESHOLD = 70;
 const referralRateOf = (game: GameState) =>
-  game.product < REFERRAL_QUALITY_THRESHOLD
+  finiteNumber(game.product, 0) < REFERRAL_QUALITY_THRESHOLD
     ? 0
-    : clamp(Math.round((game.product - 60) * 0.75), 8, 30);
+    : clamp(
+        Math.round((finiteNumber(game.product, 0) - 60) * 0.75),
+        8,
+        30,
+      );
 
-const contentCreatorCountOf = (game: GameState) => game.contentCreators ?? 0;
-const blogWriterCountOf = (game: GameState) => game.blogWriters ?? 0;
-const demandMarketerCountOf = (game: GameState) =>
+const contentCreatorCountOf = (game: GameState) =>
+  finiteNumber(game.contentCreators, 0);
+const blogWriterCountOf = (game: GameState) =>
+  finiteNumber(game.blogWriters, 0);
+const performanceMarketerCountOf = (game: GameState) =>
   Math.max(
     0,
-    game.team.marketing -
+    finiteNumber(game.team?.marketing, 0) -
       contentCreatorCountOf(game) -
       blogWriterCountOf(game),
   );
+
+const staffCountOf = (game: GameState, role: StaffRole) => {
+  if (role === "engineer") return game.team.product;
+  if (role === "marketer") return performanceMarketerCountOf(game);
+  if (role === "creator") return contentCreatorCountOf(game);
+  if (role === "writer") return blogWriterCountOf(game);
+  return game.team[role];
+};
+
+const rampMultiplierForAge = (ageInDays: number) => {
+  if (ageInDays < 10) return 0.5;
+  if (ageInDays < 20) return 0.75;
+  return 1;
+};
+
+const effectiveStaffOf = (game: GameState, role: StaffRole) => {
+  const count = staffCountOf(game, role);
+  const fallbackHireDay = Math.max(1, game.day - 30);
+  const hiredDays = game.staffHiredDays?.[role] ?? [];
+
+  return Array.from({ length: count }, (_, index) => {
+    const hiredDay = finiteNumber(hiredDays[index], fallbackHireDay);
+    const ramp = rampMultiplierForAge(Math.max(0, game.day - hiredDay));
+    const diminishingReturn = 0.85 ** index;
+    return ramp * diminishingReturn;
+  }).reduce((total, capacity) => total + capacity, 0);
+};
+
+const staffRampPercentOf = (game: GameState, role: StaffRole) => {
+  const count = staffCountOf(game, role);
+  if (count === 0) return 0;
+  const fullCapacity = Array.from(
+    { length: count },
+    (_, index) => 0.85 ** index,
+  ).reduce((total, capacity) => total + capacity, 0);
+  return Math.round((effectiveStaffOf(game, role) / fullCapacity) * 100);
+};
+
+const staffPayrollPerMonth = (game: GameState, role: StaffRole) =>
+  staffCountOf(game, role) * wages[staffTeamRole[role]] * 30;
+
+const hireStaff = (game: GameState, role: StaffRole) => {
+  game.staffHiredDays = {
+    ...game.staffHiredDays,
+    [role]: [...(game.staffHiredDays?.[role] ?? []), game.day],
+  };
+};
+
+const fireStaff = (game: GameState, role: StaffRole) => {
+  game.staffHiredDays = {
+    ...game.staffHiredDays,
+    [role]: (game.staffHiredDays?.[role] ?? []).slice(0, -1),
+  };
+};
 
 const hasMarketingInvestment = (game: GameState) =>
   game.attention > 0 ||
   game.landingPage ||
   (game.evergreenContent ?? 0) > 0 ||
   (game.seoArticles ?? 0) > 0 ||
-  (game.campaignsRun ?? 0) > 0 ||
+  finiteNumber(game.paidMediaBudget, 0) > 0 ||
   game.team.marketing > 0 ||
   game.leads > 0 ||
   game.customers > 0;
 
 const isStationVisible = (game: GameState, stationId: StationId) => {
   if (stationId === "sales") return hasMarketingInvestment(game);
+  if (stationId === "bank") return game.day > 365;
+  if (stationId === "privateEquity") {
+    return companyValueOf(game) >= 10_000_000;
+  }
+  if (stationId === "ma") return companyValueOf(game) >= 50_000_000;
+  if (stationId === "investmentBank") {
+    return companyValueOf(game) >= 500_000_000;
+  }
   if (stationId === "support") {
     return (
       game.customers > 0 ||
@@ -351,7 +1404,18 @@ const visibleMarketingPlotPositions = (game: GameState) =>
     },
     { x: 33, y: 38, visible: referralRateOf(game) > 0 },
     { x: 42, y: 58, visible: game.landingPage },
-    { x: 30, y: 78, visible: (game.campaignsRun ?? 0) > 0 },
+    { x: 30, y: 78, visible: finiteNumber(game.paidMediaBudget, 0) > 0 },
+  ].filter((plot) => plot.visible);
+
+const visibleSalesPlotPositions = (game: GameState) =>
+  [
+    { x: 54, y: 58, visible: true },
+    {
+      x: 45,
+      y: 76,
+      visible: game.outreachStarted || game.team.sdr > 0,
+    },
+    { x: 57, y: 40, visible: game.selfServeCheckout },
   ].filter((plot) => plot.visible);
 
 const actionConfigs: Record<StationId, ActionConfig[]> = {
@@ -369,23 +1433,171 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
     {
       id: "pitchPreseed",
       title: "Pitch a pre-seed",
-      description: "Raise enough to hire, but give away part of the company.",
+      titleFor: (game) => {
+        const offer = fundingOffer(game, "preseed");
+        return `Pitch pre-seed · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
+      },
+      description: "Raise your first institutional capital at a $1M valuation.",
       emoji: "🗣️",
       days: 12,
       cost: 0,
-      disabled: (game) => game.ownership < 100,
+      disabled: (game) => game.fundingStage !== 0,
       disabledReason: () => "You already raised the pre-seed",
     },
     {
       id: "pitchSeed",
       title: "Pitch a seed round",
+      titleFor: (game) => {
+        const offer = fundingOffer(game, "seed");
+        return `Pitch seed · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
+      },
       description: "Traction unlocks a larger round—and a larger tradeoff.",
       emoji: "📈",
       days: 16,
       cost: 0,
-      disabled: (game) => game.customers < 10 || game.ownership < 90,
+      disabled: (game) => game.customers < 10 || game.fundingStage !== 1,
+      disabledReason: (game) => {
+        if (game.fundingStage < 1) return "Raise the pre-seed first";
+        if (game.fundingStage > 1) return "Seed already raised";
+        return `Need ${10 - game.customers} more subscribers`;
+      },
+    },
+    {
+      id: "pitchSeriesA",
+      title: "Pitch Series A",
+      titleFor: (game) => {
+        const offer = fundingOffer(game, "seriesA");
+        return `Pitch Series A · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
+      },
+      description: "Raise against real traction. Waiting can mean a much better valuation.",
+      emoji: "🏙️",
+      days: 24,
+      cost: 0,
+      disabled: (game) =>
+        game.fundingStage !== 2 || game.customers < 100 || game.product < 70,
+      disabledReason: (game) => {
+        if (game.fundingStage < 2) return "Raise the seed round first";
+        if (game.fundingStage > 2) return "Series A already raised";
+        if (game.customers < 100) return `Need ${100 - game.customers} more subscribers`;
+        return "Reach 70% product quality first";
+      },
+    },
+    {
+      id: "pitchSeriesB",
+      title: "Pitch Series B",
+      titleFor: (game) => {
+        const offer = fundingOffer(game, "seriesB");
+        return `Pitch Series B · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
+      },
+      description: "A growth round whose valuation scales with ARR and everything built so far.",
+      emoji: "🌆",
+      days: 32,
+      cost: 0,
+      disabled: (game) =>
+        game.fundingStage !== 3 || game.customers < 1000 || game.product < 85,
+      disabledReason: (game) => {
+        if (game.fundingStage < 3) return "Raise Series A first";
+        if (game.fundingStage > 3) return "Series B already raised";
+        if (game.customers < 1000) return `Need ${1000 - game.customers} more subscribers`;
+        return "Reach 85% product quality first";
+      },
+    },
+    {
+      id: "pitchSeriesC",
+      title: "Pitch Series C",
+      titleFor: (game) => {
+        const offer = fundingOffer(game, "seriesC");
+        return `Pitch Series C · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
+      },
+      description: "Raise a late-stage growth round to build at global scale.",
+      emoji: "🌍",
+      days: 40,
+      cost: 0,
+      disabled: (game) =>
+        game.fundingStage !== 4 || game.customers < 10_000 || game.product < 90,
+      disabledReason: (game) => {
+        if (game.fundingStage < 4) return "Raise Series B first";
+        if (game.fundingStage > 4) return "Series C already raised";
+        if (game.customers < 10_000) {
+          return `Need ${(10_000 - game.customers).toLocaleString()} more subscribers`;
+        }
+        return "Reach 90% product quality first";
+      },
+    },
+  ],
+  bank: [
+    {
+      id: "takeBusinessLoan",
+      title: "Take a business loan",
+      titleFor: (game) =>
+        `Borrow ${formatCompactMoney(businessLoanOffer(game))}`,
+      description: "Get non-dilutive cash, then repay principal and interest over one year.",
+      emoji: "🏦",
+      days: 7,
+      cost: 0,
+      disabled: (game) => game.bankLoans >= 3,
+      disabledReason: () => "The bank will not extend more credit yet",
+    },
+  ],
+  privateEquity: [
+    {
+      id: "takePeInvestment",
+      title: "Take private equity investment",
+      titleFor: (game) => {
+        const offer = peOffer(game);
+        return `PE growth deal · ${formatCompactMoney(offer.amount)} at ${formatCompactMoney(offer.valuation)}`;
+      },
+      description: "Trade a meaningful ownership stake for a large pool of growth capital.",
+      emoji: "💼",
+      days: 30,
+      cost: 0,
+      disabled: (game) => game.peDealDone,
+      disabledReason: () => "Private equity deal already completed",
+    },
+  ],
+  ma: [
+    {
+      id: "acquireCompany",
+      title: "Acquire a smaller company",
+      titleFor: (game) =>
+        `Acquire a competitor · ${formatCompactMoney(acquisitionCost(game))}`,
+      description: "Buy customers, a team and technology—but spend a lot of cash.",
+      emoji: "🏢",
+      days: 45,
+      cost: 0,
+      costFor: acquisitionCost,
+      disabled: (game) => game.acquisitions >= 5,
+      disabledReason: () => "Integration capacity is full for now",
+    },
+    {
+      id: "acceptAcquisition",
+      title: "Sell to a bigger company",
+      titleFor: (game) =>
+        `Accept acquisition · ${formatCompactMoney(acquisitionOffer(game))}`,
+      description: "Take the exit and end this startup journey as an acquired company.",
+      emoji: "🤝",
+      days: 60,
+      cost: 0,
+      disabled: (game) => companyValueOf(game) < 100_000_000,
       disabledReason: (game) =>
-        game.customers < 10 ? `Need ${10 - game.customers} more active users` : "Seed already raised",
+        `Need ${formatCompactMoney(100_000_000 - companyValueOf(game))} more valuation`,
+    },
+  ],
+  investmentBank: [
+    {
+      id: "goPublic",
+      title: "Go public",
+      titleFor: (game) =>
+        `Launch IPO · ${formatCompactMoney(companyValueOf(game) * 1.1)}`,
+      description: "List the company on public markets and complete the ultimate scale milestone.",
+      emoji: "🔔",
+      days: 90,
+      cost: 0,
+      disabled: (game) => game.product < 90 || game.customers < 10_000,
+      disabledReason: (game) =>
+        game.product < 90
+          ? "Reach 90% product quality first"
+          : `Need ${10_000 - game.customers} more subscribers`,
     },
   ],
   product: [
@@ -435,9 +1647,21 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
       description: "They steadily improve quality and prevent issues while you work elsewhere.",
       emoji: "🧑‍💻",
       days: 6,
-      cost: 1100,
-      disabled: (game) => game.team.product > 0,
-      disabledReason: () => "Engineer already hired",
+      cost: 0,
+      monthlyCost: wages.product * 30,
+      disabled: (game) => game.team.product >= 8,
+      disabledReason: () => "Engineering team is full for now",
+    },
+    {
+      id: "fireEngineer",
+      title: "Fire an engineer",
+      description: "Remove one engineer, pay three months of severance and stop their recurring payroll.",
+      emoji: "👋",
+      days: 1,
+      cost: 0,
+      costFor: () => severanceCostFor("product"),
+      disabled: (game) => game.team.product <= 0,
+      disabledReason: () => "No engineers to fire",
     },
   ],
   marketing: [
@@ -462,16 +1686,13 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
     {
       id: "improveLandingPage",
       title: "Improve landing page",
-      description: "Increase the percentage of interested visitors who subscribe.",
+      description: "Try to capture more visitors. The result is revealed after the work is complete.",
       emoji: "📈",
       days: 5,
       cost: 200,
-      disabled: (game) =>
-        !game.landingPage || landingPageLevelOf(game) >= 3,
-      disabledReason: (game) =>
-        !game.landingPage
-          ? "Build the landing page first"
-          : "Landing page is fully optimized",
+      costFor: landingUpgradeCost,
+      disabled: (game) => !game.landingPage,
+      disabledReason: () => "Build the landing page first",
     },
     {
       id: "createEvergreenContent",
@@ -480,7 +1701,7 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
       emoji: "🎥",
       days: 10,
       cost: 100,
-      disabled: (game) => (game.evergreenContent ?? 0) >= 12,
+      disabled: (game) => (game.evergreenContent ?? 0) >= 120,
       disabledReason: () => "Evergreen library is full for now",
     },
     {
@@ -495,21 +1716,65 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
     },
     {
       id: "launchCampaign",
-      title: "Run a small campaign",
-      description: "Buy a burst of demand. It is wasted if nobody can serve it.",
+      title: "Start paid media",
+      titleFor: () => "Start paid media · 3-month learning phase",
+      description: "Spend $1,000/month. Returns ramp slowly before reaching full efficiency.",
       emoji: "📬",
       days: 5,
-      cost: 300,
+      cost: 0,
+      monthlyCost: 1000,
+      disabled: (game) => finiteNumber(game.paidMediaBudget, 0) > 0,
+      disabledReason: () => "Paid media is already running",
+    },
+    {
+      id: "increasePaidMediaBudget",
+      title: "Increase paid media budget",
+      titleFor: (game) =>
+        `Increase budget · ${formatMoney(finiteNumber(game.paidMediaBudget, 0) + 1000)}/month total`,
+      description: "Add another $1,000/month without restarting the channel's learning.",
+      emoji: "📈",
+      days: 3,
+      cost: 0,
+      monthlyCost: 1000,
+      disabled: (game) => finiteNumber(game.paidMediaBudget, 0) <= 0,
+      disabledReason: () => "Start paid media first",
+    },
+    {
+      id: "optimizePaidMedia",
+      title: "Optimize paid campaigns",
+      description: "Test audiences, creative and targeting to generate more leads from the same budget.",
+      emoji: "🎯",
+      days: 5,
+      cost: 0,
+      disabled: (game) => finiteNumber(game.paidMediaBudget, 0) <= 0,
+      disabledReason: () => "Start paid media first",
     },
     {
       id: "hireMarketer",
-      title: "Hire a marketer",
-      description: "They continuously bring in leads while you focus elsewhere.",
+      title: "Hire a performance marketer",
+      description: "They repeatedly optimize paid campaigns while you focus elsewhere.",
       emoji: "🧑‍🎨",
       days: 5,
-      cost: 750,
-      disabled: (game) => demandMarketerCountOf(game) >= 4,
-      disabledReason: () => "The demand team is full for now",
+      cost: 0,
+      monthlyCost: wages.marketing * 30,
+      disabled: (game) =>
+        performanceMarketerCountOf(game) >= 8 ||
+        finiteNumber(game.paidMediaBudget, 0) <= 0,
+      disabledReason: (game) =>
+        finiteNumber(game.paidMediaBudget, 0) <= 0
+          ? "Start paid media first"
+          : "The performance team is full for now",
+    },
+    {
+      id: "fireMarketer",
+      title: "Fire a performance marketer",
+      description: "Remove one performance marketer, pay three months of severance and stop their recurring payroll.",
+      emoji: "👋",
+      days: 1,
+      cost: 0,
+      costFor: () => severanceCostFor("marketing"),
+      disabled: (game) => performanceMarketerCountOf(game) <= 0,
+      disabledReason: () => "No performance marketers to fire",
     },
     {
       id: "hireContentCreator",
@@ -517,9 +1782,21 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
       description: "They publish evergreen videos that build a compounding audience over time.",
       emoji: "🧑‍🎬",
       days: 7,
-      cost: 650,
-      disabled: (game) => contentCreatorCountOf(game) >= 3,
+      cost: 0,
+      monthlyCost: wages.marketing * 30,
+      disabled: (game) => contentCreatorCountOf(game) >= 8,
       disabledReason: () => "The creator team is full for now",
+    },
+    {
+      id: "fireContentCreator",
+      title: "Fire a content creator",
+      description: "Remove one creator, pay three months of severance and stop their recurring payroll.",
+      emoji: "👋",
+      days: 1,
+      cost: 0,
+      costFor: () => severanceCostFor("marketing"),
+      disabled: (game) => contentCreatorCountOf(game) <= 0,
+      disabledReason: () => "No content creators to fire",
     },
     {
       id: "hireBlogWriter",
@@ -527,9 +1804,21 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
       description: "They steadily grow an SEO library that brings in people long after publishing.",
       emoji: "🧑‍💻",
       days: 7,
-      cost: 600,
-      disabled: (game) => blogWriterCountOf(game) >= 3,
+      cost: 0,
+      monthlyCost: wages.marketing * 30,
+      disabled: (game) => blogWriterCountOf(game) >= 8,
       disabledReason: () => "The writing team is full for now",
+    },
+    {
+      id: "fireBlogWriter",
+      title: "Fire a blog writer",
+      description: "Remove one writer, pay three months of severance and stop their recurring payroll.",
+      emoji: "👋",
+      days: 1,
+      cost: 0,
+      costFor: () => severanceCostFor("marketing"),
+      disabled: (game) => blogWriterCountOf(game) <= 0,
+      disabledReason: () => "No blog writers to fire",
     },
   ],
   sales: [
@@ -547,19 +1836,50 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
       },
     },
     {
+      id: "doOutreach",
+      title: "Do founder outreach",
+      description: "Personally find a few promising leads for free.",
+      emoji: "📨",
+      days: 3,
+      cost: 0,
+      disabled: (game) => game.product === 0,
+      disabledReason: () => "Build the product first",
+    },
+    {
+      id: "hireSdr",
+      title: "Hire an SDR",
+      description: "They continuously prospect and feed new people into the sales queue.",
+      emoji: "🧑‍💻",
+      days: 5,
+      cost: 0,
+      monthlyCost: wages.sdr * 30,
+      disabled: (game) => game.team.sdr >= 8,
+      disabledReason: () => "SDR team is full for now",
+    },
+    {
+      id: "fireSdr",
+      title: "Fire an SDR",
+      description: "Remove one SDR, pay three months of severance and stop their recurring payroll.",
+      emoji: "👋",
+      days: 1,
+      cost: 0,
+      costFor: () => severanceCostFor("sdr"),
+      disabled: (game) => game.team.sdr <= 0,
+      disabledReason: () => "No SDRs to fire",
+    },
+    {
       id: "improveSales",
       title: "Improve the sales playbook",
-      description: "Close one more person every time you or your salesperson sells.",
+      description: "Try to close more conversations. The result is revealed after the work is complete.",
       emoji: "📋",
       days: 7,
       cost: 250,
-      disabled: (game) => game.salesProcess >= 3,
-      disabledReason: () => "Sales playbook is fully upgraded",
+      costFor: salesUpgradeCost,
     },
     {
       id: "buildSelfServeCheckout",
       title: "Build self-serve checkout",
-      description: "Automatically converts some leads without adding payroll.",
+      description: "Let inbound visitors subscribe directly without entering Sales.",
       emoji: "🛒",
       days: 8,
       cost: 500,
@@ -572,14 +1892,37 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
       },
     },
     {
+      id: "improveSelfServeCheckout",
+      title: "Improve self-serve checkout",
+      description: "Try to convert more visitors directly. The result is revealed after completion.",
+      emoji: "🛒",
+      days: 6,
+      cost: 350,
+      costFor: selfServeUpgradeCost,
+      disabled: (game) => !game.selfServeCheckout,
+      disabledReason: () => "Build self-serve checkout first",
+    },
+    {
       id: "hireSalesperson",
       title: "Hire a salesperson",
       description: "They work through the lead queue automatically every few days.",
       emoji: "🧑‍💼",
       days: 5,
-      cost: 700,
-      disabled: (game) => game.team.sales > 0,
-      disabledReason: () => "Salesperson already hired",
+      cost: 0,
+      monthlyCost: wages.sales * 30,
+      disabled: (game) => game.team.sales >= 8,
+      disabledReason: () => "Sales team is full for now",
+    },
+    {
+      id: "fireSalesperson",
+      title: "Fire a salesperson",
+      description: "Remove one salesperson, pay three months of severance and stop their recurring payroll.",
+      emoji: "👋",
+      days: 1,
+      cost: 0,
+      costFor: () => severanceCostFor("sales"),
+      disabled: (game) => game.team.sales <= 0,
+      disabledReason: () => "No salespeople to fire",
     },
   ],
   support: [
@@ -604,36 +1947,76 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
       disabledReason: () => "Help docs are already published",
     },
     {
+      id: "improveSupport",
+      title: "Improve support workflow",
+      description: "Try a better workflow. Its impact is revealed after the work is complete.",
+      emoji: "🧰",
+      days: 5,
+      cost: 200,
+      costFor: supportUpgradeCost,
+    },
+    {
       id: "hireSupport",
       title: "Hire customer support",
       description: "They continuously clear user problems before they become churn.",
       emoji: "🧑‍🚒",
       days: 5,
-      cost: 550,
-      disabled: (game) => game.team.support > 0,
-      disabledReason: () => "Support person already hired",
+      cost: 0,
+      monthlyCost: wages.support * 30,
+      disabled: (game) => game.team.support >= 8,
+      disabledReason: () => "Support team is full for now",
+    },
+    {
+      id: "fireSupport",
+      title: "Fire a support person",
+      description: "Remove one support person, pay three months of severance and stop their recurring payroll.",
+      emoji: "👋",
+      days: 1,
+      cost: 0,
+      costFor: () => severanceCostFor("support"),
+      disabled: (game) => game.team.support <= 0,
+      disabledReason: () => "No support people to fire",
     },
   ],
 };
 
-const actionLabel = (action: ActionConfig) =>
-  action.cost > 0 ? `${action.title} · ${formatMoney(action.cost)}` : action.title;
+const actionTitle = (action: ActionConfig, game: GameState) =>
+  action.titleFor?.(game) ?? action.title;
 
-const beginAction = (game: GameState, stationId: StationId, action: ActionConfig): GameState => {
-  if (game.activity || action.cost > game.cash || action.disabled?.(game)) return game;
+const actionCost = (action: ActionConfig, game: GameState) =>
+  finiteNumber(action.costFor?.(game) ?? action.cost, 0);
+
+const beginAction = (
+  unsafeGame: GameState,
+  stationId: StationId,
+  action: ActionConfig,
+): GameState => {
+  const game = normalizeGameState(unsafeGame);
+  const cost = actionCost(action, game);
+  const monthlyCost = action.monthlyCost ?? 0;
+  if (
+    game.activity ||
+    game.bankrupt ||
+    game.outcome ||
+    cost > game.cash ||
+    monthlyCost > game.cash ||
+    action.disabled?.(game)
+  ) {
+    return game;
+  }
 
   return {
     ...game,
     started: true,
-    cash: game.cash - action.cost,
+    cash: game.cash - cost,
     activity: {
       actionId: action.id,
       stationId,
-      label: action.title,
+      label: actionTitle(action, game),
       totalDays: action.days,
       elapsedDays: 0,
     },
-    lastEvent: `${action.title} started. You are now the operator here.`,
+    lastEvent: `${actionTitle(action, game)} started. You are now the operator here.`,
   };
 };
 
@@ -654,6 +2037,36 @@ const addLeads = (game: GameState, count: number): GameState => {
   };
 };
 
+const routeCapturedLeads = (game: GameState, captured: number): GameState => {
+  if (!game.selfServeCheckout) return addLeads(game, captured);
+  const progress =
+    (game.selfServeConversionProgress ?? 0) +
+    captured * (selfServeConversionRateOf(game) / 100);
+  const converted = Math.min(captured, Math.floor(progress));
+
+  return {
+    ...game,
+    selfServeConversionProgress: progress - converted,
+    customers: game.customers + converted,
+    recentArrivals: game.recentArrivals + converted,
+    recentSelfServeArrivals: game.recentSelfServeArrivals + converted,
+  };
+};
+
+const addInboundTraffic = (game: GameState, visitors: number): GameState => {
+  const landingProgress =
+    (game.landingConversionProgress ?? 0) +
+    visitors * (landingConversionRateOf(game) / 100);
+  const captured = Math.min(visitors, Math.floor(landingProgress));
+  return routeCapturedLeads(
+    {
+      ...game,
+      landingConversionProgress: landingProgress - captured,
+    },
+    captured,
+  );
+};
+
 const convertLeads = (game: GameState, requested: number) => {
   const converted = Math.min(game.leads, requested);
 
@@ -669,25 +2082,125 @@ const convertLeads = (game: GameState, requested: number) => {
   };
 };
 
-const applyCompletedAction = (game: GameState, actionId: ActionId): GameState => {
-  let next: GameState = { ...game, activity: null };
+const convertSalesLeads = (game: GameState, capacity: number) => {
+  const peopleSpokenTo = Math.min(game.leads, capacity);
+  const converted =
+    peopleSpokenTo > 0
+      ? Math.max(
+          1,
+          Math.round(
+            peopleSpokenTo * (salesConversionRateOf(game) / 100),
+          ),
+        )
+      : 0;
+  return convertLeads(game, converted);
+};
+
+const applyCompletedAction = (
+  unsafeGame: GameState,
+  actionId: ActionId,
+): GameState => {
+  let next: GameState = {
+    ...normalizeGameState(unsafeGame),
+    activity: null,
+  };
 
   switch (actionId) {
     case "clientWork":
       next.cash += 1000;
       next.lastEvent = "Client sprint delivered: +$1,000. The startup made no progress while you were away.";
       break;
-    case "pitchPreseed":
-      next.cash += 5000;
-      next.ownership = 90;
-      next.valuation = 50000;
-      next.lastEvent = "Pre-seed raised: +$5,000, -10% ownership. You can now hire or accelerate.";
+    case "pitchPreseed": {
+      const offer = fundingOffer(next, "preseed");
+      next.cash += offer.amount;
+      next.ownership *= 1 - offer.dilution / 100;
+      next.valuation = offer.valuation;
+      next.fundingStage = 1;
+      next.lastEvent = `Pre-seed raised: +${formatCompactMoney(offer.amount)} at a ${formatCompactMoney(offer.valuation)} valuation.`;
       break;
-    case "pitchSeed":
-      next.cash += 15000;
-      next.ownership = 75;
-      next.valuation = 100000;
-      next.lastEvent = "Seed round raised: +$15,000. Investors now own a quarter of the company.";
+    }
+    case "pitchSeed": {
+      const offer = fundingOffer(next, "seed");
+      next.cash += offer.amount;
+      next.ownership *= 1 - offer.dilution / 100;
+      next.valuation = offer.valuation;
+      next.fundingStage = 2;
+      next.lastEvent = `Seed raised: +${formatCompactMoney(offer.amount)} at a ${formatCompactMoney(offer.valuation)} valuation.`;
+      break;
+    }
+    case "pitchSeriesA": {
+      const offer = fundingOffer(next, "seriesA");
+      next.cash += offer.amount;
+      next.ownership *= 1 - offer.dilution / 100;
+      next.valuation = offer.valuation;
+      next.fundingStage = 3;
+      next.lastEvent = `Series A closed: +${formatCompactMoney(offer.amount)} at a ${formatCompactMoney(offer.valuation)} valuation.`;
+      break;
+    }
+    case "pitchSeriesB": {
+      const offer = fundingOffer(next, "seriesB");
+      next.cash += offer.amount;
+      next.ownership *= 1 - offer.dilution / 100;
+      next.valuation = offer.valuation;
+      next.fundingStage = 4;
+      next.lastEvent = `Series B closed: +${formatCompactMoney(offer.amount)} at a ${formatCompactMoney(offer.valuation)} valuation.`;
+      break;
+    }
+    case "pitchSeriesC": {
+      const offer = fundingOffer(next, "seriesC");
+      next.cash += offer.amount;
+      next.ownership *= 1 - offer.dilution / 100;
+      next.valuation = offer.valuation;
+      next.fundingStage = 5;
+      next.lastEvent = `Series C closed: +${formatCompactMoney(offer.amount)} at a ${formatCompactMoney(offer.valuation)} valuation.`;
+      break;
+    }
+    case "takeBusinessLoan": {
+      const amount = businessLoanOffer(next);
+      const repayment = amount * 1.12;
+      next.cash += amount;
+      next.debt += repayment;
+      next.debtPaymentPerDay += repayment / 365;
+      next.bankLoans += 1;
+      next.lastEvent = `${formatCompactMoney(amount)} borrowed. Daily repayments have begun, with no equity dilution.`;
+      break;
+    }
+    case "takePeInvestment": {
+      const offer = peOffer(next);
+      next.cash += offer.amount;
+      next.ownership *= 1 - offer.dilution / 100;
+      next.valuation = offer.valuation;
+      next.peDealDone = true;
+      next.lastEvent = `Private equity invested ${formatCompactMoney(offer.amount)} at a ${formatCompactMoney(offer.valuation)} valuation.`;
+      break;
+    }
+    case "acquireCompany": {
+      const newCustomers = Math.max(500, Math.round(next.customers * 0.2));
+      next.customers += newCustomers;
+      next.product = clamp(next.product + 3, 0, 100);
+      next.team = {
+        ...next.team,
+        product: Math.min(8, next.team.product + 1),
+        sales: Math.min(8, next.team.sales + 1),
+      };
+      next.acquisitions += 1;
+      next.valuation = Math.max(
+        next.valuation,
+        companyValueOf(next) * 1.08,
+      );
+      next.lastEvent = `Acquisition complete: ${newCustomers.toLocaleString()} customers and a small team joined the company.`;
+      break;
+    }
+    case "acceptAcquisition":
+      next.outcome = "acquired";
+      next.exitValue = acquisitionOffer(next);
+      next.lastEvent = `The company was acquired for ${formatCompactMoney(next.exitValue)}.`;
+      break;
+    case "goPublic":
+      next.outcome = "public";
+      next.exitValue = Math.round(companyValueOf(next) * 1.1);
+      next.valuation = next.exitValue;
+      next.lastEvent = `The IPO rang the bell at ${formatCompactMoney(next.exitValue)}.`;
       break;
     case "buildMvp":
       next.product = 28;
@@ -712,16 +2225,31 @@ const applyCompletedAction = (game: GameState, actionId: ActionId): GameState =>
       break;
     }
     case "hireEngineer":
-      next.team = { ...next.team, product: 1 };
-      next.lastEvent = "Engineer hired. Product quality will now improve in the background.";
+      next.team = { ...next.team, product: next.team.product + 1 };
+      hireStaff(next, "engineer");
+      next.lastEvent = `${next.team.product} ${next.team.product === 1 ? "engineer is" : "engineers are"} now improving the product.`;
+      break;
+    case "fireEngineer":
+      next.team = {
+        ...next.team,
+        product: Math.max(0, next.team.product - 1),
+      };
+      fireStaff(next, "engineer");
+      next.lastEvent = `One engineer left. Payroll fell by ${formatMoney(wages.product * 30)}/month.`;
       break;
     case "postContent": {
-      const newLeads = next.landingPage ? 6 : 3;
+      const visitors = 30;
+      const customersBefore = next.customers;
+      const leadsBefore = next.leads;
       next.attention = clamp(next.attention + 12, 0, 100);
       next.socialMomentum = clamp(next.socialMomentum + 34, 0, 100);
       next.lastSocialPostDay = next.day;
-      next = addLeads(next, newLeads);
-      next.lastEvent = `${newLeads} curious people arrived. Social reach jumped to ${next.socialMomentum}%, but it will fade without another post.`;
+      next = addInboundTraffic(next, visitors);
+      const converted = next.customers - customersBefore;
+      const captured = next.leads - leadsBefore;
+      next.lastEvent = next.selfServeCheckout
+        ? `${visitors} people visited from your post and ${converted} subscribed through self-serve. Reach will fade if you stop posting.`
+        : `${visitors} people visited and ${captured} joined Sales at ${landingConversionRateOf(next)}% landing conversion. Reach will fade without another post.`;
       break;
     }
     case "buildLandingPage":
@@ -731,98 +2259,203 @@ const applyCompletedAction = (game: GameState, actionId: ActionId): GameState =>
       next.lastEvent = "Landing page live. Future marketing will capture more interested people.";
       break;
     case "improveLandingPage":
-      next.landingPageLevel = Math.min(3, landingPageLevelOf(next) + 1);
-      next.lastEvent = `Landing page improved to level ${next.landingPageLevel}. Sales channels will now convert more visitors.`;
+      next.landingPageLevel = landingPageLevelOf(next) + 1;
+      next.lastEvent = `Landing page improved to ${landingConversionRateOf(next)}% visitor conversion.`;
       break;
     case "createEvergreenContent":
-      next.evergreenContent = Math.min(12, (next.evergreenContent ?? 0) + 1);
+      next.evergreenContent = Math.min(120, (next.evergreenContent ?? 0) + 1);
       next.attention = clamp(next.attention + 6, 0, 100);
-      next.lastEvent = `Evergreen asset ${next.evergreenContent}/12 published. It will keep attracting people automatically.`;
+      next.lastEvent = `Evergreen asset ${next.evergreenContent} published. It will keep attracting people automatically.`;
       break;
     case "writeSeoArticle":
       next.seoArticles = Math.min(18, (next.seoArticles ?? 0) + 1);
       next.attention = clamp(next.attention + 4, 0, 100);
       next.lastEvent = `SEO plot planted with ${next.seoArticles} searchable ${next.seoArticles === 1 ? "article" : "articles"}. It will compound into traffic.`;
       break;
-    case "launchCampaign": {
-      const newLeads = next.landingPage ? 15 : 9;
-      next.attention = clamp(next.attention + 22, 0, 100);
-      next.campaignsRun = (next.campaignsRun ?? 0) + 1;
-      next = addLeads(next, newLeads);
-      next.lastEvent = `${newLeads} people joined the queue. Can sales and product keep up?`;
+    case "launchCampaign":
+      next.campaignsRun = 1;
+      next.paidMediaBudget = 1000;
+      next.paidMediaStartDay = next.day;
+      next.attention = clamp(next.attention + 5, 0, 100);
+      next.lastEvent = "Paid media started at $1,000/month. The channel now needs three months to learn.";
       break;
-    }
+    case "increasePaidMediaBudget":
+      next.campaignsRun = Math.max(1, next.campaignsRun + 1);
+      next.paidMediaBudget += 1000;
+      next.lastEvent = `Paid media budget increased to ${formatMoney(next.paidMediaBudget)}/month without resetting its learning.`;
+      break;
+    case "optimizePaidMedia":
+      next.paidMediaOptimization += 1;
+      next.lastEvent = `Paid campaigns optimized to level ${next.paidMediaOptimization}. They now generate about ${campaignLeadsPerMonthOf(next)} leads per month.`;
+      break;
     case "hireMarketer":
       next.team = { ...next.team, marketing: next.team.marketing + 1 };
-      next.lastEvent = `${demandMarketerCountOf(next)} ${demandMarketerCountOf(next) === 1 ? "marketer is" : "marketers are"} now bringing in leads automatically.`;
+      hireStaff(next, "marketer");
+      next.lastEvent = `${performanceMarketerCountOf(next)} ${performanceMarketerCountOf(next) === 1 ? "performance marketer is" : "performance marketers are"} now optimizing paid campaigns.`;
+      break;
+    case "fireMarketer":
+      next.team = {
+        ...next.team,
+        marketing: Math.max(0, next.team.marketing - 1),
+      };
+      fireStaff(next, "marketer");
+      next.lastEvent = `One performance marketer left. Payroll fell by ${formatMoney(wages.marketing * 30)}/month.`;
       break;
     case "hireContentCreator":
       next.contentCreators = contentCreatorCountOf(next) + 1;
       next.team = { ...next.team, marketing: next.team.marketing + 1 };
+      hireStaff(next, "creator");
       next.lastEvent = "Content creator hired. Your evergreen audience will now compound in the background.";
+      break;
+    case "fireContentCreator":
+      next.contentCreators = Math.max(0, contentCreatorCountOf(next) - 1);
+      next.team = {
+        ...next.team,
+        marketing: Math.max(0, next.team.marketing - 1),
+      };
+      fireStaff(next, "creator");
+      next.lastEvent = `One content creator left. Payroll fell by ${formatMoney(wages.marketing * 30)}/month.`;
       break;
     case "hireBlogWriter":
       next.blogWriters = blogWriterCountOf(next) + 1;
       next.team = { ...next.team, marketing: next.team.marketing + 1 };
+      hireStaff(next, "writer");
       next.lastEvent = "Blog writer hired. Your searchable content library will now grow automatically.";
+      break;
+    case "fireBlogWriter":
+      next.blogWriters = Math.max(0, blogWriterCountOf(next) - 1);
+      next.team = {
+        ...next.team,
+        marketing: Math.max(0, next.team.marketing - 1),
+      };
+      fireStaff(next, "writer");
+      next.lastEvent = `One blog writer left. Payroll fell by ${formatMoney(wages.marketing * 30)}/month.`;
+      break;
+    case "doOutreach": {
+      next.outreachStarted = true;
+      const generated = 4;
+      next = addLeads(next, generated);
+      next.recentOutreachLeads += generated;
+      next.lastEvent = `${generated} promising people replied to your outreach.`;
+      break;
+    }
+    case "hireSdr":
+      next.outreachStarted = true;
+      next.team = { ...next.team, sdr: next.team.sdr + 1 };
+      hireStaff(next, "sdr");
+      next.lastEvent = `${next.team.sdr} ${next.team.sdr === 1 ? "SDR is" : "SDRs are"} now prospecting continuously.`;
+      break;
+    case "fireSdr":
+      next.team = {
+        ...next.team,
+        sdr: Math.max(0, next.team.sdr - 1),
+      };
+      fireStaff(next, "sdr");
+      next.lastEvent = `One SDR left. Payroll fell by ${formatMoney(wages.sdr * 30)}/month.`;
       break;
     case "closeLeads": {
       const before = next.customers;
-      const landingPageBonus = Math.max(0, landingPageLevelOf(next) - 1);
-      next = convertLeads(next, 3 + next.salesProcess + landingPageBonus);
+      next = convertSalesLeads(next, 10);
       const converted = next.customers - before;
       next.lastEvent =
         converted > 0
-          ? `${converted} ${converted === 1 ? "person became a user" : "people became users"}. They now expect the product to work.`
+          ? `${converted} ${converted === 1 ? "person became a user" : "people became users"} at ${salesConversionRateOf(next)}% assisted conversion.`
           : "Nobody was ready to subscribe yet.";
       break;
     }
-    case "improveSales":
+    case "improveSales": {
       next.salesProcess += 1;
-      next.lastEvent = "The sales playbook improved. Each sales cycle can now close one more person.";
+      next.lastEvent = `The sales playbook now converts ${salesConversionRateOf(next)}% of conversations.`;
       break;
+    }
     case "buildSelfServeCheckout":
       next.selfServeCheckout = true;
-      next.lastEvent = "Self-serve checkout is live. Some leads can now subscribe without speaking to anyone.";
+      next.selfServeLevel = 1;
+      next.lastEvent = `Self-serve checkout is live at ${selfServeConversionRateOf(next)}% conversion. Inbound visitors now bypass Sales.`;
+      break;
+    case "improveSelfServeCheckout":
+      next.selfServeLevel = selfServeLevelOf(next) + 1;
+      next.lastEvent = `Self-serve checkout now converts ${selfServeConversionRateOf(next)}% of inbound visitors.`;
       break;
     case "hireSalesperson":
-      next.team = { ...next.team, sales: 1 };
-      next.lastEvent = "Salesperson hired. They will keep working through the lead queue.";
+      next.team = { ...next.team, sales: next.team.sales + 1 };
+      hireStaff(next, "sales");
+      next.lastEvent = `${next.team.sales} ${next.team.sales === 1 ? "salesperson is" : "salespeople are"} working through the queue.`;
+      break;
+    case "fireSalesperson":
+      next.team = {
+        ...next.team,
+        sales: Math.max(0, next.team.sales - 1),
+      };
+      fireStaff(next, "sales");
+      next.lastEvent = `One salesperson left. Payroll fell by ${formatMoney(wages.sales * 30)}/month.`;
       break;
     case "answerUsers": {
-      const helped = Math.min(next.issues, 5);
+      const attempted = Math.min(next.issues, 10);
+      const helped =
+        attempted > 0
+          ? Math.max(
+              1,
+              Math.round(
+                attempted * (supportResolutionRateOf(next) / 100),
+              ),
+            )
+          : 0;
       next.issues -= helped;
       next.recentResolved += helped;
       next.reputation = clamp(next.reputation + helped * 2, 0, 100);
-      next.lastEvent = `${helped} ${helped === 1 ? "user is" : "users are"} happy and returning to the product.`;
+      next.lastEvent = `${helped} ${helped === 1 ? "user is" : "users are"} happy and returning to the product at ${supportResolutionRateOf(next)}% resolution.`;
       break;
     }
     case "writeHelpDocs":
       next.helpDocs = true;
-      next.lastEvent = "Help docs published. Some future support problems will solve themselves.";
+      next.lastEvent = `Help docs published. Support now resolves ${supportResolutionRateOf(next)}% of attempted issues.`;
+      break;
+    case "improveSupport":
+      next.supportProcess = (next.supportProcess ?? 0) + 1;
+      next.lastEvent = `The support workflow now resolves ${supportResolutionRateOf(next)}% of attempted issues.`;
       break;
     case "hireSupport":
-      next.team = { ...next.team, support: 1 };
-      next.lastEvent = "Support hired. User problems will now be cleared continuously.";
+      next.team = { ...next.team, support: next.team.support + 1 };
+      hireStaff(next, "support");
+      next.lastEvent = `${next.team.support} support ${next.team.support === 1 ? "person is" : "people are"} protecting retention.`;
+      break;
+    case "fireSupport":
+      next.team = {
+        ...next.team,
+        support: Math.max(0, next.team.support - 1),
+      };
+      fireStaff(next, "support");
+      next.lastEvent = `One support person left. Payroll fell by ${formatMoney(wages.support * 30)}/month.`;
       break;
   }
 
   return next;
 };
 
-const advanceGame = (current: GameState): GameState => {
-  if (!current.started || current.bankrupt) return current;
+const advanceGame = (unsafeCurrent: GameState): GameState => {
+  const current = normalizeGameState(unsafeCurrent);
+  if (!current.started || current.bankrupt || current.outcome) return current;
 
   const day = current.day + 1;
   const payroll = payrollPerDay(current);
+  const payrollCharge = salaryPaymentDueOn(current, day);
   const revenue = revenuePerDay(current);
+  const debtPayment = Math.min(current.debt, current.debtPaymentPerDay);
+  const paidMediaSpend = current.paidMediaBudget / 30;
+  const remainingDebt = Math.max(0, current.debt - debtPayment);
   let next: GameState = {
     ...current,
     day,
-    cash: current.cash - payroll,
+    cash: current.cash - payrollCharge - debtPayment - paidMediaSpend,
+    debt: remainingDebt,
+    debtPaymentPerDay:
+      remainingDebt > 0 ? current.debtPaymentPerDay : 0,
     uncollectedCash: current.uncollectedCash + revenue,
     recentLeads: 0,
+    recentOutreachLeads: 0,
     recentArrivals: 0,
+    recentSelfServeArrivals: 0,
     recentIssues: 0,
     recentResolved: 0,
     recentDepartures: 0,
@@ -834,7 +2467,10 @@ const advanceGame = (current: GameState): GameState => {
       cash: 0,
       activity: null,
       bankrupt: true,
-      lastEvent: "Runway hit zero. The company could not make payroll.",
+      lastEvent:
+        payrollCharge > 0
+          ? `Salary day arrived, but the company could not cover its ${formatMoney(payrollCharge)} payroll.`
+          : "Runway hit zero before the next payday.",
     };
   }
 
@@ -857,8 +2493,13 @@ const advanceGame = (current: GameState): GameState => {
     }
   }
 
-  if (next.team.product > 0 && day % 7 === 0) {
-    next.product = clamp(next.product + 2, 0, 100);
+  const engineerCapacity = effectiveStaffOf(next, "engineer");
+  if (engineerCapacity > 0 && day % 7 === 0) {
+    next.product = clamp(
+      next.product + Math.max(1, Math.round(engineerCapacity * 6)),
+      0,
+      100,
+    );
   }
 
   const daysSinceSocialPost =
@@ -874,38 +2515,42 @@ const advanceGame = (current: GameState): GameState => {
     );
 
     if (day % 3 === 0 && next.socialMomentum > 0) {
-      const landingMultiplier = next.landingPage ? 1.35 : 1;
-      const generated = Math.max(
-        1,
-        Math.ceil((next.socialMomentum / 32) * landingMultiplier),
-      );
-      next = addLeads(next, generated);
-      next.lastEvent = `${generated} ${generated === 1 ? "person arrived" : "people arrived"} from your recent social posts. Reach is now ${next.socialMomentum}%.`;
+      const visitors = Math.max(5, Math.ceil(next.socialMomentum / 4));
+      const customersBefore = next.customers;
+      const leadsBefore = next.leads;
+      next = addInboundTraffic(next, visitors);
+      const converted = next.customers - customersBefore;
+      const captured = next.leads - leadsBefore;
+      next.lastEvent = next.selfServeCheckout
+        ? `${visitors} people visited from recent social posts; ${converted} subscribed directly. Reach is now ${next.socialMomentum}%.`
+        : `${visitors} people visited from recent social posts; ${captured} entered Sales. Reach is now ${next.socialMomentum}%.`;
     }
   }
 
-  const demandMarketers = demandMarketerCountOf(next);
-  if (demandMarketers > 0 && day % 5 === 0) {
-    const generated = demandMarketers * (next.landingPage ? 3 : 2);
-    next = addLeads(next, generated);
-    next.attention = clamp(next.attention + demandMarketers * 2, 0, 100);
-    next.socialMomentum = clamp(
-      next.socialMomentum + demandMarketers * 14,
-      0,
-      100,
-    );
-    next.lastSocialPostDay = day;
-    next.lastEvent = `${demandMarketers} ${demandMarketers === 1 ? "marketer brought" : "marketers brought"} ${generated} more people into the queue.`;
+  const performanceMarketers = performanceMarketerCountOf(next);
+  if (performanceMarketers > 0 && next.paidMediaBudget > 0) {
+    const optimizationProgress =
+      next.paidMediaOptimizationProgress +
+      effectiveStaffOf(next, "marketer") / 10;
+    const completedOptimizations = Math.floor(optimizationProgress);
+    next.paidMediaOptimizationProgress =
+      optimizationProgress - completedOptimizations;
+
+    if (completedOptimizations > 0) {
+      next.paidMediaOptimization += completedOptimizations;
+      next.lastEvent = `${performanceMarketers} ${performanceMarketers === 1 ? "performance marketer improved" : "performance marketers improved"} paid campaigns to level ${next.paidMediaOptimization}, now producing about ${campaignLeadsPerMonthOf(next)} leads per month.`;
+    }
   }
 
   const contentCreators = contentCreatorCountOf(next);
   if (contentCreators > 0 && day % 10 === 0) {
+    const creatorCapacity = effectiveStaffOf(next, "creator");
     const published = Math.min(
-      contentCreators,
-      Math.max(0, 12 - (next.evergreenContent ?? 0)),
+      Math.max(1, Math.round(creatorCapacity * 2)),
+      Math.max(0, 120 - (next.evergreenContent ?? 0)),
     );
     next.evergreenContent = Math.min(
-      12,
+      120,
       (next.evergreenContent ?? 0) + published,
     );
     next.attention = clamp(next.attention + published * 3, 0, 100);
@@ -916,27 +2561,27 @@ const advanceGame = (current: GameState): GameState => {
 
   const blogWriters = blogWriterCountOf(next);
   if (blogWriters > 0 && day % 12 === 0) {
-    next.seoArticles = (next.seoArticles ?? 0) + blogWriters;
-    next.attention = clamp(next.attention + blogWriters * 2, 0, 100);
-    next.lastEvent = `${blogWriters} new SEO ${blogWriters === 1 ? "article was" : "articles were"} published. Search traffic will keep building.`;
+    const published = Math.max(
+      1,
+      Math.round(effectiveStaffOf(next, "writer") * 2),
+    );
+    next.seoArticles = (next.seoArticles ?? 0) + published;
+    next.attention = clamp(next.attention + published * 2, 0, 100);
+    next.lastEvent = `${published} new SEO ${published === 1 ? "article was" : "articles were"} published. Search traffic will keep building.`;
   }
 
   const evergreenAssets = next.evergreenContent ?? 0;
   if (evergreenAssets > 0 && day % 6 === 0) {
-    const generated = Math.max(1, Math.ceil(evergreenAssets * 0.6));
-    next = addLeads(next, generated);
-    next.lastEvent = `${generated} ${generated === 1 ? "person found" : "people found"} you through ${evergreenAssets} evergreen ${evergreenAssets === 1 ? "asset" : "assets"}.`;
+    const visitors = Math.max(4, evergreenAssets * 4);
+    next = addInboundTraffic(next, visitors);
+    next.lastEvent = `${visitors} people found you through ${evergreenAssets} evergreen ${evergreenAssets === 1 ? "asset" : "assets"}.`;
   }
 
   const seoArticles = next.seoArticles ?? 0;
   if (seoArticles > 0 && day % 8 === 0) {
-    const captureMultiplier = next.landingPage ? 1.25 : 1;
-    const generated = Math.max(
-      1,
-      Math.ceil(seoArticles * 0.45 * captureMultiplier),
-    );
-    next = addLeads(next, generated);
-    next.lastEvent = `${generated} ${generated === 1 ? "person arrived" : "people arrived"} from your growing SEO library.`;
+    const visitors = Math.max(3, seoArticles * 3);
+    next = addInboundTraffic(next, visitors);
+    next.lastEvent = `${visitors} people arrived from your growing SEO library.`;
   }
 
   const referralRate = referralRateOf(next);
@@ -945,8 +2590,19 @@ const advanceGame = (current: GameState): GameState => {
       1,
       Math.ceil((next.customers * referralRate) / 300),
     );
-    next = addLeads(next, generated);
+    next = routeCapturedLeads(next, generated);
     next.lastEvent = `${generated} warm ${generated === 1 ? "lead arrived" : "leads arrived"} through customer referrals—for free.`;
+  }
+
+  if (next.team.sdr > 0 && day % 5 === 0) {
+    const generated = Math.max(
+      1,
+      Math.round(effectiveStaffOf(next, "sdr") * 25),
+    );
+    next = addLeads(next, generated);
+    next.recentOutreachLeads += generated;
+    next.outreachStarted = true;
+    next.lastEvent = `${next.team.sdr} ${next.team.sdr === 1 ? "SDR added" : "SDRs added"} ${generated} outbound leads to the sales queue.`;
   }
 
   if (
@@ -956,40 +2612,59 @@ const advanceGame = (current: GameState): GameState => {
     next.leads > 0
   ) {
     const before = next.customers;
-    const landingPageBonus = Math.max(0, landingPageLevelOf(next) - 1);
-    next = convertLeads(next, 1 + next.salesProcess + landingPageBonus);
+    next = convertSalesLeads(
+      next,
+      Math.max(1, Math.round(effectiveStaffOf(next, "sales") * 30)),
+    );
     const converted = next.customers - before;
     if (converted > 0) {
-      next.lastEvent = `Sales onboarded ${converted} new ${converted === 1 ? "user" : "users"} automatically.`;
+      next.lastEvent = `Sales onboarded ${converted} new ${converted === 1 ? "user" : "users"} at ${salesConversionRateOf(next)}% conversion.`;
     }
   }
 
-  const selfServeInterval = Math.max(2, 5 - landingPageLevelOf(next));
+  const campaignLeadsPerMonth = campaignLeadsPerMonthOf(next);
+  const paidMediaStartDay =
+    next.paidMediaStartDay === null ? day : next.paidMediaStartDay;
   if (
-    next.selfServeCheckout &&
-    day % selfServeInterval === 0 &&
-    next.product >= 45 &&
-    next.leads > 0
+    campaignLeadsPerMonth > 0 &&
+    day > paidMediaStartDay &&
+    (day - paidMediaStartDay) % 30 === 0
   ) {
-    const before = next.customers;
-    next = convertLeads(next, 1);
-    const converted = next.customers - before;
-    if (converted > 0) {
-      next.lastEvent = "A customer subscribed through self-serve checkout.";
-    }
+    const customersBefore = next.customers;
+    next = routeCapturedLeads(next, campaignLeadsPerMonth);
+    const converted = next.customers - customersBefore;
+    next.lastEvent = next.selfServeCheckout
+      ? `Paid campaigns delivered ${campaignLeadsPerMonth} leads this month; ${converted} subscribed through self-serve.`
+      : `Paid campaigns delivered ${campaignLeadsPerMonth} leads to Sales this month.`;
   }
 
   const issueInterval = next.helpDocs ? 12 : 8;
   if (next.customers > 0 && day % issueInterval === 0) {
     const qualityRisk = Math.max(0.15, (100 - next.product) / 100);
-    const newIssues = Math.max(1, Math.floor(next.customers * qualityRisk * 0.2));
+    const prevention = clamp(engineerCapacity * 0.12, 0, 0.7);
+    const newIssues = Math.max(
+      1,
+      Math.floor(next.customers * qualityRisk * 0.2 * (1 - prevention)),
+    );
     next.issues += newIssues;
     next.recentIssues += newIssues;
     next.lastEvent = `${newIssues} ${newIssues === 1 ? "user needs" : "users need"} help.`;
   }
 
   if (next.team.support > 0 && next.issues > 0) {
-    const resolved = Math.min(next.issues, next.team.support);
+    const capacity = Math.max(
+      1,
+      Math.round(effectiveStaffOf(next, "support") * 12),
+    );
+    const resolved = Math.min(
+      next.issues,
+      Math.max(
+        1,
+        Math.round(
+          capacity * (supportResolutionRateOf(next) / 100),
+        ),
+      ),
+    );
     next.issues -= resolved;
     next.recentResolved += resolved;
     if (day % 4 === 0) {
@@ -1026,32 +2701,201 @@ const advanceGame = (current: GameState): GameState => {
     next.lastEvent = `Referrals unlocked. Customers now recommend the product at a ${referralRateOf(next)}% rate.`;
   }
 
+  if (
+    payrollCharge > 0 &&
+    next.lastEvent === current.lastEvent
+  ) {
+    next.lastEvent = `${formatMoney(payrollCharge)} payroll paid on the 25th.`;
+  }
+
+  if (day % 30 === 0) {
+    const metric = monthlyMetricOf(next);
+    const previousMetrics = next.monthlyMetrics.filter(
+      (existingMetric) => existingMetric.month !== metric.month,
+    );
+    next.monthlyMetrics = [...previousMetrics, metric].slice(-24);
+  }
+
   return next;
+};
+
+const FinancialModelGraph = ({
+  metrics,
+  current,
+}: {
+  metrics: MonthlyMetric[];
+  current: MonthlyMetric;
+}) => {
+  const completed = metrics.filter((metric) => metric.month !== current.month);
+  const series = [...completed, current].slice(-12);
+  const width = 760;
+  const height = 210;
+  const padding = { left: 52, right: 18, top: 18, bottom: 34 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const maxValue = Math.max(
+    100,
+    ...series.flatMap((metric) => [metric.revenue, metric.cashBurn]),
+  );
+  const xFor = (index: number) =>
+    padding.left +
+    (series.length === 1 ? plotWidth / 2 : (index / (series.length - 1)) * plotWidth);
+  const yFor = (value: number) =>
+    padding.top + plotHeight - (value / maxValue) * plotHeight;
+  const pointsFor = (key: "revenue" | "cashBurn") =>
+    series
+      .map((metric, index) => `${xFor(index)},${yFor(metric[key])}`)
+      .join(" ");
+
+  return (
+    <div className="rounded-3xl border border-[#dde6d9] bg-white p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#789080]">
+            financial model
+          </p>
+          <h2 className="mt-1 text-lg font-semibold">Revenue vs cash burn</h2>
+          <p className="mt-1 text-xs text-[#688071]">
+            Month-end snapshots · current month updates live
+          </p>
+        </div>
+        <div className="flex gap-4 text-xs">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#4f9b59]" />
+            Revenue {formatCompactMoney(current.revenue)}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#d1874f]" />
+            Burn {formatCompactMoney(current.cashBurn)}
+          </span>
+        </div>
+      </div>
+
+      <svg
+        className="mt-4 h-auto w-full overflow-visible"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label="Monthly revenue and cash burn graph"
+      >
+        {[0, 0.5, 1].map((ratio) => {
+          const y = padding.top + plotHeight * ratio;
+          const value = maxValue * (1 - ratio);
+          return (
+            <g key={ratio}>
+              <line
+                x1={padding.left}
+                x2={width - padding.right}
+                y1={y}
+                y2={y}
+                stroke="#dfe7da"
+                strokeDasharray="4 5"
+              />
+              <text
+                x={padding.left - 8}
+                y={y + 4}
+                textAnchor="end"
+                className="fill-[#789080] text-[10px]"
+              >
+                {formatCompactMoney(value)}
+              </text>
+            </g>
+          );
+        })}
+
+        <polyline
+          points={pointsFor("cashBurn")}
+          fill="none"
+          stroke="#d1874f"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <polyline
+          points={pointsFor("revenue")}
+          fill="none"
+          stroke="#4f9b59"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {series.map((metric, index) => (
+          <g key={`${metric.month}-${metric.day}`}>
+            <circle
+              cx={xFor(index)}
+              cy={yFor(metric.cashBurn)}
+              r="4"
+              fill="#fffdf7"
+              stroke="#d1874f"
+              strokeWidth="3"
+            >
+              <title>
+                Month {metric.month} burn: {formatMoney(metric.cashBurn)}
+              </title>
+            </circle>
+            <circle
+              cx={xFor(index)}
+              cy={yFor(metric.revenue)}
+              r="4"
+              fill="#fffdf7"
+              stroke="#4f9b59"
+              strokeWidth="3"
+            >
+              <title>
+                Month {metric.month} revenue: {formatMoney(metric.revenue)}
+              </title>
+            </circle>
+            <text
+              x={xFor(index)}
+              y={height - 10}
+              textAnchor="middle"
+              className="fill-[#789080] text-[10px]"
+            >
+              M{metric.month}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
 };
 
 const StartupSimulator = () => {
   const [game, setGame] = useState<GameState>(initialGame);
+  const [isSaveHydrated, setIsSaveHydrated] = useState(false);
   const [selectedStationId, setSelectedStationId] = useState<StationId | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<SelectedNodeId | null>(
+    null,
+  );
   const [highlightedActionIndex, setHighlightedActionIndex] = useState(0);
   const [actionNavigationActive, setActionNavigationActive] = useState(false);
+  const [actionPanelExpanded, setActionPanelExpanded] = useState(false);
   const [dismissedStationId, setDismissedStationId] = useState<StationId | null>(null);
   const [retiredActionIds, setRetiredActionIds] = useState<ActionId[]>([]);
   const [showStats, setShowStats] = useState(false);
+  const [showBankruptcySummary, setShowBankruptcySummary] = useState(true);
   const [paused, setPaused] = useState(false);
   const [worldZoom, setWorldZoom] = useState(1);
   const [isDraggingWorld, setIsDraggingWorld] = useState(false);
   const [isFounderMoving, setIsFounderMoving] = useState(false);
   const [founderFacing, setFounderFacing] = useState<1 | -1>(1);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [toasts, setToasts] = useState<GameToast[]>([]);
   const [worldWalkers, setWorldWalkers] = useState<WorldWalker[]>([]);
+  const [exitIntent, setExitIntent] = useState<ExitIntent | null>(null);
   const previousGameRef = useRef(initialGame);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const ambientMusicTimerRef = useRef<number | null>(null);
   const toastIdRef = useRef(0);
   const walkerIdRef = useRef(0);
   const toastTimersRef = useRef<number[]>([]);
   const walkerTimersRef = useRef<number[]>([]);
   const founderMoveTimerRef = useRef<number | null>(null);
+  const actionButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const allowBrowserExitRef = useRef(false);
+  const pausedBeforeStatsRef = useRef(false);
+  const latestGameRef = useRef(initialGame);
   const previousPlayerRef = useRef(initialGame.player);
   const worldDragRef = useRef<{
     pointerId: number;
@@ -1063,15 +2907,122 @@ const StartupSimulator = () => {
   } | null>(null);
   const suppressWorldClickRef = useRef(false);
 
+  useEffect(() => {
+    const saved = readSavedStartupGame();
+    if (saved) {
+      latestGameRef.current = saved.game;
+      previousGameRef.current = saved.game;
+      previousPlayerRef.current = saved.game.player;
+      setGame(saved.game);
+      captureStartupEvent("startup_game_opened", { has_saved_game: true });
+      captureStartupEvent("startup_game_resumed", {
+        saved_age_seconds: Math.max(0, Math.round((Date.now() - saved.savedAt) / 1000)),
+        day: saved.game.day,
+      });
+    } else {
+      captureStartupEvent("startup_game_opened", { has_saved_game: false });
+    }
+    setIsSaveHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    latestGameRef.current = game;
+  }, [game]);
+
+  useEffect(() => {
+    if (!isSaveHydrated) return;
+
+    const persist = () => saveStartupGame(latestGameRef.current);
+    const interval = window.setInterval(persist, 5000);
+    window.addEventListener("pagehide", persist);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("pagehide", persist);
+    };
+  }, [isSaveHydrated]);
+
+  useEffect(() => {
+    setGame((current) => normalizeGameState(current));
+  }, []);
+
+  useEffect(() => {
+    const guardState = { ...window.history.state, startupExitGuard: true };
+    if (!window.history.state?.startupExitGuard) {
+      window.history.pushState(guardState, "", window.location.href);
+    }
+
+    const interceptBrowserBack = () => {
+      if (allowBrowserExitRef.current) return;
+      window.history.pushState(guardState, "", window.location.href);
+      setExitIntent("history");
+    };
+
+    window.addEventListener("popstate", interceptBrowserBack);
+    return () => window.removeEventListener("popstate", interceptBrowserBack);
+  }, []);
+
   const selectedStation = selectedStationId ? getStation(selectedStationId) : null;
   const selectedActions = useMemo(
-    () =>
-      selectedStationId
-        ? actionConfigs[selectedStationId].filter(
-            (action) => !retiredActionIds.includes(action.id),
-          )
-        : [],
-    [retiredActionIds, selectedStationId],
+    () => {
+      if (!selectedStationId) return [];
+
+      const availableActions = actionConfigs[selectedStationId].filter(
+        (action) => {
+          if (retiredActionIds.includes(action.id)) return false;
+          if (action.id === "buildLandingPage") return !game.landingPage;
+          if (action.id === "improveLandingPage") return game.landingPage;
+          if (
+            action.id === "improveProduct" ||
+            action.id === "expandCapacity" ||
+            action.id === "fixBugs"
+          ) {
+            return game.product > 0;
+          }
+          if (action.id === "buildSelfServeCheckout") {
+            return !game.selfServeCheckout;
+          }
+          if (action.id === "improveSelfServeCheckout") {
+            return game.selfServeCheckout;
+          }
+          if (action.id === "launchCampaign") {
+            return finiteNumber(game.paidMediaBudget, 0) <= 0;
+          }
+          if (action.id === "increasePaidMediaBudget") {
+            return finiteNumber(game.paidMediaBudget, 0) > 0;
+          }
+          if (
+            action.id === "optimizePaidMedia" ||
+            action.id === "hireMarketer"
+          ) {
+            return finiteNumber(game.paidMediaBudget, 0) > 0;
+          }
+          return true;
+        },
+      );
+      const focusedActionIds = selectedNodeId
+        ? nodeActionIds[selectedNodeId]
+        : undefined;
+      if (!focusedActionIds?.length) return availableActions;
+
+      return [
+        ...focusedActionIds.flatMap((actionId) =>
+          availableActions.filter((action) => action.id === actionId),
+        ),
+        ...availableActions.filter(
+          (action) => !focusedActionIds.includes(action.id),
+        ),
+      ];
+    },
+    [
+      game.landingPage,
+      game.paidMediaBudget,
+      game.product,
+      game.selfServeCheckout,
+      retiredActionIds,
+      selectedNodeId,
+      selectedStationId,
+    ],
   );
   const isAtSelectedStation =
     selectedStation !== null &&
@@ -1081,31 +3032,64 @@ const StartupSimulator = () => {
             Math.abs(game.player.x - plot.x) < 15 &&
             Math.abs(game.player.y - plot.y) < 15,
         )
+      : selectedStation.id === "sales"
+        ? visibleSalesPlotPositions(game).some(
+            (plot) =>
+              Math.abs(game.player.x - plot.x) < 15 &&
+              Math.abs(game.player.y - plot.y) < 15,
+          )
       : Math.abs(game.player.x - selectedStation.x) < 15 &&
         Math.abs(game.player.y - selectedStation.y) < 15);
 
   const progressPercent = game.activity
     ? Math.round((game.activity.elapsedDays / game.activity.totalDays) * 100)
     : 0;
+  const safeCash = finiteNumber(game.cash, 0);
+  const safeOwnership = finiteNumber(game.ownership, 100);
   const payroll = payrollPerDay(game);
   const revenue = revenuePerDay(game);
-  const dailyBurn = Math.max(0, payroll - revenue);
-  const runwayDays = dailyBurn > 0 ? Math.floor(Math.max(0, game.cash) / dailyBurn) : null;
-  const runwayDial = runwayDays === null ? 100 : clamp((runwayDays / 90) * 100, 0, 100);
-  const runwayLabel = runwayDays === null ? "∞" : `${runwayDays}d`;
-  const companyValue = Math.max(
-    game.valuation,
-    Math.max(0, game.cash) + game.customers * 1200 + game.product * 100,
+  const debtPayment = Math.min(
+    finiteNumber(game.debt, 0),
+    finiteNumber(game.debtPaymentPerDay, 0),
   );
-  const equityValue = companyValue * (game.ownership / 100);
-  const startupYear = Math.floor((game.day - 1) / 365) + 1;
-  const dayOfYear = ((game.day - 1) % 365) + 1;
+  const paidMediaSpend = finiteNumber(game.paidMediaBudget, 0) / 30;
+  const dailyBurn = Math.max(
+    0,
+    payroll + debtPayment + paidMediaSpend - revenue,
+  );
+  const runwayDays = dailyBurn > 0 ? Math.floor(Math.max(0, safeCash) / dailyBurn) : null;
+  const runwayIsNotMeaningful = safeCash <= 0 && dailyBurn === 0;
+  const runwayDial = runwayIsNotMeaningful
+    ? 50
+    : runwayDays === null
+      ? 100
+      : clamp((runwayDays / 90) * 100, 0, 100);
+  const runwayLabel = runwayIsNotMeaningful ? "—" : runwayDays === null ? "∞" : `${runwayDays}d`;
+  const runwayTooltip = runwayIsNotMeaningful
+    ? "Runway starts once the startup has cash or operating costs"
+    : runwayDays === null
+      ? "The startup is not currently burning cash"
+      : `${runwayDays} days until the startup runs out of cash`;
+  const companyValue = companyValueOf(game);
+  const equityValue = companyValue * (safeOwnership / 100);
+  const ownershipPercent = Number(safeOwnership.toFixed(1));
+  const safeDay = finiteNumber(game.day, 1);
+  const startupYear = Math.floor((safeDay - 1) / 365) + 1;
+  const dayOfYear = ((safeDay - 1) % 365) + 1;
   const teamSize = Object.values(game.team).reduce((sum, count) => sum + count, 0);
   const productStage = game.product >= 70 ? 3 : game.product >= 45 ? 2 : 1;
   const productStageLabel = productStage === 3 ? "loved product" : productStage === 2 ? "growing product" : "MVP";
   const churnRisk = game.product >= 70 ? "low" : game.product >= 45 ? "medium" : "high";
   const monthlyChurnRate = monthlyChurnRateOf(game);
   const referralRate = referralRateOf(game);
+  const fundingStatus = [
+    "pre-seed available",
+    "seed unlocks at 10 subscribers",
+    "Series A unlocks at 100",
+    "Series B unlocks at 1,000",
+    "Series C unlocks at 10,000",
+    "late-stage funded",
+  ][game.fundingStage];
   const settledCustomers = Math.max(
     0,
     game.customers - game.issues - game.recentArrivals,
@@ -1141,6 +3125,34 @@ const StartupSimulator = () => {
     game.attention * 12 +
     (game.evergreenContent ?? 0) * 40 +
     (game.seoArticles ?? 0) * 25;
+  const creatorAssetsPerMonth = Math.round(
+    effectiveStaffOf(game, "creator") * 2 * 3,
+  );
+  const writerArticlesPerMonth = Math.round(
+    effectiveStaffOf(game, "writer") * 2 * 2.5,
+  );
+  const sdrLeadsPerMonth = Math.round(
+    effectiveStaffOf(game, "sdr") * 25 * 6,
+  );
+  const salesCustomersPerMonth = Math.round(
+    effectiveStaffOf(game, "sales") *
+      30 *
+      10 *
+      (salesConversionRateOf(game) / 100),
+  );
+  const supportTicketsPerMonth = Math.round(
+    effectiveStaffOf(game, "support") *
+      12 *
+      30 *
+      (supportResolutionRateOf(game) / 100),
+  );
+  const engineerQualityPerMonth = Math.round(
+    effectiveStaffOf(game, "engineer") * 6 * (30 / 7),
+  );
+  const rampSuffix = (role: StaffRole) => {
+    const ramp = staffRampPercentOf(game, role);
+    return ramp > 0 && ramp < 100 ? ` · ${ramp}% ramp` : "";
+  };
   const marketingChannels = [
     {
       id: "social",
@@ -1151,7 +3163,6 @@ const StartupSimulator = () => {
       unlocked:
         game.attention > 0 ||
         game.socialMomentum > 0 ||
-        demandMarketerCountOf(game) > 0 ||
         game.leads > 0 ||
         game.customers > 0,
       strength: Math.max(
@@ -1169,7 +3180,10 @@ const StartupSimulator = () => {
       unlocked:
         (game.evergreenContent ?? 0) > 0 || contentCreatorCountOf(game) > 0,
       strength: (game.evergreenContent ?? 0) + contentCreatorCountOf(game),
-      detail: `${game.evergreenContent ?? 0} evergreen`,
+      detail:
+        contentCreatorCountOf(game) > 0
+          ? `${game.evergreenContent ?? 0} assets · ~${creatorAssetsPerMonth}/mo · ${formatCompactMoney(staffPayrollPerMonth(game, "creator"))}/mo${rampSuffix("creator")}`
+          : `${game.evergreenContent ?? 0} evergreen`,
     },
     {
       id: "seo",
@@ -1179,7 +3193,10 @@ const StartupSimulator = () => {
       y: 78,
       unlocked: (game.seoArticles ?? 0) > 0 || blogWriterCountOf(game) > 0,
       strength: (game.seoArticles ?? 0) + blogWriterCountOf(game),
-      detail: `${game.seoArticles ?? 0} articles`,
+      detail:
+        blogWriterCountOf(game) > 0
+          ? `${game.seoArticles ?? 0} articles · ~${writerArticlesPerMonth}/mo · ${formatCompactMoney(staffPayrollPerMonth(game, "writer"))}/mo${rampSuffix("writer")}`
+          : `${game.seoArticles ?? 0} articles`,
     },
     {
       id: "referrals",
@@ -1199,17 +3216,28 @@ const StartupSimulator = () => {
       y: 58,
       unlocked: game.landingPage,
       strength: landingPageLevelOf(game),
-      detail: `level ${landingPageLevelOf(game)}`,
+      detail: `${landingConversionRateOf(game)}% visitor → lead`,
     },
     {
       id: "paid",
       emoji: "📮",
-      label: "Campaigns",
+      label: "Paid media",
       x: 30,
       y: 78,
-      unlocked: (game.campaignsRun ?? 0) > 0,
-      strength: game.campaignsRun ?? 0,
-      detail: `${game.campaignsRun ?? 0} launched`,
+      unlocked: finiteNumber(game.paidMediaBudget, 0) > 0,
+      strength: Math.max(
+        1,
+        Math.ceil(finiteNumber(game.paidMediaBudget, 0) / 1000) +
+          Math.floor(finiteNumber(game.paidMediaOptimization, 0) / 3) +
+          performanceMarketerCountOf(game),
+      ),
+      detail: `${formatMoney(game.paidMediaBudget)}/mo media · ${campaignLeadsPerMonthOf(game)} leads/mo · opt L${game.paidMediaOptimization}${
+        performanceMarketerCountOf(game) > 0
+          ? ` · ${performanceMarketerCountOf(game)} perf · ${formatCompactMoney(staffPayrollPerMonth(game, "marketer"))}/mo${rampSuffix("marketer")}`
+          : paidMediaLearningMonthOf(game) <= 3
+            ? ` · learning ${paidMediaLearningMonthOf(game)}/3`
+            : ""
+      }`,
     },
   ];
   const activeMarketingSources = marketingChannels.filter(
@@ -1218,6 +3246,29 @@ const StartupSimulator = () => {
   const visibleMarketingChannels = marketingChannels.filter(
     (channel) => channel.id === "social" || channel.unlocked,
   );
+  const salesExpansionPlots = [
+    {
+      id: "outreach",
+      label: "Outreach",
+      x: 45,
+      y: 76,
+      visible: game.outreachStarted || game.team.sdr > 0,
+      people: game.team.sdr,
+      detail:
+        game.team.sdr > 0
+          ? `~${sdrLeadsPerMonth} leads/mo · ${formatCompactMoney(staffPayrollPerMonth(game, "sdr"))}/mo${rampSuffix("sdr")}`
+          : "founder operated",
+    },
+    {
+      id: "selfserve",
+      label: "Self-serve",
+      x: 57,
+      y: 40,
+      visible: game.selfServeCheckout,
+      people: 0,
+      detail: `${selfServeConversionRateOf(game)}% direct conversion`,
+    },
+  ].filter((plot) => plot.visible);
   const marketingFieldBounds = {
     left: Math.max(
       7,
@@ -1236,6 +3287,29 @@ const StartupSimulator = () => {
       Math.max(...visibleMarketingChannels.map((channel) => channel.y)) + 9,
     ),
   };
+  const visibleCapitalStations = stations.filter(
+    (station) =>
+      capitalStationIds.includes(station.id) &&
+      isStationVisible(game, station.id),
+  );
+  const capitalDistrictBounds = {
+    left: Math.max(
+      48,
+      Math.min(...visibleCapitalStations.map((station) => station.x)) - 9,
+    ),
+    top: Math.max(
+      65,
+      Math.min(...visibleCapitalStations.map((station) => station.y)) - 10,
+    ),
+    right: Math.min(
+      100,
+      Math.max(...visibleCapitalStations.map((station) => station.x)) + 9,
+    ),
+    bottom: Math.min(
+      110,
+      Math.max(...visibleCapitalStations.map((station) => station.y)) + 10,
+    ),
+  };
 
   useEffect(() => {
     const unlockAudio = () => {
@@ -1245,6 +3319,7 @@ const StartupSimulator = () => {
       if (audioContextRef.current.state === "suspended") {
         void audioContextRef.current.resume();
       }
+      setAudioUnlocked(true);
     };
 
     window.addEventListener("pointerdown", unlockAudio, { once: true });
@@ -1260,12 +3335,49 @@ const StartupSimulator = () => {
     () => () => {
       toastTimersRef.current.forEach((timer) => window.clearTimeout(timer));
       walkerTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+      if (ambientMusicTimerRef.current !== null) {
+        window.clearInterval(ambientMusicTimerRef.current);
+      }
       if (founderMoveTimerRef.current !== null) {
         window.clearTimeout(founderMoveTimerRef.current);
       }
     },
     [],
   );
+
+  useEffect(() => {
+    if (!audioUnlocked || !soundEnabled || !audioContextRef.current) return;
+
+    const audioContext = audioContextRef.current;
+    const activeNodes = new Set<OscillatorNode>();
+    const playLoop = () => {
+      playAmbientMusicLoop(audioContext).forEach((node) => {
+        activeNodes.add(node);
+        node.addEventListener("ended", () => activeNodes.delete(node), {
+          once: true,
+        });
+      });
+    };
+
+    playLoop();
+    const timer = window.setInterval(playLoop, ambientMusicLoopDurationMs);
+    ambientMusicTimerRef.current = timer;
+
+    return () => {
+      window.clearInterval(timer);
+      if (ambientMusicTimerRef.current === timer) {
+        ambientMusicTimerRef.current = null;
+      }
+      activeNodes.forEach((node) => {
+        try {
+          node.stop();
+        } catch {
+          // The node may already have finished its scheduled note.
+        }
+      });
+      activeNodes.clear();
+    };
+  }, [audioUnlocked, soundEnabled]);
 
   useEffect(() => {
     const previous = previousPlayerRef.current;
@@ -1295,7 +3407,18 @@ const StartupSimulator = () => {
       (sum, count) => sum + count,
       0,
     );
+    const message = game.lastEvent;
+    const normalizedMessage = message.toLowerCase();
     const cashGain = game.cash - previous.cash;
+    const collectedCash = normalizedMessage.includes("collected from the product");
+    const gainedCustomers = game.customers > previous.customers;
+    const gainedTeamMember = teamSize > previousTeamSize;
+    const lostCustomer = game.customers < previous.customers ||
+      normalizedMessage.includes("churned") ||
+      normalizedMessage.includes("left");
+    const gainedIssues = game.issues > previous.issues;
+    const startedAction = game.activity !== null && previous.activity === null;
+    const completedAction = game.activity === null && previous.activity !== null;
     const meaningfulChange =
       game.lastEvent !== previous.lastEvent ||
       game.customers !== previous.customers ||
@@ -1304,31 +3427,64 @@ const StartupSimulator = () => {
       teamSize !== previousTeamSize ||
       Math.abs(cashGain) >= 100;
 
+    if (startedAction && game.activity) {
+      captureStartupEvent("startup_game_action_started", {
+        action_id: game.activity.actionId,
+        station_id: game.activity.stationId,
+        day: game.day,
+        is_first_action: !previous.started,
+      });
+      if (!previous.started) {
+        captureStartupEvent("startup_game_started", {
+          action_id: game.activity.actionId,
+          station_id: game.activity.stationId,
+        });
+      }
+    }
+
+    if (completedAction && previous.activity) {
+      captureStartupEvent("startup_game_action_completed", {
+        action_id: previous.activity.actionId,
+        station_id: previous.activity.stationId,
+        day: game.day,
+      });
+    }
+
+    if (game.bankrupt && !previous.bankrupt) {
+      setShowBankruptcySummary(true);
+      setShowStats(false);
+      captureStartupEvent("startup_game_ended", {
+        outcome: "bankrupt",
+        day: game.day,
+        customers: game.customers,
+      });
+    } else if (game.outcome && !previous.outcome) {
+      captureStartupEvent("startup_game_ended", {
+        outcome: game.outcome,
+        day: game.day,
+        customers: game.customers,
+      });
+    }
+
     previousGameRef.current = game;
     if (!meaningfulChange) return;
 
-    const message = game.lastEvent;
-    const normalizedMessage = message.toLowerCase();
     let icon = "✨";
     let title = "Something happened";
 
     if (cashGain >= 100) {
       icon = "🪙";
       title = `+${formatMoney(cashGain)}`;
-    } else if (game.customers > previous.customers) {
+    } else if (gainedCustomers) {
       icon = "🎉";
       title =
         game.customers - previous.customers === 1
           ? "New subscriber!"
           : `${game.customers - previous.customers} new subscribers!`;
-    } else if (teamSize > previousTeamSize || normalizedMessage.includes("hired")) {
+    } else if (gainedTeamMember || normalizedMessage.includes("hired")) {
       icon = "👋";
       title = "The team grew";
-    } else if (
-      game.customers < previous.customers ||
-      normalizedMessage.includes("churned") ||
-      normalizedMessage.includes("left")
-    ) {
+    } else if (lostCustomer) {
       icon = "💨";
       title = "Someone left";
     } else if (game.leads > previous.leads) {
@@ -1337,7 +3493,7 @@ const StartupSimulator = () => {
     } else if (game.issues > previous.issues) {
       icon = "🛟";
       title = "Users need help";
-    } else if (game.activity && game.activity !== previous.activity) {
+    } else if (startedAction) {
       icon = "⚡";
       title = "Work started";
     }
@@ -1355,25 +3511,21 @@ const StartupSimulator = () => {
       toastTimersRef.current.push(timer);
     }
 
-    if (cashGain > 0 && soundEnabled && audioContextRef.current) {
-      const audioContext = audioContextRef.current;
-      if (audioContext.state === "suspended") {
-        void audioContext.resume();
-      }
-
-      const now = audioContext.currentTime;
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(880, now);
-      oscillator.frequency.exponentialRampToValueAtTime(1320, now + 0.12);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.08, now + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
-      oscillator.connect(gain);
-      gain.connect(audioContext.destination);
-      oscillator.start(now);
-      oscillator.stop(now + 0.3);
+    if (soundEnabled && audioContextRef.current) {
+      const sound = collectedCash
+        ? "coin"
+        : lostCustomer || game.bankrupt
+          ? "fail"
+          : gainedIssues
+            ? "alert"
+            : gainedCustomers || completedAction
+              ? "success"
+              : startedAction
+                ? "start"
+                : cashGain > 0
+                  ? "cash"
+                  : null;
+      if (sound) playGameSound(audioContextRef.current, sound);
     }
   }, [
     game,
@@ -1382,14 +3534,14 @@ const StartupSimulator = () => {
   ]);
 
   useEffect(() => {
-    if (!game.started || paused || game.bankrupt) return;
+    if (!game.started || paused || game.bankrupt || game.outcome) return;
 
     const timer = window.setInterval(() => {
       setGame((current) => advanceGame(current));
     }, 1500);
 
     return () => window.clearInterval(timer);
-  }, [game.started, paused, game.bankrupt]);
+  }, [game.started, paused, game.bankrupt, game.outcome]);
 
   useEffect(() => {
     if (
@@ -1471,7 +3623,12 @@ const StartupSimulator = () => {
           ? [{ x: 15, y: 78 }]
           : []),
         ...(referralRate > 0 ? [{ x: 33, y: 38 }] : []),
-        ...((game.campaignsRun ?? 0) > 0 ? [{ x: 30, y: 78 }] : []),
+        ...(finiteNumber(game.paidMediaBudget, 0) > 0
+          ? [{ x: 30, y: 78 }]
+          : []),
+        ...(game.recentOutreachLeads > 0
+          ? [{ x: 45, y: 76 }]
+          : []),
       ];
 
       Array.from({ length: Math.min(game.recentLeads, 6) }, (_, index) => {
@@ -1479,16 +3636,21 @@ const StartupSimulator = () => {
         const isSocialSource = source.x === 24 && source.y === 58;
         const isCampaignSource = source.x === 30 && source.y === 78;
         const isReferralSource = source.x === 33 && source.y === 38;
+        const isOutreachSource = source.x === 45 && source.y === 76;
         const startX = isCampaignSource
           ? 30
           : isReferralSource
             ? 33
+            : isOutreachSource
+              ? 45
             : source.x + 4.2;
         const startY =
           (isCampaignSource
             ? 73.8
             : isReferralSource
               ? 42.2
+              : isOutreachSource
+                ? 71.8
               : source.y) +
           (index % 2) * 1.2;
         addWalker({
@@ -1503,16 +3665,20 @@ const StartupSimulator = () => {
               ? 28.2
               : isReferralSource
                 ? 31
+                : isOutreachSource
+                  ? 46
                 : 19.8,
-          quarterY: isReferralSource ? 48 : 58,
+          quarterY: isReferralSource ? 48 : isOutreachSource ? 67 : 58,
           midX: isSocialSource
             ? game.landingPage
               ? 42
               : 37
             : isReferralSource
               ? 28.2
+              : isOutreachSource
+                ? 48
               : 24,
-          midY: 58,
+          midY: isOutreachSource ? 63 : 58,
           threeQuarterX: isSocialSource
             ? game.landingPage
               ? 46
@@ -1527,7 +3693,11 @@ const StartupSimulator = () => {
       });
     }
 
-    Array.from({ length: Math.min(game.recentArrivals, 6) }, (_, index) => {
+    const assistedArrivals = Math.max(
+      0,
+      game.recentArrivals - game.recentSelfServeArrivals,
+    );
+    Array.from({ length: Math.min(assistedArrivals, 6) }, (_, index) => {
       addWalker({
         emoji: index % 2 === 0 ? "🧑" : "👩",
         startX: 58.2,
@@ -1544,6 +3714,27 @@ const StartupSimulator = () => {
         delayMs: index * 180,
       });
     });
+
+    Array.from(
+      { length: Math.min(game.recentSelfServeArrivals, 6) },
+      (_, index) => {
+        addWalker({
+          emoji: index % 2 === 0 ? "🧑" : "👩",
+          startX: 60.5,
+          startY: 40 + (index % 2) * 1.2,
+          endX: 67,
+          endY: 53.5,
+          quarterX: 63,
+          quarterY: 41.5,
+          midX: 65,
+          midY: 45,
+          threeQuarterX: 66.5,
+          threeQuarterY: 49,
+          durationMs: 3800,
+          delayMs: index * 180,
+        });
+      },
+    );
 
     Array.from({ length: Math.min(game.recentIssues, 6) }, (_, index) => {
       addWalker({
@@ -1596,16 +3787,20 @@ const StartupSimulator = () => {
     });
   }, [
     game.blogWriters,
-    game.campaignsRun,
+    game.paidMediaBudget,
     game.contentCreators,
     game.day,
     game.evergreenContent,
     game.landingPage,
+    game.outreachStarted,
     game.recentArrivals,
     game.recentIssues,
     game.recentLeads,
+    game.recentOutreachLeads,
     game.recentResolved,
+    game.recentSelfServeArrivals,
     game.seoArticles,
+    game.team.sdr,
     referralRate,
   ]);
 
@@ -1623,7 +3818,34 @@ const StartupSimulator = () => {
   }, [game.product, retiredActionIds]);
 
   useEffect(() => {
+    if (!actionNavigationActive) return;
+
+    actionButtonRefs.current[highlightedActionIndex]?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [actionNavigationActive, highlightedActionIndex]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (exitIntent) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setExitIntent(null);
+        }
+        return;
+      }
+
+      if (showStats) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setShowStats(false);
+          setPaused(pausedBeforeStatsRef.current);
+        }
+        return;
+      }
+
       if (selectedStationId && isAtSelectedStation && selectedActions.length > 0) {
         if (
           actionNavigationActive &&
@@ -1643,6 +3865,7 @@ const StartupSimulator = () => {
           if (!actionNavigationActive) {
             setHighlightedActionIndex(0);
             setActionNavigationActive(true);
+            setActionPanelExpanded(true);
             return;
           }
 
@@ -1650,18 +3873,25 @@ const StartupSimulator = () => {
           if (action) {
             setGame((current) => beginAction(current, selectedStationId, action));
             setActionNavigationActive(false);
+            setActionPanelExpanded(false);
           }
           return;
         }
 
         if (event.key === "Escape") {
           event.preventDefault();
+          if (actionPanelExpanded) {
+            setActionPanelExpanded(false);
+            setActionNavigationActive(false);
+            return;
+          }
           if (actionNavigationActive) {
             setActionNavigationActive(false);
             return;
           }
           setDismissedStationId(selectedStationId);
           setSelectedStationId(null);
+          setSelectedNodeId(null);
           return;
         }
       }
@@ -1679,6 +3909,7 @@ const StartupSimulator = () => {
       const direction = directions[event.key];
       if (!direction) return;
       event.preventDefault();
+      setSelectedNodeId(null);
       setGame((current) => ({
         ...current,
         player: {
@@ -1692,10 +3923,13 @@ const StartupSimulator = () => {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     actionNavigationActive,
+    actionPanelExpanded,
     highlightedActionIndex,
     isAtSelectedStation,
+    exitIntent,
     selectedActions,
     selectedStationId,
+    showStats,
   ]);
 
   useEffect(() => {
@@ -1731,7 +3965,9 @@ const StartupSimulator = () => {
     if (!nearbyStation) {
       if (selectedStationId) {
         setSelectedStationId(null);
+        setSelectedNodeId(null);
         setActionNavigationActive(false);
+        setActionPanelExpanded(false);
       }
       if (dismissedStationId) setDismissedStationId(null);
       return;
@@ -1742,6 +3978,7 @@ const StartupSimulator = () => {
       setSelectedStationId(nearbyStation.id);
       setHighlightedActionIndex(0);
       setActionNavigationActive(false);
+      setActionPanelExpanded(false);
     }
   }, [dismissedStationId, game, selectedStationId]);
 
@@ -1754,6 +3991,7 @@ const StartupSimulator = () => {
     const bounds = event.currentTarget.getBoundingClientRect();
     const horizontalMove = ((event.clientX - bounds.left - bounds.width / 2) / bounds.width) * (100 / 1.2);
     const verticalMove = ((event.clientY - bounds.top - bounds.height / 2) / bounds.height) * (100 / 1.2);
+    setSelectedNodeId(null);
     setGame((current) => ({
       ...current,
       player: {
@@ -1792,7 +4030,9 @@ const StartupSimulator = () => {
     const deltaY = event.clientY - drag.startY;
     if (!drag.moved && Math.hypot(deltaX, deltaY) > 4) {
       drag.moved = true;
+      setSelectedNodeId(null);
       setActionNavigationActive(false);
+      setActionPanelExpanded(false);
     }
     if (!drag.moved) return;
 
@@ -1832,7 +4072,9 @@ const StartupSimulator = () => {
     }
 
     const sensitivity = event.deltaMode === 1 ? 0.8 : event.deltaMode === 2 ? 20 : 0.035;
+    setSelectedNodeId(null);
     setActionNavigationActive(false);
+    setActionPanelExpanded(false);
     setGame((current) => ({
       ...current,
       player: {
@@ -1846,13 +4088,16 @@ const StartupSimulator = () => {
     stationId: StationId,
     event?: MouseEvent,
     position?: { x: number; y: number },
+    nodeId?: SelectedNodeId | null,
   ) => {
     event?.stopPropagation();
     const station = getStation(stationId);
     setDismissedStationId(null);
     setSelectedStationId(stationId);
+    setSelectedNodeId(nodeId ?? null);
     setHighlightedActionIndex(0);
     setActionNavigationActive(false);
+    setActionPanelExpanded(false);
     setGame((current) => ({
       ...current,
       player: position ?? { x: station.x, y: station.y },
@@ -1863,15 +4108,36 @@ const StartupSimulator = () => {
     if (game.activity || !selectedStationId || !isAtSelectedStation) return;
     setGame((current) => beginAction(current, selectedStationId, action));
     setActionNavigationActive(false);
+    setActionPanelExpanded(false);
   };
 
   const dismissSelectedStation = () => {
     if (selectedStationId) setDismissedStationId(selectedStationId);
     setSelectedStationId(null);
+    setSelectedNodeId(null);
     setActionNavigationActive(false);
+    setActionPanelExpanded(false);
+  };
+
+  const openStartupHealth = () => {
+    pausedBeforeStatsRef.current = paused;
+    setPaused(true);
+    setShowStats(true);
+  };
+
+  const closeStartupHealth = () => {
+    setShowStats(false);
+    setPaused(pausedBeforeStatsRef.current);
   };
 
   const resetGame = () => {
+    captureStartupEvent("startup_game_reset", {
+      day: game.day,
+      customers: game.customers,
+      outcome: game.bankrupt ? "bankrupt" : game.outcome,
+    });
+    clearSavedStartupGame();
+    latestGameRef.current = initialGame;
     setGame(initialGame);
     previousGameRef.current = initialGame;
     setToasts([]);
@@ -1879,12 +4145,16 @@ const StartupSimulator = () => {
     walkerTimersRef.current.forEach((timer) => window.clearTimeout(timer));
     walkerTimersRef.current = [];
     setSelectedStationId(null);
+    setSelectedNodeId(null);
     setHighlightedActionIndex(0);
     setActionNavigationActive(false);
+    setActionPanelExpanded(false);
     setDismissedStationId(null);
     setRetiredActionIds([]);
     setShowStats(false);
+    setShowBankruptcySummary(true);
     setPaused(false);
+    pausedBeforeStatsRef.current = false;
     setWorldZoom(1);
     setIsFounderMoving(false);
     setFounderFacing(1);
@@ -1893,6 +4163,30 @@ const StartupSimulator = () => {
       window.clearTimeout(founderMoveTimerRef.current);
       founderMoveTimerRef.current = null;
     }
+  };
+
+  const confirmExit = () => {
+    const intent = exitIntent;
+    saveStartupGame(game);
+    captureStartupEvent("startup_game_exited", {
+      reason: intent,
+      day: game.day,
+      customers: game.customers,
+    });
+    setExitIntent(null);
+    allowBrowserExitRef.current = true;
+
+    if (intent === "history") {
+      window.history.go(-2);
+      window.setTimeout(() => {
+        if (window.location.pathname === "/startup") {
+          window.location.assign("/");
+        }
+      }, 500);
+      return;
+    }
+
+    window.location.assign("/");
   };
 
   const score = Math.max(
@@ -1906,9 +4200,84 @@ const StartupSimulator = () => {
         game.lostUsers * 40,
     ),
   );
+  const founderExitValue = game.exitValue * (game.ownership / 100);
+  const currentMonthlyMetric = monthlyMetricOf(game);
+  const currentMonthDay = dayOfMonth(game.day);
+  const daysUntilPayday =
+    currentMonthDay < 25
+      ? 25 - currentMonthDay
+      : 30 - currentMonthDay + 25;
+  const dashboardGroups = [
+    {
+      title: "Finance",
+      metrics: [
+        ["Bank", formatMoney(game.cash)],
+        ["Revenue", `${formatMoney(currentMonthlyMetric.revenue)}/mo`],
+        ["Cash burn", `${formatMoney(currentMonthlyMetric.cashBurn)}/mo`],
+        ["Net burn", `${formatMoney(currentMonthlyMetric.netBurn)}/mo`],
+        ["Payroll", `${formatMoney(currentMonthlyMetric.payroll)}/mo`],
+        ["Next payday", `${daysUntilPayday}d · 25th`],
+      ],
+    },
+    {
+      title: "Growth",
+      metrics: [
+        ["Subscribers", game.customers.toLocaleString()],
+        ["MRR", formatMoney(game.customers * 20)],
+        ["Waiting", game.leads.toLocaleString()],
+        ["Attention", `${game.attention}%`],
+        [
+          "Content",
+          `${(game.evergreenContent ?? 0) + (game.seoArticles ?? 0)} assets`,
+        ],
+        ["Paid media", `${formatMoney(game.paidMediaBudget)}/mo`],
+      ],
+    },
+    {
+      title: "Funnel",
+      metrics: [
+        ["Landing", `${landingConversionRateOf(game)}%`],
+        ["Assisted sales", `${salesConversionRateOf(game)}%`],
+        [
+          "Self-serve",
+          game.selfServeCheckout
+            ? `${selfServeConversionRateOf(game)}%`
+            : "not built",
+        ],
+        ["Referrals", `${referralRate}%`],
+        ["Social reach", `${game.socialMomentum}%`],
+        ["Lost leads", game.lostUsers.toLocaleString()],
+      ],
+    },
+    {
+      title: "Product & operations",
+      metrics: [
+        ["Product quality", `${game.product}%`],
+        ["Monthly churn", `${monthlyChurnRate}%`],
+        ["Support resolution", `${supportResolutionRateOf(game)}%`],
+        ["Open issues", game.issues.toLocaleString()],
+        ["Reputation", `${game.reputation}%`],
+        ["Team", `${teamSize} people`],
+      ],
+    },
+    {
+      title: "Capital",
+      metrics: [
+        ["Company value", formatCompactMoney(companyValue)],
+        [
+          "Equity owned",
+          `${ownershipPercent}% · ${formatCompactMoney(equityValue)}`,
+        ],
+        ["Debt", formatCompactMoney(game.debt)],
+        ["Funding stage", fundingStatus],
+        ["Acquisitions", game.acquisitions.toLocaleString()],
+        ["Runway", runwayLabel],
+      ],
+    },
+  ];
 
   return (
-    <main className="fixed inset-0 z-40 overflow-hidden bg-[#a9d477] text-[#24352b]">
+    <main className="fixed inset-0 z-40 overflow-hidden overscroll-none bg-[#a9d477] text-[#24352b]">
       <style>{`
         @keyframes startup-bob {
           0%, 100% { transform: translateY(0); }
@@ -1944,14 +4313,59 @@ const StartupSimulator = () => {
           33%, 65% { background-position: 50% 0; }
           66%, 100% { background-position: 100% 0; }
         }
+        @keyframes startup-road-breathe {
+          0%, 100% { opacity: .9; }
+          50% { opacity: 1; }
+        }
+        @keyframes startup-plot-idle {
+          0%, 100% { filter: brightness(1); }
+          50% { filter: brightness(1.025); }
+        }
+        @keyframes startup-panel-in {
+          from { opacity: 0; transform: translate(-50%, 14px) scale(.985); }
+          to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+        @keyframes startup-soft-pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.12); opacity: .78; }
+        }
+        @keyframes startup-progress-flow {
+          0% { background-position: 0 0; }
+          100% { background-position: 22px 0; }
+        }
+        .startup-road-surface {
+          animation: startup-road-breathe 4.5s ease-in-out infinite;
+        }
+        .startup-plot-button {
+          animation: startup-plot-idle 5.5s ease-in-out infinite;
+        }
+        .startup-plot-button:nth-of-type(2n) {
+          animation-delay: -2.2s;
+        }
+        .startup-action-panel {
+          animation: startup-panel-in 220ms ease-out both;
+          transition:
+            width 280ms ease,
+            max-height 280ms ease,
+            padding 280ms ease,
+            border-radius 280ms ease;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .startup-road-surface,
+          .startup-plot-button,
+          .startup-action-panel {
+            animation: none !important;
+          }
+        }
       `}</style>
 
       <section
         className={`relative h-full w-full select-none overflow-hidden bg-[#a9d477] ${
-          isDraggingWorld ? "cursor-grabbing" : "cursor-grab"
-        }`}
+          isSaveHydrated ? "" : "pointer-events-none"
+        } ${isDraggingWorld ? "cursor-grabbing" : "cursor-grab"}`}
         style={{ touchAction: "none" }}
         aria-label="Open startup grassland. Click anywhere to walk."
+        aria-busy={!isSaveHydrated}
         onClick={handleWorldClick}
         onPointerDown={handleWorldPointerDown}
         onPointerMove={handleWorldPointerMove}
@@ -1959,22 +4373,29 @@ const StartupSimulator = () => {
         onPointerCancel={finishWorldDrag}
         onWheel={handleWorldWheel}
       >
-        <div
-          className="pointer-events-none absolute inset-0 opacity-35 transition-[background-position] duration-500 [background-image:radial-gradient(#6da04f_1px,transparent_1px)] [background-size:24px_24px]"
-          style={{ backgroundPosition: `${-game.player.x * 4}px ${-game.player.y * 4}px` }}
-        />
+        {!isSaveHydrated ? (
+          <div className="pointer-events-none absolute inset-0 z-[80] flex items-center justify-center bg-[#a9d477]/80 backdrop-blur-[2px]">
+            <p className="rounded-full border border-white/70 bg-white/80 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#66816f] shadow-sm">
+              loading your company
+            </p>
+          </div>
+        ) : null}
         <div className="pointer-events-none absolute -left-10 -top-10 h-64 w-64 rounded-full bg-[#d6eea4]/50 blur-3xl" />
 
         <div className="absolute inset-x-4 top-4 z-30 flex items-start justify-between gap-3 sm:inset-x-6 sm:top-6">
           <div className="pointer-events-auto flex items-center gap-2">
-            <Link
-              href="/"
-              onClick={(event) => event.stopPropagation()}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/70 text-lg shadow-sm backdrop-blur-sm transition hover:bg-white"
-              aria-label="Back to Ashvin Praveen"
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setExitIntent("website");
+              }}
+              className="flex h-10 items-center justify-center gap-1.5 rounded-full border border-white/70 bg-white/70 px-3 text-sm font-semibold shadow-sm backdrop-blur-sm transition hover:bg-white"
+              aria-label="Exit game and visit Ashvin Praveen's website"
             >
-              ↩
-            </Link>
+              <span aria-hidden="true">↩</span>
+              <span className="hidden sm:inline">Exit game</span>
+            </button>
             <div className="rounded-2xl border border-white/70 bg-white/80 px-3 py-2 shadow-sm backdrop-blur-sm">
               <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#66816f]">year {startupYear}</p>
               <p className="text-xs font-semibold">day {dayOfYear}</p>
@@ -1992,13 +4413,23 @@ const StartupSimulator = () => {
             </div>
             <div
               className="border-l border-[#dfe7da] px-3 py-2.5"
-              title={runwayDays === null ? "The startup is not currently burning cash" : `${runwayDays} days until the startup runs out of cash`}
+              title={runwayTooltip}
             >
               <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#789080]">runway</p>
               <div className="mt-0.5 flex items-center gap-1.5">
                 <span
                   className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: runwayDial > 30 ? "#5e9955" : "#c65f4d" }}
+                  style={{
+                    backgroundColor: runwayIsNotMeaningful
+                      ? "#a6aa8f"
+                      : runwayDial > 30
+                        ? "#5e9955"
+                        : "#c65f4d",
+                    animation:
+                      !runwayIsNotMeaningful && runwayDial <= 30
+                        ? "startup-soft-pulse 1.3s ease-in-out infinite"
+                        : undefined,
+                  }}
                   aria-hidden="true"
                 />
                 <p className="text-sm font-semibold">{runwayLabel}</p>
@@ -2010,7 +4441,7 @@ const StartupSimulator = () => {
             >
               <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#789080]">equity owned</p>
               <p className="mt-0.5 truncate text-sm font-semibold">
-                {game.ownership}% <span className="font-normal text-[#789080]">· {formatCompactMoney(equityValue)}</span>
+                {ownershipPercent}% <span className="font-normal text-[#789080]">· {formatCompactMoney(equityValue)}</span>
               </p>
             </div>
           </div>
@@ -2049,7 +4480,11 @@ const StartupSimulator = () => {
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
-                setShowStats((current) => !current);
+                if (showStats) {
+                  closeStartupHealth();
+                } else {
+                  openStartupHealth();
+                }
               }}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/75 text-lg shadow-sm backdrop-blur-sm transition hover:bg-white"
               aria-label={showStats ? "Close startup stats" : "Open startup stats"}
@@ -2104,51 +4539,123 @@ const StartupSimulator = () => {
 
         {showStats ? (
           <div
-            className="absolute right-4 top-20 z-40 w-[min(320px,calc(100vw-2rem))] rounded-3xl border border-white/80 bg-[#fffdf7]/95 p-4 shadow-xl backdrop-blur-md sm:right-6 sm:top-24"
-            onClick={(event) => event.stopPropagation()}
-            onWheel={(event) => event.stopPropagation()}
-            aria-label="Startup stats"
+            className="absolute inset-0 z-[60] flex items-center justify-center bg-[#36533d]/20 p-3 backdrop-blur-[2px] sm:p-6"
+            onClick={closeStartupHealth}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#789080]">the machine</p>
-                <h1 className="mt-1 text-xl font-semibold">Startup health</h1>
-              </div>
-              <button
-                type="button"
-                onClick={resetGame}
-                className="font-mono text-[10px] text-[#789080] underline-offset-2 hover:underline"
-              >
-                reset
-              </button>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {[
-                ["💵", "cash", formatMoney(game.cash)],
-                ["🚶", "waiting", game.leads.toString()],
-                ["🧑‍🤝‍🧑", "subscribed", game.customers.toString()],
-                ["🙋", "issues", game.issues.toString()],
-                ["✨", "product", `${game.product}%`],
-                ["❤️", "reputation", `${game.reputation}%`],
-                ["👀", "attention", `${game.attention}%`],
-                ["♻️", "content", `${(game.evergreenContent ?? 0) + (game.seoArticles ?? 0)} assets`],
-                ["🪙", "equity", `${game.ownership}% · ${formatCompactMoney(equityValue)}`],
-                ["👥", "team", teamSize.toString()],
-              ].map(([emoji, label, value]) => (
-                <div key={label} className="rounded-2xl bg-[#f7f3e8] px-2.5 py-2">
-                  <span className="text-sm" aria-hidden="true">{emoji}</span>
-                  <p className="mt-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#789080]">{label}</p>
-                  <p className="mt-0.5 truncate text-sm font-semibold">{value}</p>
+            <section
+              className="max-h-[calc(100vh-1.5rem)] w-[min(1080px,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-[32px] border border-white/85 bg-[#fffdf7] p-4 shadow-2xl sm:max-h-[calc(100vh-3rem)] sm:p-6"
+              onClick={(event) => event.stopPropagation()}
+              onWheel={(event) => event.stopPropagation()}
+              aria-label="Startup health dashboard"
+              role="dialog"
+              aria-modal="true"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#789080]">
+                      the machine
+                    </p>
+                    <span className="rounded-full bg-[#e8f1e2] px-2 py-0.5 font-mono text-[8px] uppercase tracking-[0.14em] text-[#5e795f]">
+                      {game.bankrupt ? "final snapshot" : "paused"}
+                    </span>
+                  </div>
+                  <h1 className="mt-1 text-2xl font-semibold">
+                    {game.bankrupt ? "Startup analysis" : "Startup health"}
+                  </h1>
+                  <p className="mt-1 text-xs text-[#688071]">
+                    {game.bankrupt ? "Final state" : `Month ${currentMonthlyMetric.month}`} ·
+                    day {currentMonthDay}/30
+                  </p>
                 </div>
-              ))}
-            </div>
-            <div className="mt-3 flex items-center justify-between rounded-2xl bg-[#edf5e7] px-3 py-2 text-xs">
-              <span>+{formatMoney(revenue)}/day</span>
-              <span>-{formatMoney(payroll)}/day payroll</span>
-            </div>
-            <p className="mt-3 border-t border-[#e3e9df] pt-3 text-xs leading-relaxed text-[#52665a]">
-              {game.lastEvent}
-            </p>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={resetGame}
+                    className="font-mono text-[10px] text-[#789080] underline-offset-2 hover:underline"
+                  >
+                    {game.bankrupt ? "start over" : "reset"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeStartupHealth}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-[#dfe7da] bg-white text-lg transition hover:bg-[#f1f6ed]"
+                    aria-label="Close startup health"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <FinancialModelGraph
+                  metrics={game.monthlyMetrics}
+                  current={currentMonthlyMetric}
+                />
+              </div>
+
+              {game.bankrupt ? (
+                <div className="mt-4 rounded-2xl border border-[#e6c8b5] bg-[#fff4e9] px-4 py-3">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#9a6848]">
+                    failure point
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-[#553b2d]">
+                    {game.lastEvent}
+                  </p>
+                  <p className="mt-1 text-xs text-[#80624f]">
+                    The company ended with {formatMoney(currentMonthlyMetric.revenue)}/mo
+                    revenue against {formatMoney(currentMonthlyMetric.cashBurn)}/mo
+                    in commitments.
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {dashboardGroups.map((group) => (
+                  <div
+                    key={group.title}
+                    className="rounded-3xl border border-[#e1e8dd] bg-[#f8f5eb] p-4"
+                  >
+                    <h2 className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#688071]">
+                      {group.title}
+                    </h2>
+                    <div className="mt-3 divide-y divide-[#e3e9df]">
+                      {group.metrics.map(([label, value]) => (
+                        <div
+                          key={label}
+                          className="flex items-center justify-between gap-3 py-2 text-xs"
+                        >
+                          <span className="text-[#6e8175]">{label}</span>
+                          <span className="min-w-0 truncate text-right font-semibold">
+                            {value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 flex flex-col gap-2 rounded-2xl bg-[#edf5e7] px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  Current monthly cash flow{" "}
+                  <strong>
+                    {currentMonthlyMetric.revenue >= currentMonthlyMetric.cashBurn
+                      ? "+"
+                      : "-"}
+                    {formatMoney(
+                      Math.abs(
+                        currentMonthlyMetric.revenue -
+                          currentMonthlyMetric.cashBurn,
+                      ),
+                    )}
+                  </strong>
+                </span>
+                <span className="text-[#688071]">
+                  {game.lastEvent}
+                </span>
+              </div>
+            </section>
           </div>
         ) : null}
 
@@ -2166,6 +4673,7 @@ const StartupSimulator = () => {
           }}
           aria-label="Moving startup world"
         >
+          <div className="pointer-events-none absolute inset-0 opacity-35 [background-image:radial-gradient(#6da04f_1px,transparent_1px)] [background-size:24px_24px]" />
           <div className="pointer-events-none absolute left-[7%] top-[45%] text-2xl opacity-70">🪨 🌿</div>
           <div className="pointer-events-none absolute left-[27%] top-[91%] text-xl opacity-65">🌱 🌼</div>
           <div className="pointer-events-none absolute left-[72%] top-[78%] text-2xl opacity-70">🌼 🌿</div>
@@ -2187,9 +4695,17 @@ const StartupSimulator = () => {
             </span>
           </div>
 
-          <div className="pointer-events-none absolute left-[82%] top-[67%] z-[3] h-[31%] w-[16%] rounded-[28px] border-2 border-dashed border-[#6f8e56]/45">
+          <div
+            className="pointer-events-none absolute z-[3] rounded-[28px] border-2 border-dashed border-[#6f8e56]/45 transition-[left,top,width,height] duration-500"
+            style={{
+              left: `${capitalDistrictBounds.left}%`,
+              top: `${capitalDistrictBounds.top}%`,
+              width: `${capitalDistrictBounds.right - capitalDistrictBounds.left}%`,
+              height: `${capitalDistrictBounds.bottom - capitalDistrictBounds.top}%`,
+            }}
+          >
             <span className="absolute left-5 top-0 -translate-y-1/2 bg-[#a9d477] px-2 font-mono text-[9px] uppercase tracking-[0.18em] text-[#54704e]">
-              Funding corner
+              Capital district
             </span>
           </div>
 
@@ -2199,13 +4715,13 @@ const StartupSimulator = () => {
             preserveAspectRatio="none"
             aria-hidden="true"
           >
-            {game.landingPage ? (
+            {game.landingPage && !game.selfServeCheckout ? (
               <g>
                 <path
                   d="M 45.5 58 L 50.2 58"
                   fill="none"
                   stroke="#765337"
-                  strokeWidth="9"
+                  strokeWidth="14"
                   opacity="0.48"
                   vectorEffect="non-scaling-stroke"
                   strokeLinecap="round"
@@ -2214,8 +4730,33 @@ const StartupSimulator = () => {
                   d="M 45.5 58 L 50.2 58"
                   fill="none"
                   stroke="#d8b978"
-                  strokeWidth="6.5"
+                  strokeWidth="10"
                   opacity="0.95"
+                  className="startup-road-surface"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+              </g>
+            ) : null}
+
+            {game.landingPage && game.selfServeCheckout ? (
+              <g>
+                <path
+                  d="M 45.5 58 C 49 54, 50 43, 53.5 40"
+                  fill="none"
+                  stroke="#765337"
+                  strokeWidth="11"
+                  opacity="0.42"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M 45.5 58 C 49 54, 50 43, 53.5 40"
+                  fill="none"
+                  stroke="#d8b978"
+                  strokeWidth="7.5"
+                  opacity="0.92"
+                  className="startup-road-surface"
                   vectorEffect="non-scaling-stroke"
                   strokeLinecap="round"
                 />
@@ -2228,7 +4769,7 @@ const StartupSimulator = () => {
                   d="M 58.2 58 L 63.8 58"
                   fill="none"
                   stroke="#765337"
-                  strokeWidth="9"
+                  strokeWidth="14"
                   opacity="0.48"
                   vectorEffect="non-scaling-stroke"
                   strokeLinecap="round"
@@ -2237,8 +4778,9 @@ const StartupSimulator = () => {
                   d="M 58.2 58 L 63.8 58"
                   fill="none"
                   stroke="#d8b978"
-                  strokeWidth="6.5"
+                  strokeWidth="10"
                   opacity="0.95"
+                  className="startup-road-surface"
                   vectorEffect="non-scaling-stroke"
                   strokeLinecap="round"
                 />
@@ -2251,7 +4793,7 @@ const StartupSimulator = () => {
                   d="M 72.2 58 L 79.2 58"
                   fill="none"
                   stroke="#765337"
-                  strokeWidth="9"
+                  strokeWidth="14"
                   opacity="0.48"
                   vectorEffect="non-scaling-stroke"
                   strokeLinecap="round"
@@ -2260,8 +4802,57 @@ const StartupSimulator = () => {
                   d="M 72.2 58 L 79.2 58"
                   fill="none"
                   stroke="#d8b978"
-                  strokeWidth="6.5"
+                  strokeWidth="10"
                   opacity="0.95"
+                  className="startup-road-surface"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+              </g>
+            ) : null}
+
+            {game.outreachStarted || game.team.sdr > 0 ? (
+              <g>
+                <path
+                  d="M 45 71.8 C 45 66, 49 62, 50.2 60"
+                  fill="none"
+                  stroke="#765337"
+                  strokeWidth="11"
+                  opacity="0.42"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M 45 71.8 C 45 66, 49 62, 50.2 60"
+                  fill="none"
+                  stroke="#d8b978"
+                  strokeWidth="7.5"
+                  opacity="0.92"
+                  className="startup-road-surface"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+              </g>
+            ) : null}
+
+            {game.selfServeCheckout ? (
+              <g>
+                <path
+                  d="M 60.5 40 C 65 41, 66.5 48, 67 53.5"
+                  fill="none"
+                  stroke="#765337"
+                  strokeWidth="11"
+                  opacity="0.42"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M 60.5 40 C 65 41, 66.5 48, 67 53.5"
+                  fill="none"
+                  stroke="#d8b978"
+                  strokeWidth="7.5"
+                  opacity="0.92"
+                  className="startup-road-surface"
                   vectorEffect="non-scaling-stroke"
                   strokeLinecap="round"
                 />
@@ -2274,7 +4865,7 @@ const StartupSimulator = () => {
                   d={`M 28.2 58 L ${game.landingPage ? 38.5 : 50.2} 58`}
                   fill="none"
                   stroke="#765337"
-                  strokeWidth="7"
+                  strokeWidth="11"
                   opacity="0.42"
                   vectorEffect="non-scaling-stroke"
                   strokeLinecap="round"
@@ -2283,8 +4874,9 @@ const StartupSimulator = () => {
                   d={`M 28.2 58 L ${game.landingPage ? 38.5 : 50.2} 58`}
                   fill="none"
                   stroke="#d8b978"
-                  strokeWidth="4.8"
+                  strokeWidth="7.5"
                   opacity="0.92"
+                  className="startup-road-surface"
                   vectorEffect="non-scaling-stroke"
                   strokeLinecap="round"
                 />
@@ -2306,7 +4898,7 @@ const StartupSimulator = () => {
                       d={path}
                       fill="none"
                       stroke="#765337"
-                      strokeWidth="7"
+                      strokeWidth="11"
                       opacity="0.42"
                       vectorEffect="non-scaling-stroke"
                       strokeLinecap="round"
@@ -2315,8 +4907,9 @@ const StartupSimulator = () => {
                       d={path}
                       fill="none"
                       stroke="#d8b978"
-                      strokeWidth="4.8"
+                      strokeWidth="7.5"
                       opacity="0.92"
+                      className="startup-road-surface"
                       vectorEffect="non-scaling-stroke"
                       strokeLinecap="round"
                     />
@@ -2340,12 +4933,17 @@ const StartupSimulator = () => {
                 key={channel.id}
                 type="button"
                 onClick={(event) =>
-                  selectStation("marketing", event, {
-                    x: channel.x,
-                    y: channel.y,
-                  })
+                  selectStation(
+                    "marketing",
+                    event,
+                    {
+                      x: channel.x,
+                      y: channel.y,
+                    },
+                    channel.id as SelectedNodeId,
+                  )
                 }
-                className="group absolute z-10 -translate-x-1/2 -translate-y-1/2 text-center transition hover:-translate-y-[calc(50%+3px)]"
+                className="startup-plot-button group absolute z-10 -translate-x-1/2 -translate-y-1/2 text-center transition duration-200 hover:-translate-y-[calc(50%+3px)] active:scale-[.98]"
                 style={{
                   left: `${channel.x}%`,
                   top: `${channel.y}%`,
@@ -2397,6 +4995,68 @@ const StartupSimulator = () => {
             );
           })}
 
+          {salesExpansionPlots.map((plot) => {
+            const plotSize = plot.id === "outreach"
+              ? Math.min(118, 88 + plot.people * 6)
+              : Math.min(132, 84 + selfServeLevelOf(game) * 8);
+            return (
+              <button
+                key={plot.id}
+                type="button"
+                onClick={(event) =>
+                  selectStation(
+                    "sales",
+                    event,
+                    { x: plot.x, y: plot.y },
+                    plot.id as SelectedNodeId,
+                  )
+                }
+                className="startup-plot-button group absolute z-10 -translate-x-1/2 -translate-y-1/2 text-center transition duration-200 hover:-translate-y-[calc(50%+3px)] active:scale-[.98]"
+                style={{
+                  left: `${plot.x}%`,
+                  top: `${plot.y}%`,
+                  width: `${plotSize}px`,
+                }}
+                aria-label={`Walk to ${plot.label}`}
+              >
+                <div
+                  className="relative mx-auto overflow-hidden rounded-[14px] border-2 border-[#70472b] bg-[#a97343] shadow-[inset_0_0_0_2px_rgba(245,209,142,0.18)]"
+                  style={{
+                    width: `${plotSize}px`,
+                    height: `${plotSize}px`,
+                    backgroundImage:
+                      "repeating-linear-gradient(90deg, transparent 0 12px, rgba(92,55,28,.22) 12px 15px)",
+                    animation: "startup-plot-grow .55s ease-out both",
+                  }}
+                >
+                  <div className="absolute left-2 top-2 z-10 rounded-md border border-[#70472b] bg-[#f0d596] px-2 py-0.5 text-[8px] font-bold">
+                    {plot.label}
+                  </div>
+                  {Array.from(
+                    { length: Math.min(8, plot.people) },
+                    (_, personIndex) => (
+                      <span
+                        key={personIndex}
+                        className="absolute text-sm"
+                        style={{
+                          left: `${12 + (personIndex % 4) * 22}%`,
+                          top: `${52 + Math.floor(personIndex / 4) * 18}%`,
+                          animation: `startup-bob ${1.85 + personIndex * 0.1}s ease-in-out ${personIndex * 0.08}s infinite`,
+                        }}
+                        aria-hidden="true"
+                      >
+                        {personIndex % 2 === 0 ? "🧑" : "👩"}
+                      </span>
+                    ),
+                  )}
+                  <p className="absolute inset-x-1.5 bottom-1.5 rounded-md bg-[#f8e9c4]/90 px-1 py-0.5 font-mono text-[7px] text-[#5f452e]">
+                    {plot.detail}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+
           {stations
             .filter(
               (station) =>
@@ -2408,25 +5068,53 @@ const StartupSimulator = () => {
               const status =
                 station.id === "product"
                   ? game.product > 0
-                    ? `${game.customers} ${game.customers === 1 ? "subscriber" : "subscribers"} · ${monthlyChurnRate}% churn after 1 month`
+                    ? game.team.product > 0
+                      ? game.product >= 100
+                        ? `${game.customers} subscribers · engineers maintaining · ${formatCompactMoney(staffPayrollPerMonth(game, "engineer"))}/mo`
+                        : `${game.customers} subscribers · ~+${engineerQualityPerMonth} quality/mo · ${formatCompactMoney(staffPayrollPerMonth(game, "engineer"))}/mo${rampSuffix("engineer")}`
+                      : `${game.customers} ${game.customers === 1 ? "subscriber" : "subscribers"} · ${monthlyChurnRate}% churn after 1 month`
                     : "empty product plot"
                   : station.id === "sales"
-                    ? `${game.leads} waiting${game.selfServeCheckout ? " · self-serve" : ""}`
+                    ? game.team.sales > 0
+                      ? game.leads === 0
+                        ? `closers idle: no leads · ${formatCompactMoney(staffPayrollPerMonth(game, "sales"))}/mo`
+                        : `${game.leads} waiting · ~${salesCustomersPerMonth} subs/mo capacity · ${formatCompactMoney(staffPayrollPerMonth(game, "sales"))}/mo${rampSuffix("sales")}`
+                      : `${game.leads} waiting · ${salesConversionRateOf(game)}% conversion`
                     : station.id === "support"
-                      ? `${game.issues} need help`
-                      : station.subtitle;
+                      ? game.team.support > 0
+                        ? game.issues === 0
+                          ? `support idle: no tickets · ${formatCompactMoney(staffPayrollPerMonth(game, "support"))}/mo`
+                          : `${game.issues} need help · ~${supportTicketsPerMonth} tickets/mo · ${formatCompactMoney(staffPayrollPerMonth(game, "support"))}/mo${rampSuffix("support")}`
+                        : `${game.issues} need help · ${supportResolutionRateOf(game)}% resolved`
+                      : station.id === "investors"
+                        ? fundingStatus
+                        : station.id === "bank"
+                          ? `${formatCompactMoney(game.debt)} debt · ${formatMoney(debtPayment)}/day`
+                          : station.id === "privateEquity"
+                            ? game.peDealDone
+                              ? "PE backed"
+                              : `${formatCompactMoney(peOffer(game).amount)} available`
+                            : station.id === "ma"
+                              ? `${game.acquisitions} acquisitions`
+                              : station.id === "investmentBank"
+                                ? "IPO window open"
+                                : station.subtitle;
               const plotLevel =
                 station.id === "product"
                   ? Math.ceil(game.product / 20)
                   : station.id === "sales"
-                    ? game.salesProcess + game.team.sales + (game.selfServeCheckout ? 1 : 0)
+                    ? game.salesProcess + game.team.sales
                     : station.id === "support"
-                      ? game.team.support + (game.helpDocs ? 1 : 0)
+                      ? game.team.support +
+                        (game.helpDocs ? 1 : 0) +
+                        (game.supportProcess ?? 0)
                       : 1;
               const plotSize =
                 station.id === "product" && game.product === 0
                   ? 88
-                  : Math.min(136, 98 + Math.max(1, plotLevel) * 8);
+                  : capitalStationIds.includes(station.id)
+                    ? 80
+                    : Math.min(136, 98 + Math.max(1, plotLevel) * 8);
               const isEmptyProduct =
                 station.id === "product" && game.product === 0;
 
@@ -2434,8 +5122,15 @@ const StartupSimulator = () => {
                 <button
                   key={station.id}
                   type="button"
-                  onClick={(event) => selectStation(station.id, event)}
-                  className="group absolute z-10 -translate-x-1/2 -translate-y-1/2 text-center transition hover:-translate-y-[calc(50%+3px)]"
+                  onClick={(event) =>
+                    selectStation(
+                      station.id,
+                      event,
+                      undefined,
+                      station.id === "sales" ? "sales" : null,
+                    )
+                  }
+                  className="startup-plot-button group absolute z-10 -translate-x-1/2 -translate-y-1/2 text-center transition duration-200 hover:-translate-y-[calc(50%+3px)] active:scale-[.98]"
                   style={{
                     left: `${station.x}%`,
                     top: `${station.y}%`,
@@ -2474,6 +5169,7 @@ const StartupSimulator = () => {
                             style={{
                               left: `${8 + (index % 4) * 24}%`,
                               top: `${54 + Math.floor(index / 4) * 17}%`,
+                              animation: `startup-bob ${1.9 + index * 0.1}s ease-in-out ${index * 0.08}s infinite`,
                             }}
                             aria-hidden="true"
                           >
@@ -2482,7 +5178,10 @@ const StartupSimulator = () => {
                         ))
                       : null}
                     {operatorCount > 0 ? (
-                      <span className="absolute right-1.5 top-1.5 z-20 rounded-full border border-[#70472b] bg-[#f8e9c4]/95 px-1.5 py-0.5 text-[9px]">
+                      <span
+                        className="absolute right-1.5 top-1.5 z-20 rounded-full border border-[#70472b] bg-[#f8e9c4]/95 px-1.5 py-0.5 text-[9px]"
+                        style={{ animation: "startup-bob 2.4s ease-in-out infinite" }}
+                      >
                         🧑‍🔧{operatorCount > 1 ? operatorCount : ""}
                       </span>
                     ) : null}
@@ -2528,7 +5227,7 @@ const StartupSimulator = () => {
           {game.uncollectedCash > 0 ? (
             <button
               type="button"
-              className="absolute z-[13] h-20 w-24 -translate-x-1/2 -translate-y-1/2 transition hover:scale-105"
+              className="absolute z-[13] h-20 w-24 -translate-x-1/2 -translate-y-1/2 transition duration-200 hover:scale-105 active:scale-95"
               style={{
                 left: `${cashPilePosition.x}%`,
                 top: `${cashPilePosition.y}%`,
@@ -2629,15 +5328,18 @@ const StartupSimulator = () => {
               <AshvinPet animation={game.activity ? "chat" : "idle"} />
             )}
             {game.activity ? (
-              <span className="absolute -right-2 -top-2 rounded-full border-2 border-white bg-[#24352b] px-1.5 py-0.5 text-[9px] font-semibold text-white">
+              <span
+                className="absolute -right-2 -top-2 rounded-full border-2 border-white bg-[#24352b] px-1.5 py-0.5 text-[9px] font-semibold text-white"
+                style={{ animation: "startup-soft-pulse 1.4s ease-in-out infinite" }}
+              >
                 {progressPercent}%
               </span>
             ) : null}
           </div>
         </div>
 
-        {game.activity ? (
-          <div className={`pointer-events-none absolute left-4 z-20 hidden rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm sm:block ${selectedStation ? "bottom-36" : "bottom-5"}`}>
+        {game.activity && !selectedStation ? (
+          <div className="pointer-events-none absolute bottom-5 left-1/2 z-20 hidden -translate-x-1/2 rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm sm:block">
             <div className="flex items-center justify-between gap-8">
               <p className="text-xs font-semibold">{game.activity.label}</p>
               <span className="font-mono text-[10px] text-[#66816f]">{progressPercent}%</span>
@@ -2645,24 +5347,60 @@ const StartupSimulator = () => {
             <div className="mt-2 h-1.5 w-44 overflow-hidden rounded-full bg-[#d4e4cf]">
               <div
                 className="h-full rounded-full bg-[#6d9d5d] transition-[width] duration-500"
-                style={{ width: `${progressPercent}%` }}
+                style={{
+                  width: `${progressPercent}%`,
+                  backgroundImage:
+                    "linear-gradient(90deg, transparent 0 35%, rgba(255,255,255,.35) 50%, transparent 65%)",
+                  backgroundSize: "22px 100%",
+                  animation: "startup-progress-flow 1.1s linear infinite",
+                }}
               />
             </div>
           </div>
         ) : null}
 
-        {selectedStation ? (
+        {selectedStation && !game.bankrupt && !game.outcome ? (
           <aside
-            className="absolute bottom-3 left-1/2 z-30 w-[min(820px,calc(100vw-1.5rem))] -translate-x-1/2 rounded-3xl border border-white/80 bg-[#fffdf7]/95 p-3 shadow-xl backdrop-blur-md sm:bottom-4"
+            className={`startup-action-panel absolute bottom-3 left-1/2 z-30 -translate-x-1/2 overflow-hidden overscroll-contain border border-white/80 bg-[#fffdf7]/95 shadow-xl backdrop-blur-md sm:bottom-4 ${
+              actionPanelExpanded
+                ? "max-h-[min(76vh,720px)] w-[min(720px,calc(100vw-1.5rem))] rounded-[30px] p-4"
+                : "max-h-[220px] w-[min(820px,calc(100vw-1.5rem))] rounded-3xl p-3"
+            }`}
             onClick={(event) => event.stopPropagation()}
             onWheel={(event) => event.stopPropagation()}
-            aria-label={`${selectedStation.label} actions`}
+            aria-label={`${
+              selectedNodeId ? nodeLabels[selectedNodeId] : selectedStation.label
+            } actions`}
           >
+            {game.activity ? (
+              <div className="mb-2 rounded-2xl border border-[#dce6d8] bg-[#f4f8ef] px-3 py-2">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="truncate text-[11px] font-semibold">
+                    {game.activity.label}
+                  </p>
+                  <span className="shrink-0 font-mono text-[9px] text-[#66816f]">
+                    {progressPercent}%
+                  </span>
+                </div>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#d4e4cf]">
+                  <div
+                    className="h-full rounded-full bg-[#6d9d5d] transition-[width] duration-500"
+                    style={{
+                      width: `${progressPercent}%`,
+                      backgroundImage:
+                        "linear-gradient(90deg, transparent 0 35%, rgba(255,255,255,.35) 50%, transparent 65%)",
+                      backgroundSize: "22px 100%",
+                      animation: "startup-progress-flow 1.1s linear infinite",
+                    }}
+                  />
+                </div>
+              </div>
+            ) : null}
             <div className="flex items-center gap-3 border-b border-[#e3e9df] pb-2">
               <div className="shrink-0">
                 <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#789080]">
-                  {selectedStation.id === "sales" && game.selfServeCheckout
-                    ? "self-serve · running"
+                  {selectedStation.id === "sales"
+                    ? `${game.team.sdr} SDR · ${game.team.sales} closers · ${salesConversionRateOf(game)}% conversion`
                     : selectedStation.id === "marketing" &&
                         ((game.evergreenContent ?? 0) > 0 ||
                           (game.seoArticles ?? 0) > 0 ||
@@ -2673,43 +5411,89 @@ const StartupSimulator = () => {
                       : "founder operated"}
                 </p>
                 <h2 className="mt-0.5 text-sm font-semibold">
-                  {selectedStation.label}
+                  {selectedNodeId
+                    ? nodeLabels[selectedNodeId]
+                    : selectedStation.label}
                 </h2>
               </div>
               <p className="min-w-0 flex-1 truncate text-[11px] text-[#6b7d70]">
                 {game.lastEvent}
               </p>
               <span className="hidden shrink-0 font-mono text-[9px] text-[#789080] sm:block">
-                {actionNavigationActive ? "← → choose · Enter act" : "Enter to choose"}
+                {actionNavigationActive
+                  ? "↑ ↓ choose · Enter act"
+                  : actionPanelExpanded
+                    ? "Choose an action"
+                    : "Enter to expand"}
               </span>
               <button
                 type="button"
-                onClick={dismissSelectedStation}
-                className="ml-auto shrink-0 text-xl leading-none text-[#789080] hover:text-[#24352b]"
-                aria-label="Close station actions"
+                onClick={() => {
+                  setActionPanelExpanded((current) => !current);
+                  setActionNavigationActive(false);
+                  setHighlightedActionIndex(0);
+                }}
+                className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#dce6d8] bg-white text-lg leading-none text-[#789080] transition hover:border-[#94b28c] hover:text-[#24352b]"
+                aria-label={
+                  actionPanelExpanded
+                    ? "Collapse station actions"
+                    : "Expand station actions"
+                }
+                aria-expanded={actionPanelExpanded}
               >
-                ×
+                <span aria-hidden="true">
+                  {actionPanelExpanded ? "⤡" : "⤢"}
+                </span>
               </button>
             </div>
 
-            <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+            <div
+              className={`mt-2 flex gap-2 pb-1 ${
+                actionPanelExpanded
+                  ? "max-h-[calc(min(76vh,720px)-76px)] flex-col overflow-y-auto overscroll-y-contain pr-1"
+                  : "overflow-x-auto overscroll-x-contain"
+              }`}
+              style={
+                actionPanelExpanded
+                  ? { overscrollBehaviorY: "contain" }
+                  : { overscrollBehaviorX: "contain" }
+              }
+            >
               {selectedActions.map((action, actionIndex) => {
-                const blockedByCash = action.cost > game.cash;
+                const cost = actionCost(action, game);
+                const monthlyCost = action.monthlyCost ?? 0;
+                const requiredCash = Math.max(cost, monthlyCost);
+                const blockedByCash = requiredCash > game.cash;
                 const blockedByRule = action.disabled?.(game) ?? false;
                 const disabled = Boolean(game.activity) || !isAtSelectedStation || blockedByCash || blockedByRule;
                 const highlighted =
                   actionNavigationActive && actionIndex === highlightedActionIndex;
                 const retiring = action.id === "buildMvp" && game.product > 0;
                 const reason = blockedByCash
-                  ? `Need ${formatMoney(action.cost - game.cash)} more`
+                  ? monthlyCost > 0
+                    ? `Need ${formatMoney(requiredCash - game.cash)} more to cover month one`
+                    : `Need ${formatMoney(requiredCash - game.cash)} more`
                   : blockedByRule
                     ? action.disabledReason?.(game)
-                    : `${action.days} days${action.cost > 0 ? ` · pay now` : ""}`;
+                    : `${action.days} days${
+                        monthlyCost > 0
+                          ? action.id === "launchCampaign" ||
+                            action.id === "increasePaidMediaBudget"
+                            ? " · recurring spend"
+                            : " · recurring payroll"
+                          : cost > 0
+                            ? " · pay now"
+                            : ""
+                      }`;
 
                 return (
                   <div
                     key={action.id}
-                    className="w-[220px] min-w-[220px] shrink-0 overflow-hidden"
+                    className={
+                      actionPanelExpanded
+                        ? "w-full min-w-0 shrink-0 overflow-hidden"
+                        : "w-[220px] min-w-[220px] shrink-0 overflow-hidden"
+                    }
                     style={{
                       animation: retiring
                         ? "startup-retire-action .65s ease-in-out forwards"
@@ -2717,11 +5501,16 @@ const StartupSimulator = () => {
                     }}
                   >
                     <button
+                      ref={(element) => {
+                        actionButtonRefs.current[actionIndex] = element;
+                      }}
                       type="button"
                       onClick={() => startAction(action)}
                       onMouseEnter={() => setHighlightedActionIndex(actionIndex)}
                       disabled={disabled}
-                      className={`h-full w-full rounded-2xl border bg-white p-2.5 text-left transition hover:border-[#94b28c] hover:bg-[#f7fbf4] disabled:cursor-not-allowed disabled:opacity-45 ${
+                      className={`h-full w-full rounded-2xl border bg-white text-left transition hover:border-[#94b28c] hover:bg-[#f7fbf4] disabled:cursor-not-allowed disabled:opacity-45 ${
+                        actionPanelExpanded ? "p-3.5" : "p-2.5"
+                      } ${
                         highlighted
                           ? "border-[#24352b] ring-2 ring-[#24352b]/70 ring-offset-2"
                           : "border-[#dce6d8]"
@@ -2732,8 +5521,29 @@ const StartupSimulator = () => {
                       <div className="flex items-start gap-2">
                         <span className="text-lg" aria-hidden="true">{action.emoji}</span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-xs font-semibold">{actionLabel(action)}</span>
-                          <span className="mt-1 block truncate text-[10px] text-[#6b7d70]">{action.description}</span>
+                          <span className="flex items-start gap-1.5 text-xs font-semibold">
+                            <span
+                              className={`min-w-0 flex-1 leading-snug ${
+                                actionPanelExpanded ? "" : "line-clamp-2"
+                              }`}
+                            >
+                              {actionTitle(action, game)}
+                            </span>
+                            {cost > 0 || monthlyCost > 0 ? (
+                              <span className="shrink-0 rounded-md bg-[#f4ead3] px-1.5 py-0.5 font-mono text-[9px] text-[#6d5236]">
+                                {monthlyCost > 0
+                                  ? `${formatMoney(monthlyCost)}/mo`
+                                  : formatMoney(cost)}
+                              </span>
+                            ) : null}
+                          </span>
+                          <span
+                            className={`mt-1 block text-[10px] text-[#6b7d70] ${
+                              actionPanelExpanded ? "leading-relaxed" : "truncate"
+                            }`}
+                          >
+                            {action.description}
+                          </span>
                           <span className="mt-1.5 block font-mono text-[9px] text-[#789080]">{reason}</span>
                         </span>
                       </div>
@@ -2745,7 +5555,36 @@ const StartupSimulator = () => {
           </aside>
         ) : null}
 
-        {game.bankrupt ? (
+        {game.outcome ? (
+          <div
+            className="absolute inset-0 z-50 flex items-center justify-center bg-[#24352b]/35 p-5 backdrop-blur-sm"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="w-full max-w-sm rounded-[32px] border border-white/80 bg-[#fffdf7] p-6 text-center shadow-2xl">
+              <div className="text-4xl" aria-hidden="true">
+                {game.outcome === "public" ? "🔔" : "🤝"}
+              </div>
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[#789080]">
+                {game.outcome === "public" ? "public company" : "company acquired"} · year {startupYear}
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold">
+                {game.outcome === "public" ? "You rang the bell" : "You made the exit"}
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-[#5c6f60]">
+                The company reached {formatCompactMoney(game.exitValue)}. Your remaining {ownershipPercent}% stake is worth about {formatCompactMoney(founderExitValue)}.
+              </p>
+              <button
+                type="button"
+                onClick={resetGame}
+                className="mt-5 w-full rounded-2xl bg-[#24352b] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#344c3d]"
+              >
+                build another company
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {game.bankrupt && showBankruptcySummary ? (
           <div
             className="absolute inset-0 z-50 flex items-center justify-center bg-[#24352b]/35 p-5 backdrop-blur-sm"
             onClick={(event) => event.stopPropagation()}
@@ -2762,13 +5601,88 @@ const StartupSimulator = () => {
               <div className="mx-auto mt-4 w-fit rounded-full bg-[#edf5e7] px-4 py-2 font-mono text-sm font-semibold">
                 score {score.toLocaleString()}
               </div>
+              <div className="mt-5 grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBankruptcySummary(false);
+                    openStartupHealth();
+                  }}
+                  className="w-full rounded-2xl bg-[#24352b] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#344c3d]"
+                >
+                  view analysis
+                </button>
+                <button
+                  type="button"
+                  onClick={resetGame}
+                  className="w-full rounded-2xl border border-[#dce6d8] bg-white px-4 py-3 text-sm font-semibold text-[#405247] transition hover:bg-[#f1f6ed]"
+                >
+                  start over
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {game.bankrupt && !showBankruptcySummary ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 z-50 flex justify-center px-4">
+            <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-white/80 bg-[#fffdf7]/95 p-2 shadow-xl backdrop-blur-md">
+              <span className="hidden px-2 text-xs text-[#688071] sm:inline">
+                Final company state
+              </span>
+              <button
+                type="button"
+                onClick={openStartupHealth}
+                className="rounded-xl border border-[#dce6d8] bg-white px-3 py-2 text-xs font-semibold transition hover:bg-[#f1f6ed]"
+              >
+                view analysis
+              </button>
               <button
                 type="button"
                 onClick={resetGame}
-                className="mt-5 w-full rounded-2xl bg-[#24352b] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#344c3d]"
+                className="rounded-xl bg-[#24352b] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#344c3d]"
               >
                 start over
               </button>
+            </div>
+          </div>
+        ) : null}
+
+        {exitIntent ? (
+          <div
+            className="absolute inset-0 z-[70] flex items-center justify-center bg-[#24352b]/40 p-5 backdrop-blur-sm"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="startup-exit-title"
+          >
+            <div className="w-full max-w-sm rounded-[30px] border border-white/80 bg-[#fffdf7] p-6 text-center shadow-2xl">
+              <div className="text-4xl" aria-hidden="true">👋</div>
+              <h2 id="startup-exit-title" className="mt-3 text-xl font-semibold">
+                Leave Startup Sim?
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-[#5c6f60]">
+                Your current company is saved on this device and can be resumed later.
+                {exitIntent === "website"
+                  ? " This button takes you to Ashvin’s website."
+                  : ""}
+              </p>
+              <div className="mt-5 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setExitIntent(null)}
+                  className="flex-1 rounded-2xl border border-[#cfdcc9] bg-white px-4 py-3 text-sm font-semibold transition hover:bg-[#f3f8ef]"
+                >
+                  Keep playing
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmExit}
+                  className="flex-1 rounded-2xl bg-[#24352b] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#344c3d]"
+                >
+                  {exitIntent === "website" ? "Visit website" : "Leave game"}
+                </button>
+              </div>
             </div>
           </div>
         ) : null}
