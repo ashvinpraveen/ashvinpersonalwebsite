@@ -18,6 +18,7 @@ export function createMetadata({
   path = "/",
   type = "website",
   image = DEFAULT_OG_IMAGE,
+  imageAlt = SITE_NAME,
   noIndex = false,
 }: {
   title: string;
@@ -25,6 +26,7 @@ export function createMetadata({
   path?: string;
   type?: "website" | "article";
   image?: string;
+  imageAlt?: string;
   noIndex?: boolean;
 }): Metadata {
   const url = absoluteUrl(path);
@@ -50,7 +52,7 @@ export function createMetadata({
           secureUrl: imageUrl,
           width: 1200,
           height: 630,
-          alt: SITE_NAME,
+          alt: imageAlt,
           type: "image/png",
         },
       ],
@@ -63,7 +65,7 @@ export function createMetadata({
       images: [
         {
           url: imageUrl,
-          alt: SITE_NAME,
+          alt: imageAlt,
         },
       ],
     },
