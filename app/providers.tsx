@@ -29,7 +29,8 @@ function MaybeConvexProvider({ children }: { children: ReactNode }) {
 export default function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
   const pathname = usePathname();
-  const showChatWidget = !pathname?.startsWith("/admin") && pathname !== "/diary";
+  const showChatWidget =
+    !pathname?.startsWith("/admin") && pathname !== "/diary" && pathname !== "/startup";
 
   return (
     <PostHogProvider>
