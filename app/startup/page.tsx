@@ -10,6 +10,7 @@ export const metadata: Metadata = createMetadata({
   title,
   description,
   path: "/startup",
+  image: "/og-startup.png",
 });
 
 export default function StartupPage() {
