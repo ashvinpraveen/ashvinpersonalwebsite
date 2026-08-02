@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return createMetadata({
     title: "Activity — AI Run Club",
     description: "Activity detail with map, splits, kudos, and comments.",
-    path: `/run-club/a/${slug}`,
+    path: `/run/a/${slug}`,
   });
 }
 

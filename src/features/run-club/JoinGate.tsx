@@ -16,7 +16,7 @@ export default function JoinGate({
 
   return (
     <form
-      className="rounded-[28px] border border-white/50 bg-[color:var(--run-panel)] p-6 shadow-[0_18px_50px_rgba(12,40,28,0.18)]"
+      className="max-h-[min(70dvh,34rem)] overflow-y-auto rounded-[24px] border border-white/50 bg-[color:var(--run-panel)] p-5 shadow-[0_18px_50px_rgba(12,40,28,0.18)] sm:p-6"
       onSubmit={(event) => {
         event.preventDefault();
         setError(null);
@@ -28,10 +28,10 @@ export default function JoinGate({
       <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[color:var(--run-muted)]">
         Join the pack
       </p>
-      <h2 className="mt-2 font-[family-name:var(--run-display)] text-3xl">
+      <h2 className="mt-1.5 font-[family-name:var(--run-display)] text-2xl sm:text-3xl">
         What should we call you?
       </h2>
-      <p className="mt-2 text-sm text-[color:var(--run-muted)]">
+      <p className="mt-1.5 text-sm text-[color:var(--run-muted)]">
         {CLUB_SCHEDULE.days.join(" & ")} · {CLUB_SCHEDULE.localTime} · {CLUB_SCHEDULE.venue}
       </p>
       <input
@@ -39,13 +39,14 @@ export default function JoinGate({
         onChange={(event) => setNameDraft(event.target.value)}
         maxLength={MAX_DISPLAY_NAME_LENGTH}
         placeholder="Your name"
-        className="mt-5 w-full rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-3 text-base outline-none focus:border-[color:var(--run-accent-deep)]"
+        className="mt-4 w-full rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-3 text-base outline-none focus:border-[color:var(--run-accent-deep)]"
         autoFocus
+        autoComplete="nickname"
       />
       <button
         type="submit"
         disabled={busy || !normalizeDisplayName(nameDraft)}
-        className="mt-4 w-full rounded-full bg-[color:var(--run-ink)] px-4 py-3 text-sm font-semibold text-[color:var(--run-accent)] disabled:opacity-40"
+        className="mt-3 w-full rounded-full bg-[color:var(--run-ink)] px-4 py-3 text-sm font-semibold text-[color:var(--run-accent)] disabled:opacity-40"
       >
         {busy ? "Joining…" : "Enter AI Run Club"}
       </button>

@@ -37,24 +37,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.5,
     },
-    {
-      url: absoluteUrl("/run-club"),
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.7,
-    },
-    {
-      url: absoluteUrl("/run-club/feed"),
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.6,
-    },
-    {
-      url: absoluteUrl("/run-club/events"),
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.6,
-    },
   ];
 
   const notes = await fetchNotes().catch(() => []);

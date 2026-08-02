@@ -37,7 +37,7 @@ function RunClubShareApp({ slug }: { slug: string }) {
             This share link may be mistyped or from another environment.
           </p>
           <Link
-            href="/run-club"
+            href="/run"
             className="mt-5 inline-flex rounded-full bg-[color:var(--run-ink)] px-4 py-2.5 text-sm font-medium text-[color:var(--run-accent)]"
           >
             Open AI Run Club
@@ -56,13 +56,13 @@ function RunClubShareApp({ slug }: { slug: string }) {
           />
           <div className="flex flex-wrap gap-3 text-sm">
             <Link
-              href={`/run-club/a/${activity.shareSlug}`}
+              href={`/run/a/${activity.shareSlug}`}
               className="font-medium text-[color:var(--run-accent-deep)] underline-offset-2 hover:underline"
             >
               Open full activity →
             </Link>
             <Link
-              href="/run-club"
+              href="/run"
               className="font-medium text-[color:var(--run-accent-deep)] underline-offset-2 hover:underline"
             >
               Record with the club →

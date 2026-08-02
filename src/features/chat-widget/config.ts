@@ -17,12 +17,12 @@ export const SIDE_PANEL_ANIMATION_MS = 220;
 
 export const SITE_ROUTES = [
   { path: "/", label: "Home" },
-  { path: "/run-club", label: "Run club" },
   { path: "/diary", label: "Diary" },
   { path: "/blog", label: "Writing" },
   { path: "/resources", label: "Resources" },
   { path: "/postcard", label: "Postcard" },
   { path: "/postcards", label: "Postcards" },
+  { path: "/run", label: "AI Run Club" },
 ] as const;
 
 export const SECTION_LABELS: Record<string, string> = {

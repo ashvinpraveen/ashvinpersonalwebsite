@@ -102,11 +102,29 @@ export default defineSchema({
         label: v.optional(v.string()),
       }),
     ),
+    routeId: v.optional(v.id("runClubRoutes")),
     notes: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_startsAt", ["startsAt"])
     .index("by_status_and_startsAt", ["status", "startsAt"]),
+  runClubRoutes: defineTable({
+    clientId: v.string(),
+    displayName: v.string(),
+    avatarHue: v.number(),
+    name: v.string(),
+    waypoints: v.array(
+      v.object({
+        lat: v.number(),
+        lng: v.number(),
+        label: v.optional(v.string()),
+      }),
+    ),
+    distanceMeters: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_clientId_and_createdAt", ["clientId", "createdAt"]),
   runClubPresence: defineTable({
     clientId: v.string(),
     sessionId: v.optional(v.id("runClubSessions")),

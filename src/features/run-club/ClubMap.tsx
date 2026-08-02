@@ -9,6 +9,7 @@ import {
   Popup,
   TileLayer,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -23,6 +24,8 @@ type ClubMapProps = {
   selfPath: LatLng[];
   selfPosition?: LatLng | null;
   followSelf?: boolean;
+  drawing?: boolean;
+  onMapClick?: (point: LatLng) => void;
 };
 
 function MapLifecycle() {
@@ -46,6 +49,22 @@ function MapLifecycle() {
   return null;
 }
 
+function MapClickHandler({
+  enabled,
+  onMapClick,
+}: {
+  enabled: boolean;
+  onMapClick?: (point: LatLng) => void;
+}) {
+  useMapEvents({
+    click(event) {
+      if (!enabled || !onMapClick) return;
+      onMapClick({ lat: event.latlng.lat, lng: event.latlng.lng });
+    },
+  });
+  return null;
+}
+
 function FitRoute({
   start,
   route,
@@ -64,14 +83,14 @@ function FitRoute({
   useEffect(() => {
     if (followSelf) return;
 
-    const points: L.LatLngExpression[] = [
-      [start.lat, start.lng],
-      ...route.map((point) => [point.lat, point.lng] as L.LatLngExpression),
-    ];
-    if (points.length === 1) {
-      map.setView(points[0], 16);
+    if (route.length < 2) {
+      map.setView([start.lat, start.lng], 16);
       return;
     }
+
+    const points: L.LatLngExpression[] = route.map(
+      (point) => [point.lat, point.lng] as L.LatLngExpression,
+    );
     map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 16 });
   }, [followSelf, map, route, routeKey, start.lat, start.lng]);
 
@@ -129,6 +148,19 @@ function startIcon() {
   });
 }
 
+function waypointIcon(index: number) {
+  return L.divIcon({
+    className: "run-club-marker",
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+    html: `<div style="
+      width:22px;height:22px;border-radius:999px;background:#123526;color:#b8e05c;
+      display:grid;place-items:center;font:700 10px Outfit,sans-serif;
+      border:2px solid #f4ffe4;
+    ">${index + 1}</div>`,
+  });
+}
+
 export default function ClubMap({
   start,
   route,
@@ -137,6 +169,8 @@ export default function ClubMap({
   selfPath,
   selfPosition,
   followSelf = false,
+  drawing = false,
+  onMapClick,
 }: ClubMapProps) {
   const routePositions = useMemo(
     () => route.map((point) => [point.lat, point.lng] as [number, number]),
@@ -161,6 +195,7 @@ export default function ClubMap({
         subdomains="abcd"
       />
       <MapLifecycle />
+      <MapClickHandler enabled={drawing} onMapClick={onMapClick} />
       <FitRoute start={start} route={route} followSelf={followSelf} />
       <FollowSelf followSelf={followSelf} selfPosition={selfPosition} />
       {routePositions.length > 1 ? (
@@ -169,8 +204,7 @@ export default function ClubMap({
           pathOptions={{
             color: "#2f7a4b",
             weight: 5,
-            opacity: 0.75,
-            dashArray: "10 10",
+            opacity: 0.9,
           }}
         />
       ) : null}
@@ -196,6 +230,15 @@ export default function ClubMap({
           weight: 1,
         }}
       />
+      {drawing || route.length > 0
+        ? route.map((point, index) => (
+            <Marker
+              key={`${point.lat}-${point.lng}-${index}`}
+              position={[point.lat, point.lng]}
+              icon={waypointIcon(index)}
+            />
+          ))
+        : null}
       {presence.map((runner) => (
         <Marker
           key={runner.clientId}

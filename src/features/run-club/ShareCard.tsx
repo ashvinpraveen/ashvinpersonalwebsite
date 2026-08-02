@@ -111,8 +111,8 @@ export default function ShareCard({
   const [copied, setCopied] = useState(false);
   const shareUrl =
     typeof window === "undefined"
-      ? `https://ashvinpraveen.com/run-club/s/${shareSlug}`
-      : `${window.location.origin}/run-club/s/${shareSlug}`;
+      ? `https://ashvinpraveen.com/run/s/${shareSlug}`
+      : `${window.location.origin}/run/s/${shareSlug}`;
 
   async function handleCopy() {
     await copyText(shareUrl);
@@ -194,7 +194,7 @@ export default function ShareCard({
       48,
       height - 80,
     );
-    ctx.fillText("malaysian.ai · ashvinpraveen.com/run-club", 48, height - 48);
+    ctx.fillText("malaysian.ai · ashvinpraveen.com/run", 48, height - 48);
 
     const link = document.createElement("a");
     link.download = `ai-run-club-${shareSlug}.png`;
