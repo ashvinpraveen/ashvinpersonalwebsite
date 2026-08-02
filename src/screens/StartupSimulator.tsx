@@ -263,6 +263,14 @@ const STARTUP_SAVE_VERSION = 1;
 const STARTUP_HELP_SEEN_KEY = "ashvin-startup-help-seen-v1";
 const NARROW_VIEWPORT_PX = 640;
 const MOBILE_WORLD_ZOOM = 0.82;
+/** Wider world on phones so %-based plot gaps stay readable. */
+const DESKTOP_WORLD_SPAN = 1.2;
+const MOBILE_WORLD_SPAN = 1.55;
+/** Fixed-px plot tiles still need a downscale on phone widths. */
+const MOBILE_PLOT_SCALE = 0.5;
+
+const plotPixelSize = (baseSize: number, isNarrow: boolean) =>
+  Math.max(46, Math.round(baseSize * (isNarrow ? MOBILE_PLOT_SCALE : 1)));
 
 type StartupSave = {
   version: number;
@@ -288,7 +296,7 @@ const stations: Station[] = [
     emoji: "🏦",
     label: "Investors",
     subtitle: "Cash for ownership",
-    x: 66,
+    x: 62,
     y: 90,
     color: "border-amber-300/80 bg-amber-50/90",
   },
@@ -297,7 +305,7 @@ const stations: Station[] = [
     emoji: "🏛️",
     label: "Business bank",
     subtitle: "Borrow without giving up equity",
-    x: 66,
+    x: 62,
     y: 100,
     color: "border-blue-300/80 bg-blue-50/90",
   },
@@ -315,7 +323,7 @@ const stations: Station[] = [
     emoji: "🤝",
     label: "M&A",
     subtitle: "Buy a company—or sell yours",
-    x: 82,
+    x: 86,
     y: 90,
     color: "border-orange-300/80 bg-orange-50/90",
   },
@@ -324,7 +332,7 @@ const stations: Station[] = [
     emoji: "🏙️",
     label: "Investment bank",
     subtitle: "Prepare the company for public markets",
-    x: 82,
+    x: 86,
     y: 100,
     color: "border-slate-300/80 bg-slate-50/90",
   },
@@ -3019,6 +3027,7 @@ const StartupSimulator = () => {
     return () => window.removeEventListener("popstate", interceptBrowserBack);
   }, []);
 
+  const worldSpan = isNarrowViewport ? MOBILE_WORLD_SPAN : DESKTOP_WORLD_SPAN;
   const selectedStation = selectedStationId ? getStation(selectedStationId) : null;
   const selectedActions = useMemo(
     () => {
@@ -3657,14 +3666,14 @@ const StartupSimulator = () => {
         emoji,
         startX,
         startY,
-        walkX: (endX - startX) * 1.2,
-        walkY: (endY - startY) * 1.2,
-        quarterX: (quarterX - startX) * 1.2,
-        quarterY: (quarterY - startY) * 1.2,
-        midX: (midX - startX) * 1.2,
-        midY: (midY - startY) * 1.2,
-        threeQuarterX: (threeQuarterX - startX) * 1.2,
-        threeQuarterY: (threeQuarterY - startY) * 1.2,
+        walkX: (endX - startX) * worldSpan,
+        walkY: (endY - startY) * worldSpan,
+        quarterX: (quarterX - startX) * worldSpan,
+        quarterY: (quarterY - startY) * worldSpan,
+        midX: (midX - startX) * worldSpan,
+        midY: (midY - startY) * worldSpan,
+        threeQuarterX: (threeQuarterX - startX) * worldSpan,
+        threeQuarterY: (threeQuarterY - startY) * worldSpan,
         durationMs,
         delayMs,
       });
@@ -3859,6 +3868,7 @@ const StartupSimulator = () => {
     game.seoArticles,
     game.team.sdr,
     referralRate,
+    worldSpan,
   ]);
 
   useEffect(() => {
@@ -4046,9 +4056,10 @@ const StartupSimulator = () => {
       setSelectedStationId(nearbyStation.id);
       setHighlightedActionIndex(0);
       setActionNavigationActive(false);
-      setActionPanelExpanded(isNarrowViewport);
+      // Keep the compact strip on approach; expand is opt-in via the panel control.
+      setActionPanelExpanded(false);
     }
-  }, [dismissedStationId, game, isNarrowViewport, selectedStationId]);
+  }, [dismissedStationId, game, selectedStationId]);
 
   const handleWorldClick = (event: MouseEvent<HTMLDivElement>) => {
     if (suppressWorldClickRef.current) {
@@ -4057,8 +4068,12 @@ const StartupSimulator = () => {
     }
 
     const bounds = event.currentTarget.getBoundingClientRect();
-    const horizontalMove = ((event.clientX - bounds.left - bounds.width / 2) / bounds.width) * (100 / 1.2);
-    const verticalMove = ((event.clientY - bounds.top - bounds.height / 2) / bounds.height) * (100 / 1.2);
+    const horizontalMove =
+      ((event.clientX - bounds.left - bounds.width / 2) / bounds.width) *
+      (100 / worldSpan);
+    const verticalMove =
+      ((event.clientY - bounds.top - bounds.height / 2) / bounds.height) *
+      (100 / worldSpan);
     setSelectedNodeId(null);
     setGame((current) => ({
       ...current,
@@ -4150,9 +4165,9 @@ const StartupSimulator = () => {
 
     const bounds = event.currentTarget.getBoundingClientRect();
     const horizontalMove =
-      (deltaX / bounds.width) * (100 / (1.2 * worldZoom));
+      (deltaX / bounds.width) * (100 / (worldSpan * worldZoom));
     const verticalMove =
-      (deltaY / bounds.height) * (100 / (1.2 * worldZoom));
+      (deltaY / bounds.height) * (100 / (worldSpan * worldZoom));
     setGame((current) => ({
       ...current,
       player: {
@@ -4215,7 +4230,7 @@ const StartupSimulator = () => {
     setSelectedNodeId(nodeId ?? null);
     setHighlightedActionIndex(0);
     setActionNavigationActive(false);
-    setActionPanelExpanded(isNarrowViewport);
+    setActionPanelExpanded(false);
     setGame((current) => ({
       ...current,
       player: position ?? { x: station.x, y: station.y },
@@ -4849,14 +4864,16 @@ const StartupSimulator = () => {
         ) : null}
 
         <div
-          className={`absolute h-[120vh] w-[120vw] ${
+          className={`absolute ${
             isDraggingWorld
               ? ""
               : "transition-[left,top,transform] duration-300 ease-out"
           }`}
           style={{
-            left: `${50 - game.player.x * 1.2 * worldZoom}vw`,
-            top: `${50 - game.player.y * 1.2 * worldZoom}vh`,
+            width: `${worldSpan * 100}vw`,
+            height: `${worldSpan * 100}vh`,
+            left: `${50 - game.player.x * worldSpan * worldZoom}vw`,
+            top: `${50 - game.player.y * worldSpan * worldZoom}vh`,
             transform: `scale(${worldZoom})`,
             transformOrigin: "top left",
           }}
@@ -5115,7 +5132,7 @@ const StartupSimulator = () => {
             const plotLevel = channel.unlocked
               ? Math.min(6, Math.max(1, channel.strength))
               : 1;
-            const plotSize = 80 + plotLevel * 9;
+            const plotSize = plotPixelSize(80 + plotLevel * 9, isNarrowViewport);
             const isStarterPlot = channel.id === "social" && !channel.unlocked;
             return (
               <button
@@ -5185,9 +5202,12 @@ const StartupSimulator = () => {
           })}
 
           {salesExpansionPlots.map((plot) => {
-            const plotSize = plot.id === "outreach"
-              ? Math.min(118, 88 + plot.people * 6)
-              : Math.min(132, 84 + selfServeLevelOf(game) * 8);
+            const plotSize = plotPixelSize(
+              plot.id === "outreach"
+                ? Math.min(118, 88 + plot.people * 6)
+                : Math.min(132, 84 + selfServeLevelOf(game) * 8),
+              isNarrowViewport,
+            );
             return (
               <button
                 key={plot.id}
@@ -5298,12 +5318,14 @@ const StartupSimulator = () => {
                         (game.helpDocs ? 1 : 0) +
                         (game.supportProcess ?? 0)
                       : 1;
-              const plotSize =
+              const plotSize = plotPixelSize(
                 station.id === "product" && game.product === 0
                   ? 88
                   : capitalStationIds.includes(station.id)
                     ? 80
-                    : Math.min(136, 98 + Math.max(1, plotLevel) * 8);
+                    : Math.min(136, 98 + Math.max(1, plotLevel) * 8),
+                isNarrowViewport,
+              );
               const isEmptyProduct =
                 station.id === "product" && game.product === 0;
 
@@ -5552,8 +5574,8 @@ const StartupSimulator = () => {
           <aside
             className={`startup-action-panel absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 overflow-hidden overscroll-contain border border-white/80 bg-[#fffdf7]/95 shadow-xl backdrop-blur-md sm:bottom-4 ${
               actionPanelExpanded
-                ? "max-h-[min(72dvh,720px)] w-[min(720px,calc(100vw-1rem))] rounded-[26px] p-3.5 sm:max-h-[min(76vh,720px)] sm:w-[min(720px,calc(100vw-1.5rem))] sm:rounded-[30px] sm:p-4"
-                : "max-h-[240px] w-[min(820px,calc(100vw-1rem))] rounded-3xl p-3 sm:max-h-[220px] sm:w-[min(820px,calc(100vw-1.5rem))]"
+                ? "max-h-[min(36dvh,340px)] w-[min(720px,calc(100vw-1rem))] rounded-[26px] p-3 sm:max-h-[min(76vh,720px)] sm:w-[min(720px,calc(100vw-1.5rem))] sm:rounded-[30px] sm:p-4"
+                : "max-h-[min(30dvh,190px)] w-[min(820px,calc(100vw-1rem))] rounded-3xl p-2.5 sm:max-h-[220px] sm:p-3 sm:w-[min(820px,calc(100vw-1.5rem))]"
             }`}
             onClick={(event) => event.stopPropagation()}
             onWheel={(event) => event.stopPropagation()}
@@ -5645,10 +5667,10 @@ const StartupSimulator = () => {
             </div>
 
             <div
-              className={`mt-2 flex gap-2 pb-1 ${
+              className={`mt-2 flex pb-1 ${
                 actionPanelExpanded
-                  ? "max-h-[calc(min(72dvh,720px)-84px)] flex-col overflow-y-auto overscroll-y-contain pr-1 sm:max-h-[calc(min(76vh,720px)-76px)]"
-                  : "overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+                  ? "max-h-[calc(min(36dvh,340px)-80px)] flex-col gap-3 overflow-y-auto overscroll-y-contain pr-1 sm:max-h-[calc(min(76vh,720px)-76px)] sm:gap-2.5"
+                  : "gap-3 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] sm:gap-2"
               }`}
               style={
                 actionPanelExpanded
@@ -5705,8 +5727,8 @@ const StartupSimulator = () => {
                       onClick={() => startAction(action)}
                       onMouseEnter={() => setHighlightedActionIndex(actionIndex)}
                       disabled={disabled}
-                      className={`h-full min-h-[4.5rem] w-full touch-manipulation rounded-2xl border bg-white text-left transition hover:border-[#94b28c] hover:bg-[#f7fbf4] disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-0 ${
-                        actionPanelExpanded ? "p-3.5" : "p-3 sm:p-2.5"
+                      className={`h-full min-h-[4rem] w-full touch-manipulation rounded-2xl border bg-white text-left transition hover:border-[#94b28c] hover:bg-[#f7fbf4] disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-0 ${
+                        actionPanelExpanded ? "p-3 sm:p-3.5" : "p-2.5 sm:p-2.5"
                       } ${
                         highlighted
                           ? "border-[#24352b] ring-2 ring-[#24352b]/70 ring-offset-2"
