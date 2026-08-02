@@ -333,9 +333,17 @@ body[data-chat-layout="compact"] .md\:py-14 {
     linear-gradient(180deg, #e7f6d8 0%, #d4ebc4 42%, #c3dfb4 100%);
 }
 
-.run-club-shell .leaflet-container {
+/* Keep Leaflet panes (z-index 200–700) inside the map layer so UI chrome stays tappable. */
+.run-club-map-layer {
+  z-index: 0;
+  isolation: isolate;
+}
+
+.run-club-shell .leaflet-container,
+.run-club-map {
   background: #d7ebc8;
   font: inherit;
+  touch-action: pan-x pan-y;
 }
 
 .run-club-marker,

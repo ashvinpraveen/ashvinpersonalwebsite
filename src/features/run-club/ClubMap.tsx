@@ -25,24 +25,44 @@ type ClubMapProps = {
   followSelf?: boolean;
 };
 
+function MapLifecycle() {
+  const map = useMap();
+
+  useEffect(() => {
+    const invalidate = () => {
+      map.invalidateSize({ animate: false });
+    };
+    invalidate();
+    const timer = window.setTimeout(invalidate, 250);
+    window.addEventListener("resize", invalidate);
+    window.addEventListener("orientationchange", invalidate);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("resize", invalidate);
+      window.removeEventListener("orientationchange", invalidate);
+    };
+  }, [map]);
+
+  return null;
+}
+
 function FitRoute({
   start,
   route,
-  selfPosition,
   followSelf,
 }: {
   start: LatLng;
   route: RouteWaypoint[];
-  selfPosition?: LatLng | null;
   followSelf?: boolean;
 }) {
   const map = useMap();
+  const routeKey = useMemo(
+    () => route.map((point) => `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`).join("|"),
+    [route],
+  );
 
   useEffect(() => {
-    if (followSelf && selfPosition) {
-      map.panTo([selfPosition.lat, selfPosition.lng], { animate: true });
-      return;
-    }
+    if (followSelf) return;
 
     const points: L.LatLngExpression[] = [
       [start.lat, start.lng],
@@ -53,7 +73,24 @@ function FitRoute({
       return;
     }
     map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 16 });
-  }, [followSelf, map, route, selfPosition, start.lat, start.lng]);
+  }, [followSelf, map, route, routeKey, start.lat, start.lng]);
+
+  return null;
+}
+
+function FollowSelf({
+  followSelf,
+  selfPosition,
+}: {
+  followSelf?: boolean;
+  selfPosition?: LatLng | null;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!followSelf || !selfPosition) return;
+    map.panTo([selfPosition.lat, selfPosition.lng], { animate: true });
+  }, [followSelf, map, selfPosition]);
 
   return null;
 }
@@ -114,20 +151,18 @@ export default function ClubMap({
     <MapContainer
       center={[start.lat, start.lng]}
       zoom={15}
-      className="h-full w-full"
+      className="run-club-map h-full w-full"
       zoomControl={false}
       attributionControl={false}
+      preferCanvas
     >
       <TileLayer
         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         subdomains="abcd"
       />
-      <FitRoute
-        start={start}
-        route={route}
-        selfPosition={selfPosition}
-        followSelf={followSelf}
-      />
+      <MapLifecycle />
+      <FitRoute start={start} route={route} followSelf={followSelf} />
+      <FollowSelf followSelf={followSelf} selfPosition={selfPosition} />
       {routePositions.length > 1 ? (
         <Polyline
           positions={routePositions}
