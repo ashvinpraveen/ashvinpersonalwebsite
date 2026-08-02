@@ -25,20 +25,17 @@ export default function JoinGate({
         });
       }}
     >
-      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[color:var(--run-muted)]">
-        Join the pack
-      </p>
-      <h2 className="mt-1.5 font-[family-name:var(--run-display)] text-2xl sm:text-3xl">
-        What should we call you?
+      <h2 className="font-[family-name:var(--run-display)] text-2xl sm:text-3xl">
+        Your name
       </h2>
-      <p className="mt-1.5 text-sm text-[color:var(--run-muted)]">
-        {CLUB_SCHEDULE.days.join(" & ")} · {CLUB_SCHEDULE.localTime} · {CLUB_SCHEDULE.venue}
+      <p className="mt-1 text-sm text-[color:var(--run-muted)]">
+        {CLUB_SCHEDULE.days.join(" & ")} · {CLUB_SCHEDULE.localTime}
       </p>
       <input
         value={nameDraft}
         onChange={(event) => setNameDraft(event.target.value)}
         maxLength={MAX_DISPLAY_NAME_LENGTH}
-        placeholder="Your name"
+        placeholder="Name"
         className="mt-4 w-full rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-3 text-base outline-none focus:border-[color:var(--run-accent-deep)]"
         autoFocus
         autoComplete="nickname"
@@ -48,7 +45,7 @@ export default function JoinGate({
         disabled={busy || !normalizeDisplayName(nameDraft)}
         className="mt-3 w-full rounded-full bg-[color:var(--run-ink)] px-4 py-3 text-sm font-semibold text-[color:var(--run-accent)] disabled:opacity-40"
       >
-        {busy ? "Joining…" : "Enter AI Run Club"}
+        {busy ? "…" : "Join"}
       </button>
       {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
     </form>

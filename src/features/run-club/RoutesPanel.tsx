@@ -16,7 +16,6 @@ export type ClubRoute = {
 type RoutesPanelProps = {
   startLabel: string;
   address: string;
-  notes?: string;
   routes: ClubRoute[] | undefined;
   selectedRouteId: string | null;
   selfClientId?: string;
@@ -32,7 +31,6 @@ type RoutesPanelProps = {
 export default function RoutesPanel({
   startLabel,
   address,
-  notes,
   routes,
   selectedRouteId,
   selfClientId,
@@ -47,15 +45,21 @@ export default function RoutesPanel({
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 
   return (
-    <div className="space-y-4 px-1 pb-1">
-      <div>
-        <p className="font-[family-name:var(--run-display)] text-2xl text-[color:var(--run-ink)]">
-          {startLabel}
-        </p>
-        <p className="mt-1 text-sm text-[color:var(--run-muted)]">{address}</p>
-        <p className="mt-2 text-sm leading-relaxed text-[color:var(--run-ink)]">
-          {notes ?? "Meet at the start pin, then pick a saved route or draw a new one on the map."}
-        </p>
+    <div className="space-y-3 px-1 pb-1">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-[family-name:var(--run-display)] text-xl text-[color:var(--run-ink)]">
+            {startLabel}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-[color:var(--run-muted)]">{address}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onStartDrawing}
+          className="shrink-0 rounded-full bg-[color:var(--run-ink)] px-3 py-1.5 text-xs font-medium text-[color:var(--run-accent)]"
+        >
+          Draw
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -63,41 +67,26 @@ export default function RoutesPanel({
           href={mapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-full bg-[color:var(--run-ink)] px-4 py-2.5 text-sm font-medium text-[color:var(--run-accent)]"
+          className="inline-flex items-center rounded-full bg-[color:var(--run-ink)] px-3 py-2 text-xs font-medium text-[color:var(--run-accent)]"
         >
-          Open in Maps
+          Maps
         </a>
         <button
           type="button"
           onClick={onLocate}
-          className="inline-flex items-center gap-2 rounded-full border border-[color:var(--run-line)] bg-white/70 px-4 py-2.5 text-sm font-medium"
+          className="inline-flex items-center rounded-full border border-[color:var(--run-line)] bg-white/70 px-3 py-2 text-xs font-medium"
         >
-          Use my location
+          Locate me
         </button>
       </div>
 
       <section className="space-y-2 border-t border-[color:var(--run-line)] pt-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--run-muted)]">
-            Routes
-          </p>
-          <button
-            type="button"
-            onClick={onStartDrawing}
-            className="rounded-full bg-[color:var(--run-ink)] px-3 py-1.5 text-xs font-medium text-[color:var(--run-accent)]"
-          >
-            Draw on map
-          </button>
-        </div>
-
         {routes === undefined ? (
-          <p className="text-sm text-[color:var(--run-muted)]">Loading routes…</p>
+          <p className="text-sm text-[color:var(--run-muted)]">Loading…</p>
         ) : null}
 
         {routes?.length === 0 ? (
-          <p className="text-sm text-[color:var(--run-muted)]">
-            No club routes yet. Draw one on the map — the menu will get out of the way.
-          </p>
+          <p className="text-sm text-[color:var(--run-muted)]">No routes yet.</p>
         ) : null}
 
         {(routes ?? []).map((route) => {
@@ -105,7 +94,7 @@ export default function RoutesPanel({
           return (
             <div
               key={route._id}
-              className={`rounded-2xl border px-3 py-3 ${
+              className={`rounded-2xl border px-3 py-2.5 ${
                 selected
                   ? "border-[color:var(--run-ink)] bg-[color:var(--run-ink)] text-[color:var(--run-accent)]"
                   : "border-[color:var(--run-line)] bg-white/70"
@@ -122,8 +111,7 @@ export default function RoutesPanel({
                     selected ? "text-[color:var(--run-accent)]/80" : "text-[color:var(--run-muted)]"
                   }`}
                 >
-                  {formatDistance(route.distanceMeters)} · {route.waypoints.length} points ·{" "}
-                  {route.displayName}
+                  {formatDistance(route.distanceMeters)} · {route.displayName}
                 </p>
               </button>
               {selected ? (
@@ -134,7 +122,7 @@ export default function RoutesPanel({
                       onClick={() => onApplyToMeetup(route._id)}
                       className="rounded-full bg-[color:var(--run-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--run-ink)]"
                     >
-                      Use for meetup
+                      Use meetup
                     </button>
                   ) : null}
                   {canEditMeetup ? (
@@ -143,7 +131,7 @@ export default function RoutesPanel({
                       onClick={onClearMeetupRoute}
                       className="rounded-full bg-white/15 px-3 py-1.5 text-xs"
                     >
-                      Clear meetup route
+                      Clear
                     </button>
                   ) : null}
                   {route.clientId === selfClientId ? (

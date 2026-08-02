@@ -61,11 +61,9 @@ export default function LiveChat({
     <div className="flex h-full min-h-0 flex-col">
       <div ref={scrollerRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-2">
         {!messages ? (
-          <p className="text-sm text-[color:var(--run-muted)]">Loading chat…</p>
+          <p className="text-sm text-[color:var(--run-muted)]">Loading…</p>
         ) : messages.length === 0 ? (
-          <p className="text-sm text-[color:var(--run-muted)]">
-            Say hi — meetup tips, pace checks, and “where are you?” live here.
-          </p>
+          <p className="text-sm text-[color:var(--run-muted)]">No messages yet.</p>
         ) : (
           messages.map((message) => {
             const mine = message.clientId === selfClientId;
@@ -107,7 +105,7 @@ export default function LiveChat({
         <input
           value={draft}
           onChange={(event) => setDraft(event.target.value.slice(0, MAX_CHAT_LENGTH))}
-          placeholder={disabled ? "Join to chat" : "Message the club"}
+          placeholder={disabled ? "Join to chat" : "Message"}
           disabled={disabled || sending}
           className="min-w-0 flex-1 rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-2.5 text-base text-[color:var(--run-ink)] outline-none placeholder:text-[color:var(--run-muted)] focus:border-[color:var(--run-accent-deep)]"
           maxLength={MAX_CHAT_LENGTH}

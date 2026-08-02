@@ -12,7 +12,6 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  Footprints,
   MapPinned,
   MessageCircle,
   Navigation,
@@ -26,7 +25,6 @@ import type { Id } from "../../convex/_generated/dataModel";
 import FeatureUnavailable from "@/components/FeatureUnavailable";
 import { readStoredProfile } from "@/features/run-club/browser";
 import {
-  CLUB_SCHEDULE,
   DEFAULT_START,
   MAX_PATH_POINTS,
   MAX_ROUTE_WAYPOINTS,
@@ -46,7 +44,7 @@ import LiveChat from "@/features/run-club/LiveChat";
 import RouteDrawingBar from "@/features/run-club/RouteDrawingBar";
 import RoutesPanel from "@/features/run-club/RoutesPanel";
 import RunClubShell from "@/features/run-club/RunClubShell";
-import { meetupCountdown, formatMeetupWhen } from "@/features/run-club/schedule";
+import { meetupCountdown } from "@/features/run-club/schedule";
 import type { LatLng, RouteWaypoint, TrackPoint } from "@/features/run-club/types";
 import JoinGate from "@/features/run-club/JoinGate";
 import { useRunClubProfile } from "@/features/run-club/useRunClubProfile";
@@ -372,40 +370,6 @@ function RunClubApp() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,transparent_40%,rgba(10,40,28,0.18))]" />
         </div>
 
-        <div className="pointer-events-none absolute inset-x-0 top-14 z-20 px-4 md:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-            className="pointer-events-none max-w-xl"
-          >
-            {drawing ? (
-              <>
-                <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-[color:var(--run-accent-deep)]">
-                  New route
-                </p>
-                <h1 className="mt-1 font-[family-name:var(--run-display)] text-3xl leading-none tracking-tight text-[color:var(--run-ink)] sm:text-4xl">
-                  Tap the map
-                </h1>
-              </>
-            ) : (
-              <>
-                <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-[color:var(--run-accent-deep)]">
-                  Malaysian.ai
-                </p>
-                <h1 className="mt-1 font-[family-name:var(--run-display)] text-3xl leading-none tracking-tight text-[color:var(--run-ink)] sm:text-4xl md:text-5xl">
-                  AI Run Club
-                </h1>
-                {!tracking && profile ? (
-                  <p className="mt-2 max-w-md text-sm text-[color:var(--run-muted)] md:text-base">
-                    Record a run, walk, or jog — or draw a club route on the map.
-                  </p>
-                ) : null}
-              </>
-            )}
-          </motion.div>
-        </div>
-
         <AnimatePresence>
           {!profile ? (
             <motion.div
@@ -485,21 +449,21 @@ function RunClubApp() {
                   />
                 </motion.div>
               ) : (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15, duration: 0.5 }}
-                    className="rounded-[24px] border border-white/50 bg-[color:var(--run-panel)] p-3 shadow-[0_18px_50px_rgba(12,40,28,0.22)] backdrop-blur-md"
-                  >
-                    <div className="mb-3 flex gap-1.5 px-1">
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="rounded-[22px] border border-white/50 bg-[color:var(--run-panel)] p-2.5 shadow-[0_18px_50px_rgba(12,40,28,0.22)] backdrop-blur-md"
+                >
+                  {!tracking ? (
+                    <div className="mb-2 flex gap-1 px-0.5">
                       {ACTIVITY_TYPES.map((type) => (
                         <button
                           key={type}
                           type="button"
                           onClick={() => setActivityType(type)}
                           disabled={finishing}
-                          className={`rounded-full px-3 py-1.5 text-xs font-medium capitalize transition ${
+                          className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition ${
                             activityType === type
                               ? "bg-[color:var(--run-ink)] text-[color:var(--run-accent)]"
                               : "bg-white/70 text-[color:var(--run-ink)] hover:bg-white"
@@ -509,193 +473,178 @@ function RunClubApp() {
                         </button>
                       ))}
                     </div>
+                  ) : null}
 
-                    <div className="flex flex-wrap items-end justify-between gap-3 px-1">
-                      <div>
-                        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--run-muted)]">
-                          {tracking ? (paused ? "Paused" : "Live distance") : "Next meetup"}
+                  <div className="flex items-center justify-between gap-3 px-0.5">
+                    <div className="min-w-0">
+                      <p className="font-[family-name:var(--run-display)] text-3xl leading-none tracking-tight text-[color:var(--run-ink)]">
+                        {tracking
+                          ? formatDistance(distance)
+                          : meetup
+                            ? meetupCountdown(meetup.startsAt)
+                            : "—"}
+                      </p>
+                      {tracking ? (
+                        <p className="mt-1 text-xs text-[color:var(--run-muted)]">
+                          {paused ? "Paused · " : ""}
+                          {formatDuration(movingElapsedMs)} · {formatPace(distance, movingElapsedMs)}
                         </p>
-                        <p className="font-[family-name:var(--run-display)] text-3xl tracking-tight text-[color:var(--run-ink)]">
-                          {tracking
-                            ? formatDistance(distance)
-                            : meetup
-                              ? meetupCountdown(meetup.startsAt)
-                              : "Soon"}
-                        </p>
-                        <p className="text-xs text-[color:var(--run-muted)]">
-                          {tracking
-                            ? `${formatDuration(movingElapsedMs)} moving · ${formatDuration(wallElapsedMs)} total · ${formatPace(distance, movingElapsedMs)}`
-                            : meetup
-                              ? `${formatMeetupWhen(meetup.startsAt)} · ${meetup.startLabel}`
-                              : `${CLUB_SCHEDULE.days.join(" & ")} · ${CLUB_SCHEDULE.localTime}`}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-end gap-2">
-                        <HudButton
-                          label="Routes"
-                          icon={<MapPinned size={16} />}
-                          active={panel === "guide"}
-                          onClick={() => setPanel(panel === "guide" ? "none" : "guide")}
-                        />
-                        <HudButton
-                          label="Chat"
-                          icon={<MessageCircle size={16} />}
-                          active={panel === "chat"}
-                          onClick={() => setPanel(panel === "chat" ? "none" : "chat")}
-                        />
-                        {tracking ? (
-                          <>
-                            {paused ? (
-                              <button
-                                type="button"
-                                onClick={resumeTracking}
-                                disabled={finishing}
-                                className="inline-flex items-center gap-2 rounded-full bg-[color:var(--run-ink)] px-4 py-2.5 text-sm font-semibold text-[color:var(--run-accent)] disabled:opacity-40"
-                              >
-                                <Play size={14} fill="currentColor" />
-                                Resume
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={pauseTracking}
-                                disabled={finishing}
-                                className="inline-flex items-center gap-2 rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-2.5 text-sm font-semibold text-[color:var(--run-ink)] disabled:opacity-40"
-                              >
-                                <Pause size={14} />
-                                Pause
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => void stopTracking()}
-                              disabled={finishing}
-                              className="inline-flex items-center gap-2 rounded-full bg-[#8b2e2e] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
-                            >
-                              <Square size={14} fill="currentColor" />
-                              {finishing ? "Saving…" : "Finish"}
-                            </button>
-                          </>
-                        ) : (
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                      {!tracking ? (
+                        <>
+                          <HudButton
+                            label="Routes"
+                            icon={<MapPinned size={16} />}
+                            active={panel === "guide"}
+                            onClick={() => setPanel(panel === "guide" ? "none" : "guide")}
+                          />
+                          <HudButton
+                            label="Chat"
+                            icon={<MessageCircle size={16} />}
+                            active={panel === "chat"}
+                            onClick={() => setPanel(panel === "chat" ? "none" : "chat")}
+                          />
                           <button
                             type="button"
                             onClick={startTracking}
                             disabled={!profile}
-                            className="inline-flex items-center gap-2 rounded-full bg-[color:var(--run-ink)] px-4 py-2.5 text-sm font-semibold text-[color:var(--run-accent)] disabled:opacity-40"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--run-ink)] px-3.5 py-2.5 text-sm font-semibold text-[color:var(--run-accent)] disabled:opacity-40"
                           >
-                            <Navigation size={16} />
-                            Start {activityType}
+                            <Navigation size={15} />
+                            Start
                           </button>
-                        )}
-                      </div>
+                        </>
+                      ) : (
+                        <>
+                          {paused ? (
+                            <button
+                              type="button"
+                              onClick={resumeTracking}
+                              disabled={finishing}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--run-ink)] px-3.5 py-2.5 text-sm font-semibold text-[color:var(--run-accent)] disabled:opacity-40"
+                            >
+                              <Play size={14} fill="currentColor" />
+                              Resume
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={pauseTracking}
+                              disabled={finishing}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--run-line)] bg-white/80 px-3.5 py-2.5 text-sm font-semibold text-[color:var(--run-ink)] disabled:opacity-40"
+                            >
+                              <Pause size={14} />
+                              Pause
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => void stopTracking()}
+                            disabled={finishing}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-[#8b2e2e] px-3.5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+                          >
+                            <Square size={14} fill="currentColor" />
+                            {finishing ? "…" : "Finish"}
+                          </button>
+                        </>
+                      )}
                     </div>
+                  </div>
 
-                    <AnimatePresence mode="wait">
-                      {panel !== "none" ? (
-                        <motion.div
-                          key={panel}
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.28 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="mt-3 max-h-[min(38dvh,18rem)] overflow-y-auto border-t border-[color:var(--run-line)] pt-3">
-                            <div className="mb-2 flex items-center justify-between px-1">
-                              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--run-muted)]">
-                                {panel === "chat" ? "Club chat" : "Start & routes"}
-                              </p>
-                              <button
-                                type="button"
-                                onClick={() => setPanel("none")}
-                                className="rounded-full p-1 text-[color:var(--run-muted)] hover:text-[color:var(--run-ink)]"
-                                aria-label="Close panel"
-                              >
-                                <X size={16} />
-                              </button>
-                            </div>
+                  <AnimatePresence mode="wait">
+                    {panel !== "none" && !tracking ? (
+                      <motion.div
+                        key={panel}
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.28 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-2.5 max-h-[min(34dvh,16rem)] overflow-y-auto border-t border-[color:var(--run-line)] pt-2.5">
+                          <div className="mb-1.5 flex items-center justify-end px-0.5">
+                            <button
+                              type="button"
+                              onClick={() => setPanel("none")}
+                              className="rounded-full p-1 text-[color:var(--run-muted)] hover:text-[color:var(--run-ink)]"
+                              aria-label="Close panel"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
 
-                            {panel === "chat" ? (
-                              <div className="h-[38vh] min-h-[220px]">
-                                <LiveChat
-                                  messages={messages}
-                                  selfClientId={profile?.clientId}
-                                  disabled={!profile}
-                                  onSend={async (body) => {
-                                    if (!profile) return;
-                                    await sendMessage({
-                                      clientId: profile.clientId,
-                                      displayName: profile.displayName,
-                                      avatarHue: profile.avatarHue,
-                                      body,
-                                    });
-                                  }}
-                                />
-                              </div>
-                            ) : null}
-
-                            {panel === "guide" ? (
-                              <RoutesPanel
-                                startLabel={start.label}
-                                address={DEFAULT_START.address}
-                                notes={meetup?.notes}
-                                routes={clubRoutes}
-                                selectedRouteId={meetup?.routeId ?? selectedRouteId}
+                          {panel === "chat" ? (
+                            <div className="h-[34vh] min-h-[200px]">
+                              <LiveChat
+                                messages={messages}
                                 selfClientId={profile?.clientId}
-                                canEditMeetup={Boolean(profile && meetup)}
-                                onLocate={() => requestPosition(tracking)}
-                                onSelectRoute={(routeId) => {
-                                  setSelectedRouteId(routeId);
-                                  setDrawing(false);
-                                  setDraftWaypoints([]);
-                                }}
-                                onApplyToMeetup={(routeId) => {
-                                  if (!profile || !meetup) return;
-                                  void applyRouteToSession({
-                                    sessionId: meetup._id,
-                                    routeId: routeId as Id<"runClubRoutes">,
-                                    clientId: profile.clientId,
-                                  });
-                                }}
-                                onClearMeetupRoute={() => {
-                                  if (!profile || !meetup) return;
-                                  void clearSessionRoute({
-                                    sessionId: meetup._id,
-                                    clientId: profile.clientId,
-                                  });
-                                  setSelectedRouteId(null);
-                                }}
-                                onStartDrawing={() => {
-                                  setDraftWaypoints([]);
-                                  setSelectedRouteId(null);
-                                  setPanel("none");
-                                  setDrawing(true);
-                                }}
-                                onDeleteRoute={(routeId) => {
+                                disabled={!profile}
+                                onSend={async (body) => {
                                   if (!profile) return;
-                                  void deleteRoute({
-                                    routeId: routeId as Id<"runClubRoutes">,
+                                  await sendMessage({
                                     clientId: profile.clientId,
+                                    displayName: profile.displayName,
+                                    avatarHue: profile.avatarHue,
+                                    body,
                                   });
-                                  if (selectedRouteId === routeId) setSelectedRouteId(null);
                                 }}
                               />
-                            ) : null}
-                          </div>
-                        </motion.div>
-                      ) : null}
-                    </AnimatePresence>
-                  </motion.div>
+                            </div>
+                          ) : null}
 
-                  <div className="flex items-center justify-between px-1 text-[11px] text-[color:var(--run-ink)]/70">
-                    <span className="inline-flex items-center gap-1">
-                      <Footprints size={12} />
-                      {presence.length} nearby
-                      {tracking && paused ? " · paused" : null}
-                    </span>
-                    <span className="capitalize">{activityType}</span>
-                  </div>
-                </>
+                          {panel === "guide" ? (
+                            <RoutesPanel
+                              startLabel={start.label}
+                              address={DEFAULT_START.address}
+                              routes={clubRoutes}
+                              selectedRouteId={meetup?.routeId ?? selectedRouteId}
+                              selfClientId={profile?.clientId}
+                              canEditMeetup={Boolean(profile && meetup)}
+                              onLocate={() => requestPosition(tracking)}
+                              onSelectRoute={(routeId) => {
+                                setSelectedRouteId(routeId);
+                                setDrawing(false);
+                                setDraftWaypoints([]);
+                              }}
+                              onApplyToMeetup={(routeId) => {
+                                if (!profile || !meetup) return;
+                                void applyRouteToSession({
+                                  sessionId: meetup._id,
+                                  routeId: routeId as Id<"runClubRoutes">,
+                                  clientId: profile.clientId,
+                                });
+                              }}
+                              onClearMeetupRoute={() => {
+                                if (!profile || !meetup) return;
+                                void clearSessionRoute({
+                                  sessionId: meetup._id,
+                                  clientId: profile.clientId,
+                                });
+                                setSelectedRouteId(null);
+                              }}
+                              onStartDrawing={() => {
+                                setDraftWaypoints([]);
+                                setSelectedRouteId(null);
+                                setPanel("none");
+                                setDrawing(true);
+                              }}
+                              onDeleteRoute={(routeId) => {
+                                if (!profile) return;
+                                void deleteRoute({
+                                  routeId: routeId as Id<"runClubRoutes">,
+                                  clientId: profile.clientId,
+                                });
+                                if (selectedRouteId === routeId) setSelectedRouteId(null);
+                              }}
+                            />
+                          ) : null}
+                        </div>
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
+                </motion.div>
               )}
             </div>
           </div>

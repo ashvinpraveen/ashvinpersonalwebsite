@@ -47,42 +47,22 @@ export default function RouteDrawingBar({
   return (
     <form
       onSubmit={handleSave}
-      className="rounded-[24px] border border-white/50 bg-[color:var(--run-panel)] p-3 shadow-[0_18px_50px_rgba(12,40,28,0.22)] backdrop-blur-md"
+      className="rounded-[22px] border border-white/50 bg-[color:var(--run-panel)] p-2.5 shadow-[0_18px_50px_rgba(12,40,28,0.22)] backdrop-blur-md"
     >
-      <div className="flex items-start justify-between gap-3 px-1">
-        <div className="min-w-0">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--run-muted)]">
-            Drawing route
-          </p>
-          <p className="font-[family-name:var(--run-display)] text-2xl tracking-tight text-[color:var(--run-ink)]">
-            {pointCount} point{pointCount === 1 ? "" : "s"}
-            {pointCount >= 2 ? ` · ${formatDistance(draftDistanceMeters)}` : ""}
-          </p>
-          <p className="text-xs text-[color:var(--run-muted)]">
-            {pointCount < 2
-              ? "Tap the map to drop at least two points."
-              : "Name it and save — or keep tapping to extend."}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onCancelDrawing}
-          className="rounded-full p-2 text-[color:var(--run-muted)] hover:bg-white/60 hover:text-[color:var(--run-ink)]"
-          aria-label="Cancel drawing"
-        >
-          <X size={18} />
-        </button>
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-2 px-1">
+      <div className="flex items-center gap-2">
+        <p className="min-w-0 flex-1 truncate px-1 font-[family-name:var(--run-display)] text-xl tracking-tight text-[color:var(--run-ink)]">
+          {pointCount < 2
+            ? "Tap map"
+            : `${pointCount} pts · ${formatDistance(draftDistanceMeters)}`}
+        </p>
         <button
           type="button"
           onClick={onUndoPoint}
           disabled={pointCount === 0}
-          className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--run-line)] bg-white/80 px-3 py-2 text-sm disabled:opacity-40"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--run-line)] bg-white/80 disabled:opacity-40"
+          aria-label="Undo point"
         >
-          <Undo2 size={14} />
-          Undo
+          <Undo2 size={16} />
         </button>
         <button
           type="button"
@@ -92,15 +72,23 @@ export default function RouteDrawingBar({
         >
           Clear
         </button>
+        <button
+          type="button"
+          onClick={onCancelDrawing}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[color:var(--run-muted)] hover:bg-white/60 hover:text-[color:var(--run-ink)]"
+          aria-label="Cancel drawing"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {pointCount >= 2 ? (
-        <div className="mt-3 flex gap-2">
+        <div className="mt-2 flex gap-2">
           <input
             value={nameDraft}
             onChange={(event) => setNameDraft(event.target.value)}
             maxLength={MAX_ROUTE_NAME_LENGTH}
-            placeholder="Route name"
+            placeholder="Name"
             autoComplete="off"
             className="min-w-0 flex-1 rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-2.5 text-base outline-none focus:border-[color:var(--run-accent-deep)]"
           />
@@ -109,7 +97,7 @@ export default function RouteDrawingBar({
             disabled={saving || !canSave}
             className="shrink-0 rounded-full bg-[color:var(--run-ink)] px-4 py-2.5 text-sm font-semibold text-[color:var(--run-accent)] disabled:opacity-40"
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? "…" : "Save"}
           </button>
         </div>
       ) : null}
