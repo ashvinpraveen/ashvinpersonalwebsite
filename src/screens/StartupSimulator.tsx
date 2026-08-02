@@ -4298,8 +4298,9 @@ const StartupSimulator = () => {
     setPaused(pausedBeforeStatsRef.current);
   };
 
-  const resetGame = () => {
+  const resetGame = (source: "health" | "exit" | "bankruptcy" | "outcome" = "health") => {
     captureStartupEvent("startup_game_reset", {
+      source,
       day: game.day,
       customers: game.customers,
       outcome: game.bankrupt ? "bankrupt" : game.outcome,
@@ -4321,9 +4322,13 @@ const StartupSimulator = () => {
     setRetiredActionIds([]);
     setShowStats(false);
     setShowBankruptcySummary(true);
+    setShowHowToPlay(false);
+    setExitIntent(null);
     setPaused(false);
     pausedBeforeStatsRef.current = false;
+    pausedBeforeHelpRef.current = false;
     setWorldZoom(isNarrowViewport ? MOBILE_WORLD_ZOOM : 1);
+    setIsDraggingWorld(false);
     setIsFounderMoving(false);
     setFounderFacing(1);
     previousPlayerRef.current = initialGame.player;
@@ -4331,6 +4336,10 @@ const StartupSimulator = () => {
       window.clearTimeout(founderMoveTimerRef.current);
       founderMoveTimerRef.current = null;
     }
+  };
+
+  const restartFromExitDialog = () => {
+    resetGame("exit");
   };
 
   const confirmExit = () => {
@@ -4794,7 +4803,7 @@ const StartupSimulator = () => {
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={resetGame}
+                    onClick={() => resetGame("health")}
                     className="font-mono text-[10px] text-[#789080] underline-offset-2 hover:underline"
                   >
                     {game.bankrupt ? "start over" : "reset"}
@@ -5815,7 +5824,7 @@ const StartupSimulator = () => {
               </p>
               <button
                 type="button"
-                onClick={resetGame}
+                onClick={() => resetGame("outcome")}
                 className="mt-5 w-full rounded-2xl bg-[#24352b] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#344c3d]"
               >
                 build another company
@@ -5854,7 +5863,7 @@ const StartupSimulator = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={resetGame}
+                  onClick={() => resetGame("bankruptcy")}
                   className="w-full rounded-2xl border border-[#dce6d8] bg-white px-4 py-3 text-sm font-semibold text-[#405247] transition hover:bg-[#f1f6ed]"
                 >
                   start over
@@ -5879,7 +5888,7 @@ const StartupSimulator = () => {
               </button>
               <button
                 type="button"
-                onClick={resetGame}
+                onClick={() => resetGame("bankruptcy")}
                 className="rounded-xl bg-[#24352b] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#344c3d]"
               >
                 start over
@@ -5980,22 +5989,30 @@ const StartupSimulator = () => {
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-[#5c6f60]">
                 Your current company is saved on this device and can be resumed later.
+                Or wipe the save and start a fresh run from day 1.
                 {exitIntent === "website"
-                  ? " This button takes you to Ashvin’s website."
+                  ? " Visit website takes you to Ashvin’s site."
                   : ""}
               </p>
-              <div className="mt-5 flex gap-2">
+              <div className="mt-5 grid gap-2">
                 <button
                   type="button"
                   onClick={() => setExitIntent(null)}
-                  className="flex-1 rounded-2xl border border-[#cfdcc9] bg-white px-4 py-3 text-sm font-semibold transition hover:bg-[#f3f8ef]"
+                  className="w-full rounded-2xl border border-[#cfdcc9] bg-white px-4 py-3 text-sm font-semibold transition hover:bg-[#f3f8ef]"
                 >
                   Keep playing
                 </button>
                 <button
                   type="button"
+                  onClick={restartFromExitDialog}
+                  className="w-full rounded-2xl border border-[#d7c4a4] bg-[#fff7ea] px-4 py-3 text-sm font-semibold text-[#6d5236] transition hover:bg-[#fff1d9]"
+                >
+                  Restart game
+                </button>
+                <button
+                  type="button"
                   onClick={confirmExit}
-                  className="flex-1 rounded-2xl bg-[#24352b] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#344c3d]"
+                  className="w-full rounded-2xl bg-[#24352b] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#344c3d]"
                 >
                   {exitIntent === "website" ? "Visit website" : "Leave game"}
                 </button>
