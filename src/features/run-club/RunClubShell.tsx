@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import SiteNav from "@/components/SiteNav";
+import InviteQrButton from "./InviteQrButton";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -54,6 +55,7 @@ export default function RunClubShell({
       }
     >
       <SiteNav variant="light" />
+      <InviteQrButton />
       <div
         className={cn(
           "mx-auto w-full",
