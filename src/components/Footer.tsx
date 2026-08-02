@@ -2,7 +2,7 @@ import { linkSubtle } from "@/lib/styles";
 import { pageShellClassName } from "@/lib/layout";
 import { PlanetaryGearSystem } from "@/components/HeroSection";
 import { cuttingMatGridDark, cuttingMatGridLight, grainSvg } from "@/lib/visuals";
-import { isBlogEnabled, isPostcardsEnabled } from "@/lib/features";
+import { isBlogEnabled, isPostcardsEnabled, isRunClubEnabled } from "@/lib/features";
 import ChatTrigger from "@/components/ChatTrigger";
 
 const Footer = () => {
@@ -38,6 +38,7 @@ const Footer = () => {
               {isBlogEnabled ? <a href="/blog" className={linkSubtle}>Writing</a> : null}
               <a href="/resources" className={linkSubtle}>Resources</a>
               {isPostcardsEnabled ? <a href="/postcards" className={linkSubtle}>Postcards</a> : null}
+              {isRunClubEnabled ? <a href="/run" className={linkSubtle}>AI Run Club</a> : null}
             </div>
           </div>
           <div className="space-y-3">
