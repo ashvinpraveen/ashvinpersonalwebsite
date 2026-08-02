@@ -53,7 +53,7 @@ import LiveChat from "@/features/run-club/LiveChat";
 import ShareCard from "@/features/run-club/ShareCard";
 import StatsPanel from "@/features/run-club/StatsPanel";
 import { meetupCountdown, formatMeetupWhen } from "@/features/run-club/schedule";
-import type { LatLng, RunClubProfile, TrackPoint } from "@/features/run-club/types";
+import type { LatLng, RunClubProfile, RouteWaypoint, TrackPoint } from "@/features/run-club/types";
 import { isConvexConfigured, isRunClubEnabled } from "@/lib/features";
 
 const ClubMap = dynamic(() => import("@/features/run-club/ClubMap"), {
@@ -190,7 +190,10 @@ function RunClubApp() {
         : { ...DEFAULT_START },
     [meetup],
   );
-  const route = meetup?.routeWaypoints?.length ? meetup.routeWaypoints : [...DEFAULT_ROUTE];
+  const route = useMemo<RouteWaypoint[]>(
+    () => (meetup?.routeWaypoints?.length ? meetup.routeWaypoints : [...DEFAULT_ROUTE]),
+    [meetup],
+  );
 
   async function handleJoin(event: FormEvent) {
     event.preventDefault();
@@ -326,7 +329,7 @@ function RunClubApp() {
       <SiteNav variant="light" />
 
       <div className="relative h-dvh pt-12">
-        <div className="absolute inset-0 top-12">
+        <div className="run-club-map-layer absolute inset-0 top-12">
           <ClubMap
             start={start}
             route={route}
@@ -339,12 +342,12 @@ function RunClubApp() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,transparent_40%,rgba(10,40,28,0.18))]" />
         </div>
 
-        <div className="pointer-events-none absolute inset-x-0 top-14 z-10 px-4 md:px-6">
+        <div className="pointer-events-none absolute inset-x-0 top-14 z-20 px-4 md:px-6">
           <motion.div
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-            className="pointer-events-auto max-w-xl"
+            className="pointer-events-none max-w-xl"
           >
             <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-[color:var(--run-accent-deep)]">
               Malaysian.ai
@@ -364,7 +367,7 @@ function RunClubApp() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-20 grid place-items-end bg-[#0d281c]/35 px-4 pb-6 pt-24 backdrop-blur-[2px] sm:place-items-center sm:pb-0"
+              className="absolute inset-0 z-40 grid place-items-end bg-[#0d281c]/35 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-24 backdrop-blur-[2px] sm:place-items-center sm:pb-0"
             >
               <motion.form
                 onSubmit={handleJoin}
@@ -405,7 +408,7 @@ function RunClubApp() {
           ) : null}
         </AnimatePresence>
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-3 pb-3 md:px-5 md:pb-5">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-5 md:pb-5">
           <div className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-3">
             {geoError ? (
               <div className="rounded-2xl border border-red-300/60 bg-red-50/90 px-4 py-2 text-sm text-red-800">
