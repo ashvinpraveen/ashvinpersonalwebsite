@@ -19,8 +19,10 @@ import type * as http from "../http.js";
 import type * as lib_chatAiBooking from "../lib/chatAiBooking.js";
 import type * as lib_chatAiShared from "../lib/chatAiShared.js";
 import type * as lib_chatAiTypes from "../lib/chatAiTypes.js";
+import type * as lib_runClubSchedule from "../lib/runClubSchedule.js";
 import type * as migrations from "../migrations.js";
 import type * as postcards from "../postcards.js";
+import type * as runClub from "../runClub.js";
 
 import type {
   ApiFromModules,
@@ -40,8 +42,10 @@ declare const fullApi: ApiFromModules<{
   "lib/chatAiBooking": typeof lib_chatAiBooking;
   "lib/chatAiShared": typeof lib_chatAiShared;
   "lib/chatAiTypes": typeof lib_chatAiTypes;
+  "lib/runClubSchedule": typeof lib_runClubSchedule;
   migrations: typeof migrations;
   postcards: typeof postcards;
+  runClub: typeof runClub;
 }>;
 
 /**

@@ -30,7 +30,10 @@ export default function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
   const pathname = usePathname();
   const showChatWidget =
-    !pathname?.startsWith("/admin") && pathname !== "/diary" && pathname !== "/startup";
+    !pathname?.startsWith("/admin") &&
+    pathname !== "/diary" &&
+    pathname !== "/startup" &&
+    !pathname?.startsWith("/run-club");
 
   return (
     <PostHogProvider>

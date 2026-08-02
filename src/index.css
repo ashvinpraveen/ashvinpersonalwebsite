@@ -317,3 +317,29 @@ body[data-chat-layout="compact"] .md\:py-14 {
   padding-top: 2.5rem !important;
   padding-bottom: 2.5rem !important;
 }
+
+.run-club-shell {
+  --run-ink: #123526;
+  --run-accent: #b8e05c;
+  --run-accent-deep: #3f8f4a;
+  --run-muted: #5f7d6a;
+  --run-panel: rgba(244, 255, 228, 0.88);
+  --run-line: rgba(18, 53, 38, 0.14);
+  --run-display: var(--font-run-fraunces), Georgia, serif;
+  font-family: var(--font-run-outfit), "DM Sans", system-ui, sans-serif;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(184, 224, 92, 0.35), transparent 55%),
+    radial-gradient(900px 500px at 90% 0%, rgba(72, 140, 96, 0.28), transparent 50%),
+    linear-gradient(180deg, #e7f6d8 0%, #d4ebc4 42%, #c3dfb4 100%);
+}
+
+.run-club-shell .leaflet-container {
+  background: #d7ebc8;
+  font: inherit;
+}
+
+.run-club-marker,
+.run-club-start-marker {
+  background: transparent;
+  border: 0;
+}

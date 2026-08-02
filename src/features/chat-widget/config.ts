@@ -17,6 +17,7 @@ export const SIDE_PANEL_ANIMATION_MS = 220;
 
 export const SITE_ROUTES = [
   { path: "/", label: "Home" },
+  { path: "/run-club", label: "Run club" },
   { path: "/diary", label: "Diary" },
   { path: "/blog", label: "Writing" },
   { path: "/resources", label: "Resources" },

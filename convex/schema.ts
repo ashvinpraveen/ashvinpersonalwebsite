@@ -75,4 +75,88 @@ export default defineSchema({
     .index("by_threadId_and_createdAt", ["threadId", "createdAt"])
     .index("by_threadId_and_author_and_createdAt", ["threadId", "author", "createdAt"])
     .index("by_createdAt", ["createdAt"]),
+  runClubMembers: defineTable({
+    clientId: v.string(),
+    displayName: v.string(),
+    avatarHue: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_clientId", ["clientId"])
+    .index("by_updatedAt", ["updatedAt"]),
+  runClubSessions: defineTable({
+    title: v.string(),
+    status: v.union(
+      v.literal("scheduled"),
+      v.literal("live"),
+      v.literal("ended"),
+    ),
+    startsAt: v.number(),
+    startLabel: v.string(),
+    startLat: v.number(),
+    startLng: v.number(),
+    routeWaypoints: v.array(
+      v.object({
+        lat: v.number(),
+        lng: v.number(),
+        label: v.optional(v.string()),
+      }),
+    ),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_startsAt", ["startsAt"])
+    .index("by_status_and_startsAt", ["status", "startsAt"]),
+  runClubPresence: defineTable({
+    clientId: v.string(),
+    sessionId: v.optional(v.id("runClubSessions")),
+    displayName: v.string(),
+    avatarHue: v.number(),
+    lat: v.number(),
+    lng: v.number(),
+    isTracking: v.boolean(),
+    updatedAt: v.number(),
+  })
+    .index("by_clientId", ["clientId"])
+    .index("by_updatedAt", ["updatedAt"]),
+  runClubActivities: defineTable({
+    clientId: v.string(),
+    displayName: v.string(),
+    avatarHue: v.number(),
+    sessionId: v.optional(v.id("runClubSessions")),
+    distanceMeters: v.number(),
+    durationMs: v.number(),
+    path: v.array(
+      v.object({
+        lat: v.number(),
+        lng: v.number(),
+      }),
+    ),
+    shareSlug: v.string(),
+    createdAt: v.number(),
+    dayKey: v.string(),
+  })
+    .index("by_clientId_and_createdAt", ["clientId", "createdAt"])
+    .index("by_shareSlug", ["shareSlug"])
+    .index("by_createdAt", ["createdAt"]),
+  runClubMemberStats: defineTable({
+    clientId: v.string(),
+    displayName: v.string(),
+    avatarHue: v.number(),
+    totalDistanceMeters: v.number(),
+    totalDurationMs: v.number(),
+    activityCount: v.number(),
+    streakDays: v.number(),
+    lastDayKey: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_clientId", ["clientId"])
+    .index("by_totalDistanceMeters", ["totalDistanceMeters"]),
+  runClubMessages: defineTable({
+    clientId: v.string(),
+    displayName: v.string(),
+    avatarHue: v.number(),
+    body: v.string(),
+    createdAt: v.number(),
+  }).index("by_createdAt", ["createdAt"]),
 });
