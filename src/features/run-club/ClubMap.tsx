@@ -28,7 +28,7 @@ type ClubMapProps = {
   onMapClick?: (point: LatLng) => void;
 };
 
-function MapLifecycle() {
+function MapLifecycle({ layoutKey }: { layoutKey?: string | number | boolean }) {
   const map = useMap();
 
   useEffect(() => {
@@ -44,7 +44,7 @@ function MapLifecycle() {
       window.removeEventListener("resize", invalidate);
       window.removeEventListener("orientationchange", invalidate);
     };
-  }, [map]);
+  }, [layoutKey, map]);
 
   return null;
 }
@@ -69,10 +69,12 @@ function FitRoute({
   start,
   route,
   followSelf,
+  drawing,
 }: {
   start: LatLng;
   route: RouteWaypoint[];
   followSelf?: boolean;
+  drawing?: boolean;
 }) {
   const map = useMap();
   const routeKey = useMemo(
@@ -81,7 +83,8 @@ function FitRoute({
   );
 
   useEffect(() => {
-    if (followSelf) return;
+    // While drawing, leave the viewport alone so taps stay under the finger.
+    if (followSelf || drawing) return;
 
     if (route.length < 2) {
       map.setView([start.lat, start.lng], 16);
@@ -92,7 +95,7 @@ function FitRoute({
       (point) => [point.lat, point.lng] as L.LatLngExpression,
     );
     map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 16 });
-  }, [followSelf, map, route, routeKey, start.lat, start.lng]);
+  }, [drawing, followSelf, map, route, routeKey, start.lat, start.lng]);
 
   return null;
 }
@@ -194,9 +197,9 @@ export default function ClubMap({
         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         subdomains="abcd"
       />
-      <MapLifecycle />
+      <MapLifecycle layoutKey={drawing} />
       <MapClickHandler enabled={drawing} onMapClick={onMapClick} />
-      <FitRoute start={start} route={route} followSelf={followSelf} />
+      <FitRoute start={start} route={route} followSelf={followSelf} drawing={drawing} />
       <FollowSelf followSelf={followSelf} selfPosition={selfPosition} />
       {routePositions.length > 1 ? (
         <Polyline

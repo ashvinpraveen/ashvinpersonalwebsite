@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import { formatDistance } from "./geo";
-import { MAX_ROUTE_NAME_LENGTH } from "./config";
 import type { RouteWaypoint } from "./types";
 
 export type ClubRoute = {
@@ -21,9 +19,6 @@ type RoutesPanelProps = {
   notes?: string;
   routes: ClubRoute[] | undefined;
   selectedRouteId: string | null;
-  drawing: boolean;
-  draftWaypoints: RouteWaypoint[];
-  draftDistanceMeters: number;
   selfClientId?: string;
   canEditMeetup: boolean;
   onLocate: () => void;
@@ -31,10 +26,6 @@ type RoutesPanelProps = {
   onApplyToMeetup: (routeId: string) => void;
   onClearMeetupRoute: () => void;
   onStartDrawing: () => void;
-  onUndoPoint: () => void;
-  onClearDraft: () => void;
-  onCancelDrawing: () => void;
-  onSaveDraft: (name: string) => Promise<void>;
   onDeleteRoute: (routeId: string) => void;
 };
 
@@ -44,9 +35,6 @@ export default function RoutesPanel({
   notes,
   routes,
   selectedRouteId,
-  drawing,
-  draftWaypoints,
-  draftDistanceMeters,
   selfClientId,
   canEditMeetup,
   onLocate,
@@ -54,14 +42,8 @@ export default function RoutesPanel({
   onApplyToMeetup,
   onClearMeetupRoute,
   onStartDrawing,
-  onUndoPoint,
-  onClearDraft,
-  onCancelDrawing,
-  onSaveDraft,
   onDeleteRoute,
 }: RoutesPanelProps) {
-  const [nameDraft, setNameDraft] = useState("");
-  const [saving, setSaving] = useState(false);
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 
   return (
@@ -71,10 +53,10 @@ export default function RoutesPanel({
           {startLabel}
         </p>
         <p className="mt-1 text-sm text-[color:var(--run-muted)]">{address}</p>
+        <p className="mt-2 text-sm leading-relaxed text-[color:var(--run-ink)]">
+          {notes ?? "Meet at the start pin, then pick a saved route or draw a new one on the map."}
+        </p>
       </div>
-      <p className="text-sm leading-relaxed text-[color:var(--run-ink)]">
-        {notes ?? "Meet at the start pin, then pick a saved route or draw a new one on the map."}
-      </p>
 
       <div className="flex flex-wrap gap-2">
         <a
@@ -99,146 +81,85 @@ export default function RoutesPanel({
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--run-muted)]">
             Routes
           </p>
-          {!drawing ? (
-            <button
-              type="button"
-              onClick={onStartDrawing}
-              className="rounded-full bg-[color:var(--run-ink)] px-3 py-1.5 text-xs font-medium text-[color:var(--run-accent)]"
-            >
-              Draw new
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={onStartDrawing}
+            className="rounded-full bg-[color:var(--run-ink)] px-3 py-1.5 text-xs font-medium text-[color:var(--run-accent)]"
+          >
+            Draw on map
+          </button>
         </div>
 
-        {drawing ? (
-          <div className="space-y-3 rounded-2xl border border-[color:var(--run-line)] bg-white/70 p-3">
-            <p className="text-sm text-[color:var(--run-ink)]">
-              Tap the map to drop points. {draftWaypoints.length} point
-              {draftWaypoints.length === 1 ? "" : "s"}
-              {draftWaypoints.length >= 2
-                ? ` · ${formatDistance(draftDistanceMeters)}`
-                : ""}
-            </p>
-            <input
-              value={nameDraft}
-              onChange={(event) => setNameDraft(event.target.value)}
-              maxLength={MAX_ROUTE_NAME_LENGTH}
-              placeholder="Route name"
-              className="w-full rounded-full border border-[color:var(--run-line)] bg-white px-3 py-2 text-base outline-none"
-            />
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={onUndoPoint}
-                disabled={draftWaypoints.length === 0}
-                className="rounded-full border border-[color:var(--run-line)] bg-white px-3 py-1.5 text-xs disabled:opacity-40"
-              >
-                Undo
-              </button>
-              <button
-                type="button"
-                onClick={onClearDraft}
-                disabled={draftWaypoints.length === 0}
-                className="rounded-full border border-[color:var(--run-line)] bg-white px-3 py-1.5 text-xs disabled:opacity-40"
-              >
-                Clear
-              </button>
-              <button
-                type="button"
-                onClick={onCancelDrawing}
-                className="rounded-full border border-[color:var(--run-line)] bg-white px-3 py-1.5 text-xs"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={saving || draftWaypoints.length < 2 || !nameDraft.trim()}
-                onClick={() => {
-                  setSaving(true);
-                  void onSaveDraft(nameDraft.trim())
-                    .then(() => setNameDraft(""))
-                    .finally(() => setSaving(false));
-                }}
-                className="rounded-full bg-[color:var(--run-ink)] px-3 py-1.5 text-xs font-medium text-[color:var(--run-accent)] disabled:opacity-40"
-              >
-                {saving ? "Saving…" : "Save route"}
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {!drawing && routes === undefined ? (
+        {routes === undefined ? (
           <p className="text-sm text-[color:var(--run-muted)]">Loading routes…</p>
         ) : null}
 
-        {!drawing && routes?.length === 0 ? (
+        {routes?.length === 0 ? (
           <p className="text-sm text-[color:var(--run-muted)]">
-            No club routes yet. Tap Draw new and plot a path on the map.
+            No club routes yet. Draw one on the map — the menu will get out of the way.
           </p>
         ) : null}
 
-        {!drawing
-          ? (routes ?? []).map((route) => {
-              const selected = selectedRouteId === route._id;
-              return (
-                <div
-                  key={route._id}
-                  className={`rounded-2xl border px-3 py-3 ${
-                    selected
-                      ? "border-[color:var(--run-ink)] bg-[color:var(--run-ink)] text-[color:var(--run-accent)]"
-                      : "border-[color:var(--run-line)] bg-white/70"
+        {(routes ?? []).map((route) => {
+          const selected = selectedRouteId === route._id;
+          return (
+            <div
+              key={route._id}
+              className={`rounded-2xl border px-3 py-3 ${
+                selected
+                  ? "border-[color:var(--run-ink)] bg-[color:var(--run-ink)] text-[color:var(--run-accent)]"
+                  : "border-[color:var(--run-line)] bg-white/70"
+              }`}
+            >
+              <button
+                type="button"
+                className="w-full text-left"
+                onClick={() => onSelectRoute(selected ? null : route._id)}
+              >
+                <p className="font-medium">{route.name}</p>
+                <p
+                  className={`text-xs ${
+                    selected ? "text-[color:var(--run-accent)]/80" : "text-[color:var(--run-muted)]"
                   }`}
                 >
-                  <button
-                    type="button"
-                    className="w-full text-left"
-                    onClick={() => onSelectRoute(selected ? null : route._id)}
-                  >
-                    <p className="font-medium">{route.name}</p>
-                    <p
-                      className={`text-xs ${
-                        selected ? "text-[color:var(--run-accent)]/80" : "text-[color:var(--run-muted)]"
-                      }`}
+                  {formatDistance(route.distanceMeters)} · {route.waypoints.length} points ·{" "}
+                  {route.displayName}
+                </p>
+              </button>
+              {selected ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {canEditMeetup ? (
+                    <button
+                      type="button"
+                      onClick={() => onApplyToMeetup(route._id)}
+                      className="rounded-full bg-[color:var(--run-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--run-ink)]"
                     >
-                      {formatDistance(route.distanceMeters)} · {route.waypoints.length} points ·{" "}
-                      {route.displayName}
-                    </p>
-                  </button>
-                  {selected ? (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {canEditMeetup ? (
-                        <button
-                          type="button"
-                          onClick={() => onApplyToMeetup(route._id)}
-                          className="rounded-full bg-[color:var(--run-accent)] px-3 py-1.5 text-xs font-medium text-[color:var(--run-ink)]"
-                        >
-                          Use for meetup
-                        </button>
-                      ) : null}
-                      {canEditMeetup ? (
-                        <button
-                          type="button"
-                          onClick={onClearMeetupRoute}
-                          className="rounded-full bg-white/15 px-3 py-1.5 text-xs"
-                        >
-                          Clear meetup route
-                        </button>
-                      ) : null}
-                      {route.clientId === selfClientId ? (
-                        <button
-                          type="button"
-                          onClick={() => onDeleteRoute(route._id)}
-                          className="rounded-full bg-white/15 px-3 py-1.5 text-xs"
-                        >
-                          Delete
-                        </button>
-                      ) : null}
-                    </div>
+                      Use for meetup
+                    </button>
+                  ) : null}
+                  {canEditMeetup ? (
+                    <button
+                      type="button"
+                      onClick={onClearMeetupRoute}
+                      className="rounded-full bg-white/15 px-3 py-1.5 text-xs"
+                    >
+                      Clear meetup route
+                    </button>
+                  ) : null}
+                  {route.clientId === selfClientId ? (
+                    <button
+                      type="button"
+                      onClick={() => onDeleteRoute(route._id)}
+                      className="rounded-full bg-white/15 px-3 py-1.5 text-xs"
+                    >
+                      Delete
+                    </button>
                   ) : null}
                 </div>
-              );
-            })
-          : null}
+              ) : null}
+            </div>
+          );
+        })}
       </section>
     </div>
   );
