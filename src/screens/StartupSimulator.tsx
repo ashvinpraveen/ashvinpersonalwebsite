@@ -263,6 +263,11 @@ const STARTUP_SAVE_VERSION = 1;
 const STARTUP_HELP_SEEN_KEY = "ashvin-startup-help-seen-v1";
 const NARROW_VIEWPORT_PX = 640;
 const MOBILE_WORLD_ZOOM = 0.82;
+/** Fixed-px plot tiles overlap on phone widths; scale them down vs desktop. */
+const MOBILE_PLOT_SCALE = 0.48;
+
+const plotPixelSize = (baseSize: number, isNarrow: boolean) =>
+  Math.max(44, Math.round(baseSize * (isNarrow ? MOBILE_PLOT_SCALE : 1)));
 
 type StartupSave = {
   version: number;
@@ -4046,9 +4051,10 @@ const StartupSimulator = () => {
       setSelectedStationId(nearbyStation.id);
       setHighlightedActionIndex(0);
       setActionNavigationActive(false);
-      setActionPanelExpanded(isNarrowViewport);
+      // Keep the compact strip on approach; expand is opt-in via the panel control.
+      setActionPanelExpanded(false);
     }
-  }, [dismissedStationId, game, isNarrowViewport, selectedStationId]);
+  }, [dismissedStationId, game, selectedStationId]);
 
   const handleWorldClick = (event: MouseEvent<HTMLDivElement>) => {
     if (suppressWorldClickRef.current) {
@@ -4215,7 +4221,7 @@ const StartupSimulator = () => {
     setSelectedNodeId(nodeId ?? null);
     setHighlightedActionIndex(0);
     setActionNavigationActive(false);
-    setActionPanelExpanded(isNarrowViewport);
+    setActionPanelExpanded(false);
     setGame((current) => ({
       ...current,
       player: position ?? { x: station.x, y: station.y },
@@ -5115,7 +5121,7 @@ const StartupSimulator = () => {
             const plotLevel = channel.unlocked
               ? Math.min(6, Math.max(1, channel.strength))
               : 1;
-            const plotSize = 80 + plotLevel * 9;
+            const plotSize = plotPixelSize(80 + plotLevel * 9, isNarrowViewport);
             const isStarterPlot = channel.id === "social" && !channel.unlocked;
             return (
               <button
@@ -5185,9 +5191,12 @@ const StartupSimulator = () => {
           })}
 
           {salesExpansionPlots.map((plot) => {
-            const plotSize = plot.id === "outreach"
-              ? Math.min(118, 88 + plot.people * 6)
-              : Math.min(132, 84 + selfServeLevelOf(game) * 8);
+            const plotSize = plotPixelSize(
+              plot.id === "outreach"
+                ? Math.min(118, 88 + plot.people * 6)
+                : Math.min(132, 84 + selfServeLevelOf(game) * 8),
+              isNarrowViewport,
+            );
             return (
               <button
                 key={plot.id}
@@ -5298,12 +5307,14 @@ const StartupSimulator = () => {
                         (game.helpDocs ? 1 : 0) +
                         (game.supportProcess ?? 0)
                       : 1;
-              const plotSize =
+              const plotSize = plotPixelSize(
                 station.id === "product" && game.product === 0
                   ? 88
                   : capitalStationIds.includes(station.id)
                     ? 80
-                    : Math.min(136, 98 + Math.max(1, plotLevel) * 8);
+                    : Math.min(136, 98 + Math.max(1, plotLevel) * 8),
+                isNarrowViewport,
+              );
               const isEmptyProduct =
                 station.id === "product" && game.product === 0;
 
@@ -5552,8 +5563,8 @@ const StartupSimulator = () => {
           <aside
             className={`startup-action-panel absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 overflow-hidden overscroll-contain border border-white/80 bg-[#fffdf7]/95 shadow-xl backdrop-blur-md sm:bottom-4 ${
               actionPanelExpanded
-                ? "max-h-[min(72dvh,720px)] w-[min(720px,calc(100vw-1rem))] rounded-[26px] p-3.5 sm:max-h-[min(76vh,720px)] sm:w-[min(720px,calc(100vw-1.5rem))] sm:rounded-[30px] sm:p-4"
-                : "max-h-[240px] w-[min(820px,calc(100vw-1rem))] rounded-3xl p-3 sm:max-h-[220px] sm:w-[min(820px,calc(100vw-1.5rem))]"
+                ? "max-h-[min(42dvh,380px)] w-[min(720px,calc(100vw-1rem))] rounded-[26px] p-3.5 sm:max-h-[min(76vh,720px)] sm:w-[min(720px,calc(100vw-1.5rem))] sm:rounded-[30px] sm:p-4"
+                : "max-h-[min(34dvh,210px)] w-[min(820px,calc(100vw-1rem))] rounded-3xl p-3 sm:max-h-[220px] sm:w-[min(820px,calc(100vw-1.5rem))]"
             }`}
             onClick={(event) => event.stopPropagation()}
             onWheel={(event) => event.stopPropagation()}
@@ -5645,10 +5656,10 @@ const StartupSimulator = () => {
             </div>
 
             <div
-              className={`mt-2 flex gap-2 pb-1 ${
+              className={`mt-2 flex pb-1 ${
                 actionPanelExpanded
-                  ? "max-h-[calc(min(72dvh,720px)-84px)] flex-col overflow-y-auto overscroll-y-contain pr-1 sm:max-h-[calc(min(76vh,720px)-76px)]"
-                  : "overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
+                  ? "max-h-[calc(min(42dvh,380px)-88px)] flex-col gap-3 overflow-y-auto overscroll-y-contain pr-1 sm:max-h-[calc(min(76vh,720px)-76px)] sm:gap-2.5"
+                  : "gap-2.5 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] sm:gap-2"
               }`}
               style={
                 actionPanelExpanded
