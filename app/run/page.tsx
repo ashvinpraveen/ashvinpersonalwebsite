@@ -9,7 +9,7 @@ const description =
 export const metadata: Metadata = createMetadata({
   title,
   description,
-  path: "/run-club",
+  path: "/run",
   imageAlt: "AI Run Club — walk together with live map and shareable finishes",
 });
 

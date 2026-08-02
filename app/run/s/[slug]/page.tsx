@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return createMetadata({
     title: "AI Run Club finish — Ashvin Praveen",
     description: "A shared walking or running finish from AI Run Club.",
-    path: `/run-club/s/${slug}`,
+    path: `/run/s/${slug}`,
     imageAlt: "Shared AI Run Club finish card",
   });
 }

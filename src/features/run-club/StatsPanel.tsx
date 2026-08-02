@@ -118,7 +118,7 @@ export default function StatsPanel({
                   {formatDistance(activity.distanceMeters)}
                 </span>
                 <a
-                  href={`/run-club/s/${activity.shareSlug}`}
+                  href={`/run/s/${activity.shareSlug}`}
                   className="font-mono text-xs text-[color:var(--run-accent-deep)] underline-offset-2 hover:underline"
                 >
                   Share

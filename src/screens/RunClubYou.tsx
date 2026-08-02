@@ -119,7 +119,7 @@ function YouApp() {
           {(mine?.recent ?? []).map((activity) => (
             <li key={activity._id}>
               <Link
-                href={`/run-club/a/${activity.shareSlug}`}
+                href={`/run/a/${activity.shareSlug}`}
                 className="flex items-center justify-between gap-3 rounded-2xl border border-[color:var(--run-line)] bg-white/70 px-4 py-3 text-sm"
               >
                 <span>

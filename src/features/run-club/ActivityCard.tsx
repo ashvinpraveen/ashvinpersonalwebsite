@@ -72,7 +72,7 @@ export default function ActivityCard({
 }) {
   return (
     <article className="overflow-hidden rounded-[24px] border border-[color:var(--run-line)] bg-white/70 shadow-[0_10px_30px_rgba(12,40,28,0.08)]">
-      <Link href={`/run-club/a/${activity.shareSlug}`} className="block">
+      <Link href={`/run/a/${activity.shareSlug}`} className="block">
         <RouteThumb path={activity.path} />
         <div className="space-y-3 p-4">
           <div className="flex items-center gap-3">
@@ -131,7 +131,7 @@ export default function ActivityCard({
           {activity.kudosCount}
         </button>
         <Link
-          href={`/run-club/a/${activity.shareSlug}`}
+          href={`/run/a/${activity.shareSlug}`}
           className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-sm text-[color:var(--run-ink)]"
         >
           <MessageCircle size={14} />

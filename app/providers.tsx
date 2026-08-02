@@ -33,7 +33,7 @@ export default function Providers({ children }: { children: ReactNode }) {
     !pathname?.startsWith("/admin") &&
     pathname !== "/diary" &&
     pathname !== "/startup" &&
-    !pathname?.startsWith("/run-club");
+    !pathname?.startsWith("/run");
 
   return (
     <PostHogProvider>

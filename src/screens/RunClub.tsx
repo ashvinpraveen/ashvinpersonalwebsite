@@ -311,7 +311,7 @@ function RunClubApp() {
         path,
       });
       setStartedAt(null);
-      router.push(`/run-club/a/${result.shareSlug}`);
+      router.push(`/run/a/${result.shareSlug}`);
     } catch (error) {
       setGeoError(error instanceof Error ? error.message : "Could not save this finish.");
       setStartedAt(null);
@@ -528,7 +528,7 @@ function RunClubApp() {
                     transition={{ duration: 0.28 }}
                     className="overflow-hidden"
                   >
-                    <div className="mt-3 max-h-[46vh] overflow-y-auto border-t border-[color:var(--run-line)] pt-3">
+                    <div className="mt-3 max-h-[min(38dvh,18rem)] overflow-y-auto border-t border-[color:var(--run-line)] pt-3">
                       <div className="mb-2 flex items-center justify-between px-1">
                         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--run-muted)]">
                           {panel === "chat" ? "Club chat" : "Start & route"}

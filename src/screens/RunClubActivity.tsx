@@ -89,7 +89,7 @@ function ActivityApp({ slug }: { slug: string }) {
       <RunClubShell title="Activity">
         <div className="rounded-[24px] border border-[color:var(--run-line)] bg-white/70 p-6">
           <p className="font-[family-name:var(--run-display)] text-2xl">Not found</p>
-          <Link href="/run-club/feed" className="mt-4 inline-flex text-sm text-[color:var(--run-accent-deep)]">
+          <Link href="/run/feed" className="mt-4 inline-flex text-sm text-[color:var(--run-accent-deep)]">
             Back to feed →
           </Link>
         </div>
@@ -221,7 +221,7 @@ function ActivityApp({ slug }: { slug: string }) {
             </form>
           ) : (
             <p className="mt-4 text-sm text-[color:var(--run-muted)]">
-              <Link href="/run-club/feed" className="underline">
+              <Link href="/run/feed" className="underline">
                 Join the club
               </Link>{" "}
               to comment.

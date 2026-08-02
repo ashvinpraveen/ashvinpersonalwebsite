@@ -14,11 +14,11 @@ import SiteNav from "@/components/SiteNav";
 import { cn } from "@/lib/utils";
 
 const tabs = [
-  { href: "/run-club", label: "Record", icon: Radio, match: (path: string) => path === "/run-club" },
-  { href: "/run-club/feed", label: "Feed", icon: Footprints, match: (path: string) => path.startsWith("/run-club/feed") || path.startsWith("/run-club/a/") },
-  { href: "/run-club/events", label: "Events", icon: CalendarDays, match: (path: string) => path.startsWith("/run-club/events") },
-  { href: "/run-club/club", label: "Club", icon: Users, match: (path: string) => path.startsWith("/run-club/club") },
-  { href: "/run-club/you", label: "You", icon: CircleUserRound, match: (path: string) => path.startsWith("/run-club/you") },
+  { href: "/run", label: "Record", icon: Radio, match: (path: string) => path === "/run" },
+  { href: "/run/feed", label: "Feed", icon: Footprints, match: (path: string) => path.startsWith("/run/feed") || path.startsWith("/run/a/") },
+  { href: "/run/events", label: "Events", icon: CalendarDays, match: (path: string) => path.startsWith("/run/events") },
+  { href: "/run/club", label: "Club", icon: Users, match: (path: string) => path.startsWith("/run/club") },
+  { href: "/run/you", label: "You", icon: CircleUserRound, match: (path: string) => path.startsWith("/run/you") },
 ] as const;
 
 /** Tab bar content height (excluding safe-area). Keep in sync with nav padding/py. */
@@ -40,7 +40,7 @@ export default function RunClubShell({
   subtitle,
   fullBleed = false,
 }: RunClubShellProps) {
-  const pathname = usePathname() ?? "/run-club";
+  const pathname = usePathname() ?? "/run";
   const tabsVisible = !hideTabs;
 
   return (
