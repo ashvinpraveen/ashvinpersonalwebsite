@@ -14,6 +14,8 @@ export const chatBackend =
 export const isAgentChatBackend = chatBackend === "agent";
 export const isPostcardsEnabled =
   isConvexConfigured && !isDisabled(process.env.NEXT_PUBLIC_ENABLE_POSTCARDS);
+export const isRunClubEnabled =
+  isConvexConfigured && !isDisabled(process.env.NEXT_PUBLIC_ENABLE_RUN_CLUB);
 export const isAdminEnabled = isConvexConfigured;
 export const isPostHogEnabled =
   Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY) &&
