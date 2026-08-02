@@ -40,5 +40,24 @@ export function useRunClubProfile() {
     [ensureMeetup, upsertMember],
   );
 
-  return { profile, ready, join, setProfile };
+  const updateDisplayName = useCallback(
+    async (nameDraft: string) => {
+      const displayName = normalizeDisplayName(nameDraft);
+      if (!displayName) throw new Error("Pick a display name.");
+      const current = readStoredProfile();
+      if (!current) throw new Error("Join the club first.");
+      await upsertMember({
+        clientId: current.clientId,
+        displayName,
+        avatarHue: current.avatarHue,
+      });
+      const next = { ...current, displayName };
+      saveProfile(next);
+      setProfile(next);
+      return next;
+    },
+    [upsertMember],
+  );
+
+  return { profile, ready, join, updateDisplayName, setProfile };
 }

@@ -109,7 +109,7 @@ export default function LiveChat({
           onChange={(event) => setDraft(event.target.value.slice(0, MAX_CHAT_LENGTH))}
           placeholder={disabled ? "Join to chat" : "Message the club"}
           disabled={disabled || sending}
-          className="min-w-0 flex-1 rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-2.5 text-sm text-[color:var(--run-ink)] outline-none placeholder:text-[color:var(--run-muted)] focus:border-[color:var(--run-accent-deep)]"
+          className="min-w-0 flex-1 rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-2.5 text-base text-[color:var(--run-ink)] outline-none placeholder:text-[color:var(--run-muted)] focus:border-[color:var(--run-accent-deep)]"
           maxLength={MAX_CHAT_LENGTH}
         />
         <button

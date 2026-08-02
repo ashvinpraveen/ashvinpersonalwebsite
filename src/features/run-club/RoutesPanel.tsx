@@ -124,7 +124,7 @@ export default function RoutesPanel({
               onChange={(event) => setNameDraft(event.target.value)}
               maxLength={MAX_ROUTE_NAME_LENGTH}
               placeholder="Route name"
-              className="w-full rounded-full border border-[color:var(--run-line)] bg-white px-3 py-2 text-sm outline-none"
+              className="w-full rounded-full border border-[color:var(--run-line)] bg-white px-3 py-2 text-base outline-none"
             />
             <div className="flex flex-wrap gap-2">
               <button
