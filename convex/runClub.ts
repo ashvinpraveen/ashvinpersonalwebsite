@@ -5,6 +5,7 @@ import {
   dayKeyInClubTz,
   nextMeetupStartsAt,
   previousDayKey,
+  weekKeyInClubTz,
 } from "./lib/runClubSchedule";
 
 const MAX_CLIENT_ID_LENGTH = 80;
@@ -14,7 +15,14 @@ const MAX_ROUTE_WAYPOINTS = 40;
 const MAX_PATH_POINTS = 120;
 const MAX_MESSAGES = 80;
 const MAX_LEADERBOARD = 20;
-const MAX_RECENT_ACTIVITIES = 12;
+const MAX_RECENT_ACTIVITIES = 24;
+const MAX_TITLE_LENGTH = 80;
+const MAX_NOTES_LENGTH = 280;
+const activityTypeValidator = v.union(
+  v.literal("run"),
+  v.literal("walk"),
+  v.literal("jog"),
+);
 const PRESENCE_TTL_MS = 60_000;
 const PRESENCE_LIST_LIMIT = 80;
 
@@ -321,8 +329,13 @@ export const finishActivity = mutation({
     displayName: v.string(),
     avatarHue: v.number(),
     sessionId: v.optional(v.id("runClubSessions")),
+    activityType: v.optional(activityTypeValidator),
+    title: v.optional(v.string()),
+    notes: v.optional(v.string()),
     distanceMeters: v.number(),
     durationMs: v.number(),
+    movingDurationMs: v.optional(v.number()),
+    splitsMeters: v.optional(v.array(v.number())),
     path: v.array(
       v.object({
         lat: v.number(),
@@ -353,8 +366,15 @@ export const finishActivity = mutation({
       MAX_PATH_POINTS,
     );
 
+    const activityType = args.activityType ?? "walk";
+    const title =
+      args.title?.trim().replace(/\s+/g, " ").slice(0, MAX_TITLE_LENGTH) ||
+      defaultActivityTitle(activityType, Math.round(args.distanceMeters));
+    const notes = args.notes?.trim().replace(/\r\n/g, "\n").slice(0, MAX_NOTES_LENGTH);
+
     const now = Date.now();
     const dayKey = dayKeyInClubTz(now);
+    const weekKey = weekKeyInClubTz(now);
     let shareSlug = makeShareSlug();
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const collision = await ctx.db
@@ -365,14 +385,29 @@ export const finishActivity = mutation({
       shareSlug = makeShareSlug();
     }
 
+    const distanceMeters = Math.round(args.distanceMeters);
+    const durationMs = Math.round(args.durationMs);
+    const movingDurationMs = Math.round(args.movingDurationMs ?? durationMs);
+    const splitsMeters = (args.splitsMeters ?? [])
+      .filter((value) => Number.isFinite(value) && value > 0)
+      .slice(0, 42)
+      .map((value) => Math.round(value));
+
     const activityId = await ctx.db.insert("runClubActivities", {
       clientId,
       displayName,
       avatarHue: args.avatarHue,
       sessionId: args.sessionId,
-      distanceMeters: Math.round(args.distanceMeters),
-      durationMs: Math.round(args.durationMs),
+      activityType,
+      title,
+      notes: notes || undefined,
+      distanceMeters,
+      durationMs,
+      movingDurationMs,
       path,
+      splitsMeters: splitsMeters.length ? splitsMeters : undefined,
+      kudosCount: 0,
+      commentCount: 0,
       shareSlug,
       createdAt: now,
       dayKey,
@@ -390,15 +425,22 @@ export const finishActivity = mutation({
       streakDays = stats.streakDays + 1;
     }
 
+    const weekDistanceMeters =
+      stats?.weekKey === weekKey
+        ? (stats.weekDistanceMeters ?? 0) + distanceMeters
+        : distanceMeters;
+
     if (stats) {
       await ctx.db.patch("runClubMemberStats", stats._id, {
         displayName,
         avatarHue: args.avatarHue,
-        totalDistanceMeters: stats.totalDistanceMeters + Math.round(args.distanceMeters),
-        totalDurationMs: stats.totalDurationMs + Math.round(args.durationMs),
+        totalDistanceMeters: stats.totalDistanceMeters + distanceMeters,
+        totalDurationMs: stats.totalDurationMs + durationMs,
         activityCount: stats.activityCount + 1,
         streakDays,
         lastDayKey: dayKey,
+        weekDistanceMeters,
+        weekKey,
         updatedAt: now,
       });
     } else {
@@ -406,11 +448,13 @@ export const finishActivity = mutation({
         clientId,
         displayName,
         avatarHue: args.avatarHue,
-        totalDistanceMeters: Math.round(args.distanceMeters),
-        totalDurationMs: Math.round(args.durationMs),
+        totalDistanceMeters: distanceMeters,
+        totalDurationMs: durationMs,
         activityCount: 1,
         streakDays: 1,
         lastDayKey: dayKey,
+        weekDistanceMeters,
+        weekKey,
         updatedAt: now,
       });
     }
@@ -418,6 +462,16 @@ export const finishActivity = mutation({
     return { activityId, shareSlug };
   },
 });
+
+function defaultActivityTitle(
+  activityType: "run" | "walk" | "jog",
+  distanceMeters: number,
+) {
+  const km = (distanceMeters / 1000).toFixed(distanceMeters >= 10000 ? 1 : 2);
+  const label =
+    activityType === "run" ? "Run" : activityType === "jog" ? "Jog" : "Walk";
+  return `${label} · ${km} km`;
+}
 
 export const getSharedActivity = query({
   args: {
@@ -492,5 +546,42 @@ export const clubTotals = query({
       totalDistanceMeters,
       activityCount,
     };
+  },
+});
+
+export const listSessions = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("runClubSessions")
+      .withIndex("by_startsAt")
+      .order("desc")
+      .take(12);
+  },
+});
+
+export const listMembers = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("runClubMembers")
+      .withIndex("by_updatedAt")
+      .order("desc")
+      .take(40);
+  },
+});
+
+export const weeklyLeaderboard = query({
+  args: {},
+  handler: async (ctx) => {
+    const weekKey = weekKeyInClubTz(Date.now());
+    const rows = await ctx.db
+      .query("runClubMemberStats")
+      .withIndex("by_weekDistanceMeters")
+      .order("desc")
+      .take(MAX_LEADERBOARD);
+    return rows
+      .filter((row) => row.weekKey === weekKey && (row.weekDistanceMeters ?? 0) > 0)
+      .slice(0, MAX_LEADERBOARD);
   },
 });

@@ -69,6 +69,38 @@ export function formatPace(meters: number, durationMs: number) {
   return `${whole}:${String(seconds).padStart(2, "0")} /km`;
 }
 
+/** Cumulative km-split durations in ms along a timed path. */
+export function computeSplitDurations(
+  points: Array<LatLng & { recordedAt?: number }>,
+  totalDurationMs: number,
+): number[] {
+  if (points.length < 2 || totalDurationMs <= 0) return [];
+
+  const hasTimestamps = points.every(
+    (point) => typeof point.recordedAt === "number" && Number.isFinite(point.recordedAt),
+  );
+
+  const splits: number[] = [];
+  let segmentStartMs = hasTimestamps ? (points[0].recordedAt as number) : 0;
+  let carried = 0;
+
+  for (let i = 1; i < points.length; i += 1) {
+    const step = distanceMeters(points[i - 1], points[i]);
+    carried += step;
+    while (carried >= 1000) {
+      const atMs = hasTimestamps
+        ? (points[i].recordedAt as number)
+        : (pathDistanceMeters(points.slice(0, i + 1)) / pathDistanceMeters(points)) *
+          totalDurationMs;
+      splits.push(Math.max(0, Math.round(atMs - segmentStartMs)));
+      segmentStartMs = atMs;
+      carried -= 1000;
+    }
+  }
+
+  return splits.slice(0, 42);
+}
+
 export function bearingDegrees(from: LatLng, to: LatLng) {
   const lat1 = toRadians(from.lat);
   const lat2 = toRadians(to.lat);
