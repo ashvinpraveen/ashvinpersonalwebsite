@@ -260,6 +260,9 @@ type WorldWalker = {
 
 const STARTUP_SAVE_KEY = "ashvin-startup-game-v1";
 const STARTUP_SAVE_VERSION = 1;
+const STARTUP_HELP_SEEN_KEY = "ashvin-startup-help-seen-v1";
+const NARROW_VIEWPORT_PX = 640;
+const MOBILE_WORLD_ZOOM = 0.82;
 
 type StartupSave = {
   version: number;
@@ -714,6 +717,22 @@ const saveStartupGame = (game: GameState) => {
 const clearSavedStartupGame = () => {
   try {
     window.localStorage.removeItem(STARTUP_SAVE_KEY);
+  } catch {
+    // Private browsing or storage limits should not interrupt the game.
+  }
+};
+
+const hasSeenStartupHelp = () => {
+  try {
+    return window.localStorage.getItem(STARTUP_HELP_SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+
+const markStartupHelpSeen = () => {
+  try {
+    window.localStorage.setItem(STARTUP_HELP_SEEN_KEY, "1");
   } catch {
     // Private browsing or storage limits should not interrupt the game.
   }
@@ -2884,6 +2903,8 @@ const StartupSimulator = () => {
   const [toasts, setToasts] = useState<GameToast[]>([]);
   const [worldWalkers, setWorldWalkers] = useState<WorldWalker[]>([]);
   const [exitIntent, setExitIntent] = useState<ExitIntent | null>(null);
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
   const previousGameRef = useRef(initialGame);
   const audioContextRef = useRef<AudioContext | null>(null);
   const ambientMusicTimerRef = useRef<number | null>(null);
@@ -2895,8 +2916,17 @@ const StartupSimulator = () => {
   const actionButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const allowBrowserExitRef = useRef(false);
   const pausedBeforeStatsRef = useRef(false);
+  const pausedBeforeHelpRef = useRef(false);
   const latestGameRef = useRef(initialGame);
   const previousPlayerRef = useRef(initialGame.player);
+  const worldZoomRef = useRef(1);
+  const activePointersRef = useRef<Map<number, { x: number; y: number }>>(
+    new Map(),
+  );
+  const pinchRef = useRef<{
+    initialDistance: number;
+    initialZoom: number;
+  } | null>(null);
   const worldDragRef = useRef<{
     pointerId: number;
     startX: number;
@@ -2926,8 +2956,35 @@ const StartupSimulator = () => {
   }, []);
 
   useEffect(() => {
+    const media = window.matchMedia(`(max-width: ${NARROW_VIEWPORT_PX - 1}px)`);
+    const syncViewport = () => {
+      const narrow = media.matches;
+      setIsNarrowViewport(narrow);
+      setWorldZoom((current) => {
+        if (narrow && Math.abs(current - 1) < 0.001) return MOBILE_WORLD_ZOOM;
+        if (!narrow && Math.abs(current - MOBILE_WORLD_ZOOM) < 0.001) return 1;
+        return current;
+      });
+    };
+    syncViewport();
+    media.addEventListener("change", syncViewport);
+    return () => media.removeEventListener("change", syncViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!isSaveHydrated || hasSeenStartupHelp()) return;
+    pausedBeforeHelpRef.current = false;
+    setPaused(true);
+    setShowHowToPlay(true);
+  }, [isSaveHydrated]);
+
+  useEffect(() => {
     latestGameRef.current = game;
   }, [game]);
+
+  useEffect(() => {
+    worldZoomRef.current = worldZoom;
+  }, [worldZoom]);
 
   useEffect(() => {
     if (!isSaveHydrated) return;
@@ -3837,6 +3894,16 @@ const StartupSimulator = () => {
         return;
       }
 
+      if (showHowToPlay) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          markStartupHelpSeen();
+          setShowHowToPlay(false);
+          setPaused(pausedBeforeHelpRef.current);
+        }
+        return;
+      }
+
       if (showStats) {
         if (event.key === "Escape") {
           event.preventDefault();
@@ -3929,6 +3996,7 @@ const StartupSimulator = () => {
     exitIntent,
     selectedActions,
     selectedStationId,
+    showHowToPlay,
     showStats,
   ]);
 
@@ -3978,9 +4046,9 @@ const StartupSimulator = () => {
       setSelectedStationId(nearbyStation.id);
       setHighlightedActionIndex(0);
       setActionNavigationActive(false);
-      setActionPanelExpanded(false);
+      setActionPanelExpanded(isNarrowViewport);
     }
-  }, [dismissedStationId, game, selectedStationId]);
+  }, [dismissedStationId, game, isNarrowViewport, selectedStationId]);
 
   const handleWorldClick = (event: MouseEvent<HTMLDivElement>) => {
     if (suppressWorldClickRef.current) {
@@ -4004,13 +4072,33 @@ const StartupSimulator = () => {
   const handleWorldPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (
       event.button !== 0 ||
-      (event.target as HTMLElement).closest("button, a, aside")
+      (event.target as HTMLElement).closest("button, a, aside, [role='dialog']")
     ) {
       return;
     }
 
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
+    activePointersRef.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+
+    if (activePointersRef.current.size >= 2) {
+      worldDragRef.current = null;
+      setIsDraggingWorld(false);
+      const points = [...activePointersRef.current.values()];
+      const distance = Math.hypot(
+        points[0].x - points[1].x,
+        points[0].y - points[1].y,
+      );
+      pinchRef.current = {
+        initialDistance: Math.max(distance, 1),
+        initialZoom: worldZoomRef.current,
+      };
+      return;
+    }
+
     worldDragRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -4023,6 +4111,30 @@ const StartupSimulator = () => {
   };
 
   const handleWorldPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (activePointersRef.current.has(event.pointerId)) {
+      activePointersRef.current.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY,
+      });
+    }
+
+    if (pinchRef.current && activePointersRef.current.size >= 2) {
+      const points = [...activePointersRef.current.values()];
+      const distance = Math.hypot(
+        points[0].x - points[1].x,
+        points[0].y - points[1].y,
+      );
+      const nextZoom = clamp(
+        pinchRef.current.initialZoom *
+          (distance / pinchRef.current.initialDistance),
+        0.6,
+        1.45,
+      );
+      suppressWorldClickRef.current = true;
+      setWorldZoom(nextZoom);
+      return;
+    }
+
     const drag = worldDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
 
@@ -4051,12 +4163,18 @@ const StartupSimulator = () => {
   };
 
   const finishWorldDrag = (event: PointerEvent<HTMLDivElement>) => {
-    const drag = worldDragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
+    activePointersRef.current.delete(event.pointerId);
+    if (activePointersRef.current.size < 2) {
+      pinchRef.current = null;
+    }
 
-    suppressWorldClickRef.current = drag.moved;
-    worldDragRef.current = null;
-    setIsDraggingWorld(false);
+    const drag = worldDragRef.current;
+    if (drag && drag.pointerId === event.pointerId) {
+      suppressWorldClickRef.current = drag.moved;
+      worldDragRef.current = null;
+      setIsDraggingWorld(false);
+    }
+
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -4097,11 +4215,27 @@ const StartupSimulator = () => {
     setSelectedNodeId(nodeId ?? null);
     setHighlightedActionIndex(0);
     setActionNavigationActive(false);
-    setActionPanelExpanded(false);
+    setActionPanelExpanded(isNarrowViewport);
     setGame((current) => ({
       ...current,
       player: position ?? { x: station.x, y: station.y },
     }));
+  };
+
+  const openHowToPlay = () => {
+    if (showHowToPlay) return;
+    pausedBeforeHelpRef.current = paused;
+    setPaused(true);
+    setShowHowToPlay(true);
+    captureStartupEvent("startup_game_help_opened", {
+      viewport: isNarrowViewport ? "narrow" : "wide",
+    });
+  };
+
+  const closeHowToPlay = () => {
+    markStartupHelpSeen();
+    setShowHowToPlay(false);
+    setPaused(pausedBeforeHelpRef.current);
   };
 
   const startAction = (action: ActionConfig) => {
@@ -4155,7 +4289,7 @@ const StartupSimulator = () => {
     setShowBankruptcySummary(true);
     setPaused(false);
     pausedBeforeStatsRef.current = false;
-    setWorldZoom(1);
+    setWorldZoom(isNarrowViewport ? MOBILE_WORLD_ZOOM : 1);
     setIsFounderMoving(false);
     setFounderFacing(1);
     previousPlayerRef.current = initialGame.player;
@@ -4277,7 +4411,7 @@ const StartupSimulator = () => {
   ];
 
   return (
-    <main className="fixed inset-0 z-40 overflow-hidden overscroll-none bg-[#a9d477] text-[#24352b]">
+    <main className="fixed inset-0 z-40 overflow-hidden overscroll-none bg-[#a9d477] text-[#24352b] [padding:env(safe-area-inset-top)_env(safe-area-inset-right)_env(safe-area-inset-bottom)_env(safe-area-inset-left)]">
       <style>{`
         @keyframes startup-bob {
           0%, 100% { transform: translateY(0); }
@@ -4364,7 +4498,7 @@ const StartupSimulator = () => {
           isSaveHydrated ? "" : "pointer-events-none"
         } ${isDraggingWorld ? "cursor-grabbing" : "cursor-grab"}`}
         style={{ touchAction: "none" }}
-        aria-label="Open startup grassland. Click anywhere to walk."
+        aria-label="Open startup grassland. Tap or click anywhere to walk."
         aria-busy={!isSaveHydrated}
         onClick={handleWorldClick}
         onPointerDown={handleWorldPointerDown}
@@ -4382,43 +4516,146 @@ const StartupSimulator = () => {
         ) : null}
         <div className="pointer-events-none absolute -left-10 -top-10 h-64 w-64 rounded-full bg-[#d6eea4]/50 blur-3xl" />
 
-        <div className="absolute inset-x-4 top-4 z-30 flex items-start justify-between gap-3 sm:inset-x-6 sm:top-6">
-          <div className="pointer-events-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setExitIntent("website");
-              }}
-              className="flex h-10 items-center justify-center gap-1.5 rounded-full border border-white/70 bg-white/70 px-3 text-sm font-semibold shadow-sm backdrop-blur-sm transition hover:bg-white"
-              aria-label="Exit game and visit Ashvin Praveen's website"
-            >
-              <span aria-hidden="true">↩</span>
-              <span className="hidden sm:inline">Exit game</span>
-            </button>
-            <div className="rounded-2xl border border-white/70 bg-white/80 px-3 py-2 shadow-sm backdrop-blur-sm">
-              <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#66816f]">year {startupYear}</p>
-              <p className="text-xs font-semibold">day {dayOfYear}</p>
+        <div className="absolute inset-x-3 top-3 z-30 flex flex-col gap-2 sm:inset-x-6 sm:top-6 sm:gap-3">
+          <div className="flex items-start justify-between gap-2 sm:gap-3">
+            <div className="pointer-events-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setExitIntent("website");
+                }}
+                className="flex h-11 items-center justify-center gap-1.5 rounded-full border border-white/70 bg-white/70 px-3 text-sm font-semibold shadow-sm backdrop-blur-sm transition hover:bg-white sm:h-10"
+                aria-label="Exit game and visit Ashvin Praveen's website"
+              >
+                <span aria-hidden="true">↩</span>
+                <span className="hidden sm:inline">Exit game</span>
+              </button>
+              <div className="rounded-2xl border border-white/70 bg-white/80 px-3 py-2 shadow-sm backdrop-blur-sm">
+                <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#66816f]">year {startupYear}</p>
+                <p className="text-xs font-semibold">day {dayOfYear}</p>
+              </div>
+            </div>
+
+            <div className="pointer-events-auto mx-auto hidden min-w-0 max-w-[660px] flex-1 grid-cols-4 overflow-hidden rounded-[22px] border border-white/80 bg-[#fffdf7]/90 shadow-lg backdrop-blur-md sm:grid">
+              <div className="px-3 py-2.5">
+                <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#789080]">bank</p>
+                <p className="mt-0.5 truncate text-sm font-semibold">{formatMoney(game.cash)}</p>
+              </div>
+              <div className="border-l border-[#dfe7da] px-3 py-2.5">
+                <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#789080]">subscribers</p>
+                <p className="mt-0.5 text-sm font-semibold">{game.customers}</p>
+              </div>
+              <div
+                className="border-l border-[#dfe7da] px-3 py-2.5"
+                title={runwayTooltip}
+              >
+                <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#789080]">runway</p>
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{
+                      backgroundColor: runwayIsNotMeaningful
+                        ? "#a6aa8f"
+                        : runwayDial > 30
+                          ? "#5e9955"
+                          : "#c65f4d",
+                      animation:
+                        !runwayIsNotMeaningful && runwayDial <= 30
+                          ? "startup-soft-pulse 1.3s ease-in-out infinite"
+                          : undefined,
+                    }}
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm font-semibold">{runwayLabel}</p>
+                </div>
+              </div>
+              <div
+                className="border-l border-[#dfe7da] px-3 py-2.5"
+                title={`Estimated company value: ${formatMoney(companyValue)}`}
+              >
+                <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#789080]">equity owned</p>
+                <p className="mt-0.5 truncate text-sm font-semibold">
+                  {ownershipPercent}% <span className="font-normal text-[#789080]">· {formatCompactMoney(equityValue)}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openHowToPlay();
+                }}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/75 text-sm font-bold shadow-sm backdrop-blur-sm transition hover:bg-white sm:h-10 sm:w-10"
+                aria-label="How to play"
+                aria-expanded={showHowToPlay}
+              >
+                ?
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (!audioContextRef.current) {
+                    audioContextRef.current = new AudioContext();
+                  }
+                  if (audioContextRef.current.state === "suspended") {
+                    void audioContextRef.current.resume();
+                  }
+                  setSoundEnabled((current) => !current);
+                }}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/75 text-base shadow-sm backdrop-blur-sm transition hover:bg-white sm:h-10 sm:w-10"
+                aria-label={soundEnabled ? "Mute game sounds" : "Turn on game sounds"}
+                aria-pressed={soundEnabled}
+              >
+                {soundEnabled ? "🔊" : "🔇"}
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setPaused((current) => !current);
+                }}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/75 text-base shadow-sm backdrop-blur-sm transition hover:bg-white sm:h-10 sm:w-10"
+                aria-label={paused ? "Resume game" : "Pause game"}
+              >
+                {paused ? "▶" : "Ⅱ"}
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (showStats) {
+                    closeStartupHealth();
+                  } else {
+                    openStartupHealth();
+                  }
+                }}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/75 text-lg shadow-sm backdrop-blur-sm transition hover:bg-white sm:h-10 sm:w-10"
+                aria-label={showStats ? "Close startup stats" : "Open startup stats"}
+                aria-expanded={showStats}
+              >
+                {showStats ? "×" : "📊"}
+              </button>
             </div>
           </div>
 
-          <div className="pointer-events-auto mx-auto hidden min-w-0 max-w-[660px] flex-1 grid-cols-4 overflow-hidden rounded-[22px] border border-white/80 bg-[#fffdf7]/90 shadow-lg backdrop-blur-md sm:grid">
-            <div className="px-3 py-2.5">
-              <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#789080]">bank</p>
-              <p className="mt-0.5 truncate text-sm font-semibold">{formatMoney(game.cash)}</p>
+          <div className="pointer-events-auto grid grid-cols-4 overflow-hidden rounded-[18px] border border-white/80 bg-[#fffdf7]/92 shadow-lg backdrop-blur-md sm:hidden">
+            <div className="px-2 py-2">
+              <p className="font-mono text-[7px] uppercase tracking-[0.14em] text-[#789080]">bank</p>
+              <p className="mt-0.5 truncate text-xs font-semibold">{formatCompactMoney(game.cash)}</p>
             </div>
-            <div className="border-l border-[#dfe7da] px-3 py-2.5">
-              <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#789080]">subscribers</p>
-              <p className="mt-0.5 text-sm font-semibold">{game.customers}</p>
+            <div className="border-l border-[#dfe7da] px-2 py-2">
+              <p className="font-mono text-[7px] uppercase tracking-[0.14em] text-[#789080]">subs</p>
+              <p className="mt-0.5 text-xs font-semibold">{game.customers}</p>
             </div>
-            <div
-              className="border-l border-[#dfe7da] px-3 py-2.5"
-              title={runwayTooltip}
-            >
-              <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#789080]">runway</p>
-              <div className="mt-0.5 flex items-center gap-1.5">
+            <div className="border-l border-[#dfe7da] px-2 py-2" title={runwayTooltip}>
+              <p className="font-mono text-[7px] uppercase tracking-[0.14em] text-[#789080]">runway</p>
+              <div className="mt-0.5 flex items-center gap-1">
                 <span
-                  className="h-2 w-2 rounded-full"
+                  className="h-1.5 w-1.5 rounded-full"
                   style={{
                     backgroundColor: runwayIsNotMeaningful
                       ? "#a6aa8f"
@@ -4432,72 +4669,24 @@ const StartupSimulator = () => {
                   }}
                   aria-hidden="true"
                 />
-                <p className="text-sm font-semibold">{runwayLabel}</p>
+                <p className="text-xs font-semibold">{runwayLabel}</p>
               </div>
             </div>
             <div
-              className="border-l border-[#dfe7da] px-3 py-2.5"
+              className="border-l border-[#dfe7da] px-2 py-2"
               title={`Estimated company value: ${formatMoney(companyValue)}`}
             >
-              <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#789080]">equity owned</p>
-              <p className="mt-0.5 truncate text-sm font-semibold">
-                {ownershipPercent}% <span className="font-normal text-[#789080]">· {formatCompactMoney(equityValue)}</span>
+              <p className="font-mono text-[7px] uppercase tracking-[0.14em] text-[#789080]">equity</p>
+              <p className="mt-0.5 truncate text-xs font-semibold">
+                {ownershipPercent}%
               </p>
             </div>
-          </div>
-
-          <div className="pointer-events-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                if (!audioContextRef.current) {
-                  audioContextRef.current = new AudioContext();
-                }
-                if (audioContextRef.current.state === "suspended") {
-                  void audioContextRef.current.resume();
-                }
-                setSoundEnabled((current) => !current);
-              }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/75 text-base shadow-sm backdrop-blur-sm transition hover:bg-white"
-              aria-label={soundEnabled ? "Mute game sounds" : "Turn on game sounds"}
-              aria-pressed={soundEnabled}
-            >
-              {soundEnabled ? "🔊" : "🔇"}
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setPaused((current) => !current);
-              }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/75 text-base shadow-sm backdrop-blur-sm transition hover:bg-white"
-              aria-label={paused ? "Resume game" : "Pause game"}
-            >
-              {paused ? "▶" : "Ⅱ"}
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                if (showStats) {
-                  closeStartupHealth();
-                } else {
-                  openStartupHealth();
-                }
-              }}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/75 text-lg shadow-sm backdrop-blur-sm transition hover:bg-white"
-              aria-label={showStats ? "Close startup stats" : "Open startup stats"}
-              aria-expanded={showStats}
-            >
-              {showStats ? "×" : "📊"}
-            </button>
           </div>
         </div>
 
         {eventToastsEnabled ? (
           <div
-            className="pointer-events-none absolute left-1/2 top-20 z-50 flex w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-2 sm:top-24"
+            className="pointer-events-none absolute left-1/2 top-[8.75rem] z-50 flex w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-2 sm:top-24"
             aria-live="polite"
             aria-atomic="false"
           >
@@ -4543,7 +4732,7 @@ const StartupSimulator = () => {
             onClick={closeStartupHealth}
           >
             <section
-              className="max-h-[calc(100vh-1.5rem)] w-[min(1080px,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-[32px] border border-white/85 bg-[#fffdf7] p-4 shadow-2xl sm:max-h-[calc(100vh-3rem)] sm:p-6"
+              className="max-h-[calc(100dvh-1.5rem)] w-[min(1080px,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-[28px] border border-white/85 bg-[#fffdf7] p-4 shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:rounded-[32px] sm:p-6"
               onClick={(event) => event.stopPropagation()}
               onWheel={(event) => event.stopPropagation()}
               aria-label="Startup health dashboard"
@@ -5339,12 +5528,12 @@ const StartupSimulator = () => {
         </div>
 
         {game.activity && !selectedStation ? (
-          <div className="pointer-events-none absolute bottom-5 left-1/2 z-20 hidden -translate-x-1/2 rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm sm:block">
-            <div className="flex items-center justify-between gap-8">
-              <p className="text-xs font-semibold">{game.activity.label}</p>
-              <span className="font-mono text-[10px] text-[#66816f]">{progressPercent}%</span>
+          <div className="pointer-events-none absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 z-20 w-[min(320px,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border border-white/80 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-sm">
+            <div className="flex items-center justify-between gap-4">
+              <p className="truncate text-xs font-semibold">{game.activity.label}</p>
+              <span className="shrink-0 font-mono text-[10px] text-[#66816f]">{progressPercent}%</span>
             </div>
-            <div className="mt-2 h-1.5 w-44 overflow-hidden rounded-full bg-[#d4e4cf]">
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#d4e4cf]">
               <div
                 className="h-full rounded-full bg-[#6d9d5d] transition-[width] duration-500"
                 style={{
@@ -5361,10 +5550,10 @@ const StartupSimulator = () => {
 
         {selectedStation && !game.bankrupt && !game.outcome ? (
           <aside
-            className={`startup-action-panel absolute bottom-3 left-1/2 z-30 -translate-x-1/2 overflow-hidden overscroll-contain border border-white/80 bg-[#fffdf7]/95 shadow-xl backdrop-blur-md sm:bottom-4 ${
+            className={`startup-action-panel absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 overflow-hidden overscroll-contain border border-white/80 bg-[#fffdf7]/95 shadow-xl backdrop-blur-md sm:bottom-4 ${
               actionPanelExpanded
-                ? "max-h-[min(76vh,720px)] w-[min(720px,calc(100vw-1.5rem))] rounded-[30px] p-4"
-                : "max-h-[220px] w-[min(820px,calc(100vw-1.5rem))] rounded-3xl p-3"
+                ? "max-h-[min(72dvh,720px)] w-[min(720px,calc(100vw-1rem))] rounded-[26px] p-3.5 sm:max-h-[min(76vh,720px)] sm:w-[min(720px,calc(100vw-1.5rem))] sm:rounded-[30px] sm:p-4"
+                : "max-h-[240px] w-[min(820px,calc(100vw-1rem))] rounded-3xl p-3 sm:max-h-[220px] sm:w-[min(820px,calc(100vw-1.5rem))]"
             }`}
             onClick={(event) => event.stopPropagation()}
             onWheel={(event) => event.stopPropagation()}
@@ -5396,8 +5585,8 @@ const StartupSimulator = () => {
                 </div>
               </div>
             ) : null}
-            <div className="flex items-center gap-3 border-b border-[#e3e9df] pb-2">
-              <div className="shrink-0">
+            <div className="flex items-center gap-2 border-b border-[#e3e9df] pb-2 sm:gap-3">
+              <div className="min-w-0 shrink">
                 <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[#789080]">
                   {selectedStation.id === "sales"
                     ? `${game.team.sdr} SDR · ${game.team.sales} closers · ${salesConversionRateOf(game)}% conversion`
@@ -5416,7 +5605,7 @@ const StartupSimulator = () => {
                     : selectedStation.label}
                 </h2>
               </div>
-              <p className="min-w-0 flex-1 truncate text-[11px] text-[#6b7d70]">
+              <p className="hidden min-w-0 flex-1 truncate text-[11px] text-[#6b7d70] sm:block">
                 {game.lastEvent}
               </p>
               <span className="hidden shrink-0 font-mono text-[9px] text-[#789080] sm:block">
@@ -5433,7 +5622,7 @@ const StartupSimulator = () => {
                   setActionNavigationActive(false);
                   setHighlightedActionIndex(0);
                 }}
-                className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#dce6d8] bg-white text-lg leading-none text-[#789080] transition hover:border-[#94b28c] hover:text-[#24352b]"
+                className="ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#dce6d8] bg-white text-lg leading-none text-[#789080] transition hover:border-[#94b28c] hover:text-[#24352b] sm:h-8 sm:w-8"
                 aria-label={
                   actionPanelExpanded
                     ? "Collapse station actions"
@@ -5445,13 +5634,21 @@ const StartupSimulator = () => {
                   {actionPanelExpanded ? "⤡" : "⤢"}
                 </span>
               </button>
+              <button
+                type="button"
+                onClick={dismissSelectedStation}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#dce6d8] bg-white text-lg leading-none text-[#789080] transition hover:border-[#94b28c] hover:text-[#24352b] sm:hidden"
+                aria-label="Close station actions"
+              >
+                ×
+              </button>
             </div>
 
             <div
               className={`mt-2 flex gap-2 pb-1 ${
                 actionPanelExpanded
-                  ? "max-h-[calc(min(76vh,720px)-76px)] flex-col overflow-y-auto overscroll-y-contain pr-1"
-                  : "overflow-x-auto overscroll-x-contain"
+                  ? "max-h-[calc(min(72dvh,720px)-84px)] flex-col overflow-y-auto overscroll-y-contain pr-1 sm:max-h-[calc(min(76vh,720px)-76px)]"
+                  : "overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]"
               }`}
               style={
                 actionPanelExpanded
@@ -5492,7 +5689,7 @@ const StartupSimulator = () => {
                     className={
                       actionPanelExpanded
                         ? "w-full min-w-0 shrink-0 overflow-hidden"
-                        : "w-[220px] min-w-[220px] shrink-0 overflow-hidden"
+                        : "w-[min(240px,72vw)] min-w-[min(240px,72vw)] shrink-0 overflow-hidden sm:w-[220px] sm:min-w-[220px]"
                     }
                     style={{
                       animation: retiring
@@ -5508,8 +5705,8 @@ const StartupSimulator = () => {
                       onClick={() => startAction(action)}
                       onMouseEnter={() => setHighlightedActionIndex(actionIndex)}
                       disabled={disabled}
-                      className={`h-full w-full rounded-2xl border bg-white text-left transition hover:border-[#94b28c] hover:bg-[#f7fbf4] disabled:cursor-not-allowed disabled:opacity-45 ${
-                        actionPanelExpanded ? "p-3.5" : "p-2.5"
+                      className={`h-full min-h-[4.5rem] w-full touch-manipulation rounded-2xl border bg-white text-left transition hover:border-[#94b28c] hover:bg-[#f7fbf4] disabled:cursor-not-allowed disabled:opacity-45 sm:min-h-0 ${
+                        actionPanelExpanded ? "p-3.5" : "p-3 sm:p-2.5"
                       } ${
                         highlighted
                           ? "border-[#24352b] ring-2 ring-[#24352b]/70 ring-offset-2"
@@ -5643,6 +5840,83 @@ const StartupSimulator = () => {
                 className="rounded-xl bg-[#24352b] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#344c3d]"
               >
                 start over
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {showHowToPlay ? (
+          <div
+            className="absolute inset-0 z-[70] flex items-end justify-center bg-[#24352b]/40 p-3 backdrop-blur-sm sm:items-center sm:p-5"
+            onClick={(event) => {
+              event.stopPropagation();
+              closeHowToPlay();
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="startup-help-title"
+          >
+            <div
+              className="w-full max-w-md rounded-[28px] border border-white/80 bg-[#fffdf7] p-5 shadow-2xl sm:rounded-[30px] sm:p-6"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#789080]">
+                Startup Simulator
+              </p>
+              <h2 id="startup-help-title" className="mt-1 text-2xl font-semibold">
+                How to play
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-[#5c6f60]">
+                Build a company on this grassland. Move your founder, open plots, and keep cash alive.
+              </p>
+              <ol className="mt-4 space-y-3 text-sm leading-relaxed text-[#405247]">
+                <li className="flex gap-3">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#edf5e7] font-mono text-[11px] font-semibold text-[#54704e]">
+                    1
+                  </span>
+                  <span>
+                    <strong className="font-semibold">Tap the grass</strong> to walk.
+                    Drag with one finger to look around; pinch to zoom.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#edf5e7] font-mono text-[11px] font-semibold text-[#54704e]">
+                    2
+                  </span>
+                  <span>
+                    <strong className="font-semibold">Tap a brown plot</strong> to open
+                    actions for Marketing, Product, Sales, and more.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#edf5e7] font-mono text-[11px] font-semibold text-[#54704e]">
+                    3
+                  </span>
+                  <span>
+                    Start with <strong className="font-semibold">Marketing</strong>, build a
+                    product, then close sales. Hire people so the company runs without you.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#edf5e7] font-mono text-[11px] font-semibold text-[#54704e]">
+                    4
+                  </span>
+                  <span>
+                    Watch <strong className="font-semibold">bank</strong> and{" "}
+                    <strong className="font-semibold">runway</strong> up top. Cash to zero
+                    ends the run.
+                  </span>
+                </li>
+              </ol>
+              <p className="mt-4 hidden text-xs text-[#789080] sm:block">
+                Desktop tip: WASD or arrow keys also move the founder.
+              </p>
+              <button
+                type="button"
+                onClick={closeHowToPlay}
+                className="mt-5 w-full rounded-2xl bg-[#24352b] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#344c3d]"
+              >
+                Got it — let&apos;s build
               </button>
             </div>
           </div>
