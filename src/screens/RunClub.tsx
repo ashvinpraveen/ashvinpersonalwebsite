@@ -178,6 +178,7 @@ function RunClubApp() {
     [meetup],
   );
 
+
   function requestPosition(enableWatch: boolean) {
     if (!navigator.geolocation) {
       setGeoError("Geolocation is not available in this browser.");
