@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   CalendarDays,
   CircleUserRound,
@@ -21,9 +21,12 @@ const tabs = [
   { href: "/run-club/you", label: "You", icon: CircleUserRound, match: (path: string) => path.startsWith("/run-club/you") },
 ] as const;
 
+/** Tab bar content height (excluding safe-area). Keep in sync with nav padding/py. */
+export const RUN_CLUB_TAB_HEIGHT = "4.25rem";
+
 type RunClubShellProps = {
   children: ReactNode;
-  /** Hide bottom tabs during live recording immersion */
+  /** Hide bottom tabs during join / live recording immersion */
   hideTabs?: boolean;
   title?: string;
   subtitle?: string;
@@ -38,15 +41,25 @@ export default function RunClubShell({
   fullBleed = false,
 }: RunClubShellProps) {
   const pathname = usePathname() ?? "/run-club";
+  const tabsVisible = !hideTabs;
 
   return (
-    <div className="run-club-shell min-h-dvh text-[color:var(--run-ink)]">
+    <div
+      className="run-club-shell text-[color:var(--run-ink)]"
+      style={
+        {
+          "--run-club-tab-h": tabsVisible ? RUN_CLUB_TAB_HEIGHT : "0px",
+          minHeight: "100dvh",
+        } as CSSProperties
+      }
+    >
       <SiteNav variant="light" />
       <div
         className={cn(
           "mx-auto w-full",
-          fullBleed ? "" : "max-w-3xl px-4 pt-16",
-          hideTabs ? "pb-4" : "pb-[calc(5.5rem+env(safe-area-inset-bottom))]",
+          fullBleed
+            ? "min-h-dvh"
+            : "max-w-3xl px-4 pt-[calc(3rem+env(safe-area-inset-top,0px))] pb-[calc(var(--run-club-tab-h)+env(safe-area-inset-bottom,0px)+1rem)]",
         )}
       >
         {!fullBleed && title ? (
@@ -65,12 +78,13 @@ export default function RunClubShell({
         {children}
       </div>
 
-      {!hideTabs ? (
+      {tabsVisible ? (
         <nav
-          className="fixed inset-x-0 bottom-0 z-[55] border-t border-[color:var(--run-line)] bg-[rgba(232,246,216,0.92)] px-2 pb-[env(safe-area-inset-bottom)] pt-2 backdrop-blur-md"
+          className="fixed inset-x-0 bottom-0 z-[55] border-t border-[color:var(--run-line)] bg-[rgba(232,246,216,0.96)] px-2 pt-1.5 backdrop-blur-md"
+          style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
           aria-label="Run club sections"
         >
-          <div className="mx-auto grid max-w-3xl grid-cols-5 gap-1">
+          <div className="mx-auto grid h-[3.75rem] max-w-3xl grid-cols-5 gap-1">
             {tabs.map((tab) => {
               const active = tab.match(pathname);
               const Icon = tab.icon;
@@ -79,7 +93,7 @@ export default function RunClubShell({
                   key={tab.href}
                   href={tab.href}
                   className={cn(
-                    "flex flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-medium transition",
+                    "flex flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[10px] font-medium transition sm:text-[11px]",
                     active
                       ? "bg-[color:var(--run-ink)] text-[color:var(--run-accent)]"
                       : "text-[color:var(--run-muted)] hover:bg-white/50 hover:text-[color:var(--run-ink)]",

@@ -67,8 +67,8 @@ const ACTIVITY_TYPES: ActivityType[] = ["run", "walk", "jog"];
 export default function RunClub() {
   if (!isRunClubEnabled) {
     return (
-      <RunClubShell fullBleed>
-        <div className="mx-auto max-w-lg px-4 pb-16 pt-20">
+      <RunClubShell fullBleed hideTabs>
+        <div className="mx-auto flex min-h-dvh max-w-lg items-center px-4 pb-16 pt-20">
           <FeatureUnavailable
             title="AI Run Club"
             description="Turn on Convex and NEXT_PUBLIC_ENABLE_RUN_CLUB to host live meetups, chat, and distance tracking."
@@ -321,17 +321,19 @@ function RunClubApp() {
 
   if (!ready) {
     return (
-      <RunClubShell fullBleed>
-        <div className="grid h-dvh place-items-center pt-12 text-sm text-[color:var(--run-muted)]">
+      <RunClubShell fullBleed hideTabs>
+        <div className="grid h-dvh place-items-center px-4 pt-12 text-sm text-[color:var(--run-muted)]">
           Loading…
         </div>
       </RunClubShell>
     );
   }
 
+  const hideTabs = !profile || tracking;
+
   return (
-    <RunClubShell fullBleed hideTabs={tracking}>
-      <div className="relative h-dvh pt-12">
+    <RunClubShell fullBleed hideTabs={hideTabs}>
+      <div className="relative h-dvh max-h-dvh overflow-hidden pt-12">
         <div className="run-club-map-layer absolute inset-0 top-12">
           <ClubMap
             start={start}
@@ -355,10 +357,10 @@ function RunClubApp() {
             <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-[color:var(--run-accent-deep)]">
               Malaysian.ai
             </p>
-            <h1 className="mt-1 font-[family-name:var(--run-display)] text-4xl leading-none tracking-tight text-[color:var(--run-ink)] md:text-5xl">
+            <h1 className="mt-1 font-[family-name:var(--run-display)] text-3xl leading-none tracking-tight text-[color:var(--run-ink)] sm:text-4xl md:text-5xl">
               AI Run Club
             </h1>
-            {!tracking ? (
+            {!tracking && profile ? (
               <p className="mt-2 max-w-md text-sm text-[color:var(--run-muted)] md:text-base">
                 Record a run, walk, or jog — live map, club chat, and a shareable finish.
               </p>
@@ -372,13 +374,13 @@ function RunClubApp() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-40 grid place-items-end bg-[#0d281c]/35 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-24 backdrop-blur-[2px] sm:place-items-center sm:pb-0"
+              className="absolute inset-0 z-40 flex items-end justify-center overflow-y-auto overscroll-contain bg-[#0d281c]/35 px-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-20 backdrop-blur-[2px] sm:items-center sm:pb-6"
             >
               <motion.div
                 initial={{ y: 24, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.1, duration: 0.45 }}
-                className="w-full max-w-md"
+                className="my-auto w-full max-w-md"
               >
                 <JoinGate
                   busy={joining}
@@ -397,20 +399,27 @@ function RunClubApp() {
           ) : null}
         </AnimatePresence>
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-5 md:pb-5">
-          <div className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-3">
-            {geoError ? (
-              <div className="rounded-2xl border border-red-300/60 bg-red-50/90 px-4 py-2 text-sm text-red-800">
-                {geoError}
-              </div>
-            ) : null}
+        {profile ? (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 md:px-5"
+            style={{
+              paddingBottom:
+                "calc(var(--run-club-tab-h, 0px) + max(0.75rem, env(safe-area-inset-bottom, 0px)))",
+            }}
+          >
+            <div className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-2">
+              {geoError ? (
+                <div className="rounded-2xl border border-red-300/60 bg-red-50/90 px-4 py-2 text-sm text-red-800">
+                  {geoError}
+                </div>
+              ) : null}
 
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.5 }}
-              className="rounded-[28px] border border-white/50 bg-[color:var(--run-panel)] p-3 shadow-[0_18px_50px_rgba(12,40,28,0.22)] backdrop-blur-md"
-            >
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15, duration: 0.5 }}
+                className="rounded-[24px] border border-white/50 bg-[color:var(--run-panel)] p-3 shadow-[0_18px_50px_rgba(12,40,28,0.22)] backdrop-blur-md"
+              >
               <div className="mb-3 flex gap-1.5 px-1">
                 {ACTIVITY_TYPES.map((type) => (
                   <button
@@ -579,7 +588,8 @@ function RunClubApp() {
               <span className="capitalize">{activityType}</span>
             </div>
           </div>
-        </div>
+          </div>
+        ) : null}
       </div>
     </RunClubShell>
   );
