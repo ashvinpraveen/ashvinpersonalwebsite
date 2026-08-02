@@ -27,9 +27,9 @@ import FeatureUnavailable from "@/components/FeatureUnavailable";
 import { readStoredProfile } from "@/features/run-club/browser";
 import {
   CLUB_SCHEDULE,
-  DEFAULT_ROUTE,
   DEFAULT_START,
   MAX_PATH_POINTS,
+  MAX_ROUTE_WAYPOINTS,
   PRESENCE_HEARTBEAT_MS,
   TRACK_SAMPLE_METERS,
 } from "@/features/run-club/config";
@@ -43,6 +43,7 @@ import {
   samplePath,
 } from "@/features/run-club/geo";
 import LiveChat from "@/features/run-club/LiveChat";
+import RoutesPanel from "@/features/run-club/RoutesPanel";
 import RunClubShell from "@/features/run-club/RunClubShell";
 import { meetupCountdown, formatMeetupWhen } from "@/features/run-club/schedule";
 import type { LatLng, RouteWaypoint, TrackPoint } from "@/features/run-club/types";
@@ -98,6 +99,9 @@ function RunClubApp() {
   const [movingElapsedMs, setMovingElapsedMs] = useState(0);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
+  const [drawing, setDrawing] = useState(false);
+  const [draftWaypoints, setDraftWaypoints] = useState<RouteWaypoint[]>([]);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const lastSampleRef = useRef<LatLng | null>(null);
   const pausedRef = useRef(false);
@@ -106,10 +110,15 @@ function RunClubApp() {
   const leavePresence = useMutation(api.runClub.leavePresence);
   const sendMessage = useMutation(api.runClub.sendMessage);
   const finishActivity = useMutation(api.runClub.finishActivity);
+  const createRoute = useMutation(api.runClubRoutes.createRoute);
+  const deleteRoute = useMutation(api.runClubRoutes.deleteRoute);
+  const applyRouteToSession = useMutation(api.runClubRoutes.applyRouteToSession);
+  const clearSessionRoute = useMutation(api.runClubRoutes.clearSessionRoute);
 
   const meetup = useQuery(api.runClub.getMeetup);
   const presence = useQuery(api.runClub.listPresence) ?? [];
   const messages = useQuery(api.runClub.listMessages);
+  const clubRoutes = useQuery(api.runClubRoutes.listRoutes);
 
   useEffect(() => {
     pausedRef.current = paused;
@@ -173,9 +182,16 @@ function RunClubApp() {
         : { ...DEFAULT_START },
     [meetup],
   );
-  const route = useMemo<RouteWaypoint[]>(
-    () => (meetup?.routeWaypoints?.length ? meetup.routeWaypoints : [...DEFAULT_ROUTE]),
-    [meetup],
+  const route = useMemo<RouteWaypoint[]>(() => {
+    if (drawing) return draftWaypoints;
+    if (meetup?.routeWaypoints?.length) return meetup.routeWaypoints;
+    const selected = clubRoutes?.find((item) => item._id === selectedRouteId);
+    return selected?.waypoints ?? [];
+  }, [clubRoutes, draftWaypoints, drawing, meetup?.routeWaypoints, selectedRouteId]);
+
+  const draftDistanceMeters = useMemo(
+    () => pathDistanceMeters(draftWaypoints),
+    [draftWaypoints],
   );
 
 
@@ -343,6 +359,14 @@ function RunClubApp() {
             selfPath={trackPoints}
             selfPosition={livePosition}
             followSelf={tracking && !paused}
+            drawing={drawing && !tracking}
+            onMapClick={(point) => {
+              if (!drawing || tracking) return;
+              setDraftWaypoints((current) => {
+                if (current.length >= MAX_ROUTE_WAYPOINTS) return current;
+                return [...current, point];
+              });
+            }}
           />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,transparent_40%,rgba(10,40,28,0.18))]" />
         </div>
@@ -362,7 +386,9 @@ function RunClubApp() {
             </h1>
             {!tracking && profile ? (
               <p className="mt-2 max-w-md text-sm text-[color:var(--run-muted)] md:text-base">
-                Record a run, walk, or jog — live map, club chat, and a shareable finish.
+                {drawing
+                  ? "Tap the map to drop route points, then save in Routes."
+                  : "Record a run, walk, or jog — or draw a club route on the map."}
               </p>
             ) : null}
           </motion.div>
@@ -460,7 +486,7 @@ function RunClubApp() {
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   <HudButton
-                    label="Guide"
+                    label="Routes"
                     icon={<MapPinned size={16} />}
                     active={panel === "guide"}
                     onClick={() => setPanel(panel === "guide" ? "none" : "guide")}
@@ -531,7 +557,7 @@ function RunClubApp() {
                     <div className="mt-3 max-h-[min(38dvh,18rem)] overflow-y-auto border-t border-[color:var(--run-line)] pt-3">
                       <div className="mb-2 flex items-center justify-between px-1">
                         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--run-muted)]">
-                          {panel === "chat" ? "Club chat" : "Start & route"}
+                          {panel === "chat" ? "Club chat" : "Start & routes"}
                         </p>
                         <button
                           type="button"
@@ -563,14 +589,76 @@ function RunClubApp() {
                       ) : null}
 
                       {panel === "guide" ? (
-                        <GuidePanel
+                        <RoutesPanel
                           startLabel={start.label}
                           address={DEFAULT_START.address}
                           notes={meetup?.notes}
-                          routeLabels={route.flatMap((point) =>
-                            "label" in point && point.label ? [point.label] : [],
-                          )}
+                          routes={clubRoutes}
+                          selectedRouteId={
+                            meetup?.routeId ?? selectedRouteId
+                          }
+                          drawing={drawing}
+                          draftWaypoints={draftWaypoints}
+                          draftDistanceMeters={draftDistanceMeters}
+                          selfClientId={profile?.clientId}
+                          canEditMeetup={Boolean(profile && meetup)}
                           onLocate={() => requestPosition(tracking)}
+                          onSelectRoute={(routeId) => {
+                            setSelectedRouteId(routeId);
+                            setDrawing(false);
+                            setDraftWaypoints([]);
+                          }}
+                          onApplyToMeetup={(routeId) => {
+                            if (!profile || !meetup) return;
+                            void applyRouteToSession({
+                              sessionId: meetup._id,
+                              routeId: routeId as Id<"runClubRoutes">,
+                              clientId: profile.clientId,
+                            });
+                          }}
+                          onClearMeetupRoute={() => {
+                            if (!profile || !meetup) return;
+                            void clearSessionRoute({
+                              sessionId: meetup._id,
+                              clientId: profile.clientId,
+                            });
+                            setSelectedRouteId(null);
+                          }}
+                          onStartDrawing={() => {
+                            setDrawing(true);
+                            setDraftWaypoints([]);
+                            setSelectedRouteId(null);
+                            setPanel("guide");
+                          }}
+                          onUndoPoint={() =>
+                            setDraftWaypoints((current) => current.slice(0, -1))
+                          }
+                          onClearDraft={() => setDraftWaypoints([])}
+                          onCancelDrawing={() => {
+                            setDrawing(false);
+                            setDraftWaypoints([]);
+                          }}
+                          onSaveDraft={async (name) => {
+                            if (!profile) return;
+                            const routeId = await createRoute({
+                              clientId: profile.clientId,
+                              displayName: profile.displayName,
+                              avatarHue: profile.avatarHue,
+                              name,
+                              waypoints: draftWaypoints,
+                            });
+                            setDrawing(false);
+                            setDraftWaypoints([]);
+                            setSelectedRouteId(routeId);
+                          }}
+                          onDeleteRoute={(routeId) => {
+                            if (!profile) return;
+                            void deleteRoute({
+                              routeId: routeId as Id<"runClubRoutes">,
+                              clientId: profile.clientId,
+                            });
+                            if (selectedRouteId === routeId) setSelectedRouteId(null);
+                          }}
                         />
                       ) : null}
                     </div>
@@ -626,59 +714,5 @@ function HudButton({
       {icon}
       <span className="hidden sm:inline">{label}</span>
     </button>
-  );
-}
-
-function GuidePanel({
-  startLabel,
-  address,
-  notes,
-  routeLabels,
-  onLocate,
-}: {
-  startLabel: string;
-  address: string;
-  notes?: string;
-  routeLabels: string[];
-  onLocate: () => void;
-}) {
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-  return (
-    <div className="space-y-4 px-1 pb-1">
-      <div>
-        <p className="font-[family-name:var(--run-display)] text-2xl text-[color:var(--run-ink)]">
-          {startLabel}
-        </p>
-        <p className="mt-1 text-sm text-[color:var(--run-muted)]">{address}</p>
-      </div>
-      <p className="text-sm leading-relaxed text-[color:var(--run-ink)]">
-        {notes ?? "Meet at the start pin, warm up as a group, then follow the dashed loop."}
-      </p>
-      <ol className="space-y-1.5 text-sm text-[color:var(--run-ink)]">
-        {routeLabels.map((label, index) => (
-          <li key={`${label}-${index}`} className="flex gap-2">
-            <span className="font-mono text-[color:var(--run-muted)]">{index + 1}.</span>
-            <span>{label}</span>
-          </li>
-        ))}
-      </ol>
-      <div className="flex flex-wrap gap-2">
-        <a
-          href={mapsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-full bg-[color:var(--run-ink)] px-4 py-2.5 text-sm font-medium text-[color:var(--run-accent)]"
-        >
-          Open in Maps
-        </a>
-        <button
-          type="button"
-          onClick={onLocate}
-          className="inline-flex items-center gap-2 rounded-full border border-[color:var(--run-line)] bg-white/70 px-4 py-2.5 text-sm font-medium"
-        >
-          Use my location
-        </button>
-      </div>
-    </div>
   );
 }

@@ -36,6 +36,7 @@ export type ClubSession = {
   startLat: number;
   startLng: number;
   routeWaypoints: RouteWaypoint[];
+  routeId?: string;
   notes?: string;
 };
 

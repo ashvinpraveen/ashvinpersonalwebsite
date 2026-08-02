@@ -4,15 +4,17 @@ import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useMutation, useQuery } from "convex/react";
-import { Heart, MessageCircle } from "lucide-react";
+import { Heart, MapPinned, MessageCircle } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import FeatureUnavailable from "@/components/FeatureUnavailable";
 import { avatarColor } from "@/features/run-club/browser";
+import { MAX_ROUTE_WAYPOINTS } from "@/features/run-club/config";
 import {
   formatDistance,
   formatDuration,
   formatPace,
+  samplePath,
 } from "@/features/run-club/geo";
 import RunClubShell from "@/features/run-club/RunClubShell";
 import ShareCard from "@/features/run-club/ShareCard";
@@ -46,8 +48,11 @@ function ActivityApp({ slug }: { slug: string }) {
   });
   const toggleKudos = useMutation(api.runClubSocial.toggleKudos);
   const addComment = useMutation(api.runClubSocial.addComment);
+  const createRoute = useMutation(api.runClubRoutes.createRoute);
   const [comment, setComment] = useState("");
   const [sending, setSending] = useState(false);
+  const [savingRoute, setSavingRoute] = useState(false);
+  const [routeSaved, setRouteSaved] = useState(false);
 
   const start = useMemo(() => {
     if (!activity?.path?.[0]) return null;
@@ -73,6 +78,28 @@ function ActivityApp({ slug }: { slug: string }) {
       setComment("");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleSaveAsRoute() {
+    if (!profile || !activity || activity.path.length < 2 || savingRoute || routeSaved) {
+      return;
+    }
+    const defaultName = `${activity.displayName}'s ${activity.activityType}`;
+    const name = window.prompt("Name this route", defaultName);
+    if (!name?.trim()) return;
+    setSavingRoute(true);
+    try {
+      await createRoute({
+        clientId: profile.clientId,
+        displayName: profile.displayName,
+        avatarHue: profile.avatarHue,
+        name: name.trim(),
+        waypoints: samplePath(activity.path, MAX_ROUTE_WAYPOINTS),
+      });
+      setRouteSaved(true);
+    } finally {
+      setSavingRoute(false);
     }
   }
 
@@ -168,6 +195,17 @@ function ActivityApp({ slug }: { slug: string }) {
             <MessageCircle size={14} />
             {activity.commentCount} comments
           </span>
+          {activity.path.length >= 2 ? (
+            <button
+              type="button"
+              disabled={!profile || savingRoute || routeSaved}
+              onClick={() => void handleSaveAsRoute()}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-2 text-sm text-[color:var(--run-ink)] disabled:opacity-40"
+            >
+              <MapPinned size={14} />
+              {routeSaved ? "Route saved" : savingRoute ? "Saving…" : "Save as route"}
+            </button>
+          ) : null}
         </div>
 
         <ShareCard

@@ -23,6 +23,7 @@ import type * as lib_runClubSchedule from "../lib/runClubSchedule.js";
 import type * as migrations from "../migrations.js";
 import type * as postcards from "../postcards.js";
 import type * as runClub from "../runClub.js";
+import type * as runClubRoutes from "../runClubRoutes.js";
 import type * as runClubSocial from "../runClubSocial.js";
 
 import type {
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   postcards: typeof postcards;
   runClub: typeof runClub;
+  runClubRoutes: typeof runClubRoutes;
   runClubSocial: typeof runClubSocial;
 }>;
 

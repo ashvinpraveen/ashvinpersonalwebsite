@@ -11,7 +11,6 @@ import {
 const MAX_CLIENT_ID_LENGTH = 80;
 const MAX_DISPLAY_NAME_LENGTH = 24;
 const MAX_CHAT_LENGTH = 280;
-const MAX_ROUTE_WAYPOINTS = 40;
 const MAX_PATH_POINTS = 120;
 const MAX_MESSAGES = 80;
 const MAX_LEADERBOARD = 20;
@@ -32,15 +31,13 @@ const DEFAULT_START = {
   lng: 101.6854,
 };
 
-const DEFAULT_ROUTE = [
-  { lat: 3.1489, lng: 101.6854, label: "Start · AICB" },
-  { lat: 3.1498, lng: 101.6832, label: "Tun Ismail" },
-  { lat: 3.1516, lng: 101.6811, label: "Lake Gardens edge" },
-  { lat: 3.1534, lng: 101.6828 },
-  { lat: 3.1521, lng: 101.6859 },
-  { lat: 3.1502, lng: 101.6876, label: "Parliament loop" },
-  { lat: 3.1489, lng: 101.6854, label: "Finish · AICB" },
-];
+/** Old seeded Lake Gardens loop — strip it so meetups start with no guided path. */
+function isLegacyDefaultRoute(
+  waypoints: Array<{ lat: number; lng: number; label?: string }>,
+) {
+  if (waypoints.length !== 7) return false;
+  return waypoints[0]?.label === "Start · AICB" && waypoints[6]?.label === "Finish · AICB";
+}
 
 const normalizeClientId = (value: string) =>
   value.trim().slice(0, MAX_CLIENT_ID_LENGTH);
@@ -112,17 +109,26 @@ async function ensureUpcomingSession(ctx: MutationCtx) {
   });
 
   if (liveOrSoon) {
-    const shouldBeLive =
-      now >= liveOrSoon.startsAt - 30 * 60 * 1000 &&
-      now <= liveOrSoon.startsAt + 3 * 60 * 60 * 1000;
-    if (shouldBeLive && liveOrSoon.status !== "live") {
-      await ctx.db.patch("runClubSessions", liveOrSoon._id, { status: "live" });
-      return { ...liveOrSoon, status: "live" as const };
+    let session = liveOrSoon;
+    if (!session.routeId && isLegacyDefaultRoute(session.routeWaypoints)) {
+      await ctx.db.patch("runClubSessions", session._id, {
+        routeWaypoints: [],
+        notes: "Meet at AICB. Warm up together, then pick or draw a route as a group.",
+      });
+      session = { ...session, routeWaypoints: [], notes: "Meet at AICB. Warm up together, then pick or draw a route as a group." };
     }
-    if (!shouldBeLive && now > liveOrSoon.startsAt + 3 * 60 * 60 * 1000) {
-      await ctx.db.patch("runClubSessions", liveOrSoon._id, { status: "ended" });
+
+    const shouldBeLive =
+      now >= session.startsAt - 30 * 60 * 1000 &&
+      now <= session.startsAt + 3 * 60 * 60 * 1000;
+    if (shouldBeLive && session.status !== "live") {
+      await ctx.db.patch("runClubSessions", session._id, { status: "live" });
+      return { ...session, status: "live" as const };
+    }
+    if (!shouldBeLive && now > session.startsAt + 3 * 60 * 60 * 1000) {
+      await ctx.db.patch("runClubSessions", session._id, { status: "ended" });
     } else {
-      return liveOrSoon;
+      return session;
     }
   }
 
@@ -137,8 +143,8 @@ async function ensureUpcomingSession(ctx: MutationCtx) {
     startLabel: DEFAULT_START.label,
     startLat: DEFAULT_START.lat,
     startLng: DEFAULT_START.lng,
-    routeWaypoints: DEFAULT_ROUTE.slice(0, MAX_ROUTE_WAYPOINTS),
-    notes: "Meet at AICB. Warm up together, then walk or jog the loop.",
+    routeWaypoints: [],
+    notes: "Meet at AICB. Warm up together, then pick or draw a route as a group.",
     createdAt: now,
   });
 
