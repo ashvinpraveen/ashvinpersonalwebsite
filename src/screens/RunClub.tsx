@@ -1,9 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  FormEvent,
   useEffect,
   useMemo,
   useRef,
@@ -11,37 +10,31 @@ import {
   type ReactNode,
 } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import {
+  Footprints,
   MapPinned,
   MessageCircle,
   Navigation,
+  Pause,
+  Play,
   Square,
-  ChartNoAxesCombined,
-  Footprints,
   X,
 } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import SiteNav from "@/components/SiteNav";
 import FeatureUnavailable from "@/components/FeatureUnavailable";
-import {
-  getOrCreateRunClubClientId,
-  normalizeDisplayName,
-  pickAvatarHue,
-  readStoredProfile,
-  saveProfile,
-} from "@/features/run-club/browser";
+import { readStoredProfile } from "@/features/run-club/browser";
 import {
   CLUB_SCHEDULE,
   DEFAULT_ROUTE,
   DEFAULT_START,
-  MAX_DISPLAY_NAME_LENGTH,
   MAX_PATH_POINTS,
   PRESENCE_HEARTBEAT_MS,
   TRACK_SAMPLE_METERS,
 } from "@/features/run-club/config";
 import {
+  computeSplitDurations,
   distanceMeters,
   formatDistance,
   formatDuration,
@@ -50,11 +43,11 @@ import {
   samplePath,
 } from "@/features/run-club/geo";
 import LiveChat from "@/features/run-club/LiveChat";
-import ShareCard from "@/features/run-club/ShareCard";
-import StatsPanel from "@/features/run-club/StatsPanel";
+import RunClubShell from "@/features/run-club/RunClubShell";
 import { meetupCountdown, formatMeetupWhen } from "@/features/run-club/schedule";
-import type { LatLng, RunClubProfile, RouteWaypoint, TrackPoint } from "@/features/run-club/types";
-import { isConvexConfigured, isRunClubEnabled } from "@/lib/features";
+import type { LatLng, RouteWaypoint, TrackPoint } from "@/features/run-club/types";
+import { JoinGate, useRunClubProfile } from "@/features/run-club/useRunClubProfile";
+import { isRunClubEnabled } from "@/lib/features";
 
 const ClubMap = dynamic(() => import("@/features/run-club/ClubMap"), {
   ssr: false,
@@ -65,30 +58,22 @@ const ClubMap = dynamic(() => import("@/features/run-club/ClubMap"), {
   ),
 });
 
-type Panel = "none" | "chat" | "stats" | "guide" | "share";
+type Panel = "none" | "chat" | "guide";
+type ActivityType = "run" | "walk" | "jog";
 
-type FinishedShare = {
-  shareSlug: string;
-  distanceMeters: number;
-  durationMs: number;
-  path: LatLng[];
-  createdAt: number;
-  displayName: string;
-  avatarHue: number;
-};
+const ACTIVITY_TYPES: ActivityType[] = ["run", "walk", "jog"];
 
 export default function RunClub() {
   if (!isRunClubEnabled) {
     return (
-      <main className="min-h-dvh bg-background px-4 pb-16 pt-20">
-        <SiteNav variant="light" />
-        <div className="mx-auto max-w-lg pt-10">
+      <RunClubShell fullBleed>
+        <div className="mx-auto max-w-lg px-4 pb-16 pt-20">
           <FeatureUnavailable
             title="AI Run Club"
             description="Turn on Convex and NEXT_PUBLIC_ENABLE_RUN_CLUB to host live meetups, chat, and distance tracking."
           />
         </div>
-      </main>
+      </RunClubShell>
     );
   }
 
@@ -96,22 +81,26 @@ export default function RunClub() {
 }
 
 function RunClubApp() {
-  const [profile, setProfile] = useState<RunClubProfile | null>(null);
-  const [nameDraft, setNameDraft] = useState("");
+  const router = useRouter();
+  const { profile, ready, join } = useRunClubProfile();
+  const [joining, setJoining] = useState(false);
   const [panel, setPanel] = useState<Panel>("none");
+  const [activityType, setActivityType] = useState<ActivityType>("run");
   const [tracking, setTracking] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [trackPoints, setTrackPoints] = useState<TrackPoint[]>([]);
   const [livePosition, setLivePosition] = useState<LatLng | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [elapsedMs, setElapsedMs] = useState(0);
+  const [pausedAt, setPausedAt] = useState<number | null>(null);
+  const [pausedTotalMs, setPausedTotalMs] = useState(0);
+  const [wallElapsedMs, setWallElapsedMs] = useState(0);
+  const [movingElapsedMs, setMovingElapsedMs] = useState(0);
   const [geoError, setGeoError] = useState<string | null>(null);
-  const [finished, setFinished] = useState<FinishedShare | null>(null);
-  const [joining, setJoining] = useState(false);
+  const [finishing, setFinishing] = useState(false);
   const watchIdRef = useRef<number | null>(null);
   const lastSampleRef = useRef<LatLng | null>(null);
+  const pausedRef = useRef(false);
 
-  const upsertMember = useMutation(api.runClub.upsertMember);
-  const ensureMeetup = useMutation(api.runClub.ensureMeetup);
   const heartbeat = useMutation(api.runClub.heartbeat);
   const leavePresence = useMutation(api.runClub.leavePresence);
   const sendMessage = useMutation(api.runClub.sendMessage);
@@ -120,31 +109,24 @@ function RunClubApp() {
   const meetup = useQuery(api.runClub.getMeetup);
   const presence = useQuery(api.runClub.listPresence) ?? [];
   const messages = useQuery(api.runClub.listMessages);
-  const myStats = useQuery(
-    api.runClub.getMyStats,
-    profile ? { clientId: profile.clientId } : "skip",
-  );
-  const leaderboard = useQuery(api.runClub.leaderboard);
-  const clubTotals = useQuery(api.runClub.clubTotals);
 
   useEffect(() => {
-    const stored = readStoredProfile();
-    if (stored) {
-      setProfile(stored);
-      setNameDraft(stored.displayName);
-    } else {
-      setNameDraft("");
-    }
-    void ensureMeetup({}).catch(() => undefined);
-  }, [ensureMeetup]);
+    pausedRef.current = paused;
+  }, [paused]);
 
   useEffect(() => {
     if (!tracking || !startedAt) return;
-    const timer = window.setInterval(() => {
-      setElapsedMs(Date.now() - startedAt);
-    }, 500);
+    const tick = () => {
+      const now = Date.now();
+      const wall = now - startedAt;
+      const pausedExtra = paused && pausedAt ? now - pausedAt : 0;
+      setWallElapsedMs(wall);
+      setMovingElapsedMs(Math.max(0, wall - pausedTotalMs - pausedExtra));
+    };
+    tick();
+    const timer = window.setInterval(tick, 500);
     return () => window.clearInterval(timer);
-  }, [startedAt, tracking]);
+  }, [startedAt, tracking, paused, pausedAt, pausedTotalMs]);
 
   useEffect(() => {
     if (!profile || !livePosition) return;
@@ -156,7 +138,7 @@ function RunClubApp() {
         avatarHue: profile.avatarHue,
         lat: livePosition.lat,
         lng: livePosition.lng,
-        isTracking: tracking,
+        isTracking: tracking && !paused,
         sessionId: meetup?._id as Id<"runClubSessions"> | undefined,
       }).catch(() => undefined);
     };
@@ -164,7 +146,7 @@ function RunClubApp() {
     tick();
     const timer = window.setInterval(tick, PRESENCE_HEARTBEAT_MS);
     return () => window.clearInterval(timer);
-  }, [heartbeat, livePosition, meetup?._id, profile, tracking]);
+  }, [heartbeat, livePosition, meetup?._id, paused, profile, tracking]);
 
   useEffect(() => {
     return () => {
@@ -194,27 +176,6 @@ function RunClubApp() {
     () => (meetup?.routeWaypoints?.length ? meetup.routeWaypoints : [...DEFAULT_ROUTE]),
     [meetup],
   );
-
-  async function handleJoin(event: FormEvent) {
-    event.preventDefault();
-    const displayName = normalizeDisplayName(nameDraft);
-    if (!displayName || joining) return;
-    setJoining(true);
-    try {
-      const clientId = getOrCreateRunClubClientId();
-      const avatarHue = pickAvatarHue(clientId);
-      await upsertMember({ clientId, displayName, avatarHue });
-      const next = { clientId, displayName, avatarHue };
-      saveProfile(next);
-      setProfile(next);
-      await ensureMeetup({});
-      requestPosition(false);
-    } catch (error) {
-      setGeoError(error instanceof Error ? error.message : "Could not join.");
-    } finally {
-      setJoining(false);
-    }
-  }
 
   function requestPosition(enableWatch: boolean) {
     if (!navigator.geolocation) {
@@ -249,6 +210,7 @@ function RunClubApp() {
           recordedAt: Date.now(),
         };
         setLivePosition(next);
+        if (pausedRef.current) return;
         setTrackPoints((current) => {
           const last = lastSampleRef.current;
           if (last && distanceMeters(last, next) < TRACK_SAMPLE_METERS) {
@@ -269,29 +231,66 @@ function RunClubApp() {
     if (!profile) return;
     setTrackPoints([]);
     lastSampleRef.current = null;
-    setFinished(null);
     setStartedAt(Date.now());
-    setElapsedMs(0);
+    setPaused(false);
+    setPausedAt(null);
+    setPausedTotalMs(0);
+    setWallElapsedMs(0);
+    setMovingElapsedMs(0);
     setTracking(true);
     setPanel("none");
+    setGeoError(null);
     requestPosition(true);
   }
 
+  function pauseTracking() {
+    if (!tracking || paused) return;
+    setPaused(true);
+    setPausedAt(Date.now());
+  }
+
+  function resumeTracking() {
+    if (!tracking || !paused || !pausedAt) return;
+    setPausedTotalMs((total) => total + (Date.now() - pausedAt));
+    setPaused(false);
+    setPausedAt(null);
+    lastSampleRef.current = trackPoints[trackPoints.length - 1] ?? null;
+  }
+
   async function stopTracking() {
-    if (!profile || !startedAt) return;
+    if (!profile || !startedAt || finishing) return;
+    setFinishing(true);
+
+    const finishStartedAt = startedAt;
+    const finishPausedTotalMs = pausedTotalMs;
+    const finishPausedAt = paused ? pausedAt : null;
+    const finishPoints = trackPoints;
+
     setTracking(false);
+    setPaused(false);
+    setPausedAt(null);
+
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
     }
 
-    const durationMs = Date.now() - startedAt;
-    const finalDistance = pathDistanceMeters(trackPoints);
-    const path = samplePath(trackPoints, MAX_PATH_POINTS);
+    const now = Date.now();
+    const durationMs = now - finishStartedAt;
+    const pausedExtra = finishPausedAt ? now - finishPausedAt : 0;
+    const movingDurationMs = Math.max(0, durationMs - finishPausedTotalMs - pausedExtra);
+    const finalDistance = pathDistanceMeters(finishPoints);
+    const path = samplePath(finishPoints, MAX_PATH_POINTS);
+    const splitsMeters = computeSplitDurations(
+      finishPoints.map((point) => ({ lat: point.lat, lng: point.lng })),
+      movingDurationMs,
+    );
+    const title = activityTitle(activityType, finalDistance);
 
     if (finalDistance < 20) {
       setGeoError("Need a bit more movement before we can share a finish.");
       setStartedAt(null);
+      setFinishing(false);
       return;
     }
 
@@ -301,33 +300,35 @@ function RunClubApp() {
         displayName: profile.displayName,
         avatarHue: profile.avatarHue,
         sessionId: meetup?._id,
+        activityType,
+        title,
         distanceMeters: finalDistance,
         durationMs,
+        movingDurationMs,
+        splitsMeters,
         path,
       });
-      setFinished({
-        shareSlug: result.shareSlug,
-        distanceMeters: finalDistance,
-        durationMs,
-        path,
-        createdAt: Date.now(),
-        displayName: profile.displayName,
-        avatarHue: profile.avatarHue,
-      });
-      setPanel("share");
+      setStartedAt(null);
+      router.push(`/run-club/a/${result.shareSlug}`);
     } catch (error) {
       setGeoError(error instanceof Error ? error.message : "Could not save this finish.");
-    } finally {
       setStartedAt(null);
+      setFinishing(false);
     }
   }
 
-  const showJoin = !profile;
+  if (!ready) {
+    return (
+      <RunClubShell fullBleed>
+        <div className="grid h-dvh place-items-center pt-12 text-sm text-[color:var(--run-muted)]">
+          Loading…
+        </div>
+      </RunClubShell>
+    );
+  }
 
   return (
-    <main className="run-club-shell relative min-h-dvh overflow-hidden text-[color:var(--run-ink)]">
-      <SiteNav variant="light" />
-
+    <RunClubShell fullBleed hideTabs={tracking}>
       <div className="relative h-dvh pt-12">
         <div className="run-club-map-layer absolute inset-0 top-12">
           <ClubMap
@@ -337,7 +338,7 @@ function RunClubApp() {
             selfClientId={profile?.clientId}
             selfPath={trackPoints}
             selfPosition={livePosition}
-            followSelf={tracking}
+            followSelf={tracking && !paused}
           />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,transparent_40%,rgba(10,40,28,0.18))]" />
         </div>
@@ -355,55 +356,41 @@ function RunClubApp() {
             <h1 className="mt-1 font-[family-name:var(--run-display)] text-4xl leading-none tracking-tight text-[color:var(--run-ink)] md:text-5xl">
               AI Run Club
             </h1>
-            <p className="mt-2 max-w-md text-sm text-[color:var(--run-muted)] md:text-base">
-              Walk or jog together — live map, club chat, and a shareable finish at the end.
-            </p>
+            {!tracking ? (
+              <p className="mt-2 max-w-md text-sm text-[color:var(--run-muted)] md:text-base">
+                Record a run, walk, or jog — live map, club chat, and a shareable finish.
+              </p>
+            ) : null}
           </motion.div>
         </div>
 
         <AnimatePresence>
-          {showJoin ? (
+          {!profile ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="absolute inset-0 z-40 grid place-items-end bg-[#0d281c]/35 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-24 backdrop-blur-[2px] sm:place-items-center sm:pb-0"
             >
-              <motion.form
-                onSubmit={handleJoin}
+              <motion.div
                 initial={{ y: 24, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.1, duration: 0.45 }}
-                className="w-full max-w-md rounded-[28px] border border-white/40 bg-[color:var(--run-panel)] p-6 shadow-[0_24px_80px_rgba(12,40,28,0.28)]"
+                className="w-full max-w-md"
               >
-                <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[color:var(--run-muted)]">
-                  Join tonight&apos;s pack
-                </p>
-                <h2 className="mt-2 font-[family-name:var(--run-display)] text-3xl text-[color:var(--run-ink)]">
-                  What should we call you?
-                </h2>
-                <p className="mt-2 text-sm text-[color:var(--run-muted)]">
-                  {CLUB_SCHEDULE.days.join(" & ")} · {CLUB_SCHEDULE.localTime} · {CLUB_SCHEDULE.venue}
-                </p>
-                <input
-                  value={nameDraft}
-                  onChange={(event) => setNameDraft(event.target.value)}
-                  maxLength={MAX_DISPLAY_NAME_LENGTH}
-                  placeholder="Your name"
-                  className="mt-5 w-full rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-3 text-base outline-none focus:border-[color:var(--run-accent-deep)]"
-                  autoFocus
+                <JoinGate
+                  busy={joining}
+                  onJoin={async (name) => {
+                    setJoining(true);
+                    try {
+                      await join(name);
+                      requestPosition(false);
+                    } finally {
+                      setJoining(false);
+                    }
+                  }}
                 />
-                <button
-                  type="submit"
-                  disabled={joining || !normalizeDisplayName(nameDraft)}
-                  className="mt-4 w-full rounded-full bg-[color:var(--run-ink)] px-4 py-3 text-sm font-semibold text-[color:var(--run-accent)] transition enabled:hover:bg-[#1a4634] disabled:opacity-40"
-                >
-                  {joining ? "Joining…" : "Enter the club"}
-                </button>
-                {!isConvexConfigured ? (
-                  <p className="mt-3 text-xs text-red-700">Convex is not configured in this environment.</p>
-                ) : null}
-              </motion.form>
+              </motion.div>
             </motion.div>
           ) : null}
         </AnimatePresence>
@@ -422,10 +409,28 @@ function RunClubApp() {
               transition={{ delay: 0.15, duration: 0.5 }}
               className="rounded-[28px] border border-white/50 bg-[color:var(--run-panel)] p-3 shadow-[0_18px_50px_rgba(12,40,28,0.22)] backdrop-blur-md"
             >
+              <div className="mb-3 flex gap-1.5 px-1">
+                {ACTIVITY_TYPES.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setActivityType(type)}
+                    disabled={finishing}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium capitalize transition ${
+                      activityType === type
+                        ? "bg-[color:var(--run-ink)] text-[color:var(--run-accent)]"
+                        : "bg-white/70 text-[color:var(--run-ink)] hover:bg-white"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+
               <div className="flex flex-wrap items-end justify-between gap-3 px-1">
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--run-muted)]">
-                    {tracking ? "Live distance" : "Next meetup"}
+                    {tracking ? (paused ? "Paused" : "Live distance") : "Next meetup"}
                   </p>
                   <p className="font-[family-name:var(--run-display)] text-3xl tracking-tight text-[color:var(--run-ink)]">
                     {tracking
@@ -436,13 +441,13 @@ function RunClubApp() {
                   </p>
                   <p className="text-xs text-[color:var(--run-muted)]">
                     {tracking
-                      ? `${formatDuration(elapsedMs)} · ${formatPace(distance, elapsedMs)}`
+                      ? `${formatDuration(movingElapsedMs)} moving · ${formatDuration(wallElapsedMs)} total · ${formatPace(distance, movingElapsedMs)}`
                       : meetup
                         ? `${formatMeetupWhen(meetup.startsAt)} · ${meetup.startLabel}`
                         : `${CLUB_SCHEDULE.days.join(" & ")} · ${CLUB_SCHEDULE.localTime}`}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
                   <HudButton
                     label="Guide"
                     icon={<MapPinned size={16} />}
@@ -455,21 +460,39 @@ function RunClubApp() {
                     active={panel === "chat"}
                     onClick={() => setPanel(panel === "chat" ? "none" : "chat")}
                   />
-                  <HudButton
-                    label="Stats"
-                    icon={<ChartNoAxesCombined size={16} />}
-                    active={panel === "stats"}
-                    onClick={() => setPanel(panel === "stats" ? "none" : "stats")}
-                  />
                   {tracking ? (
-                    <button
-                      type="button"
-                      onClick={() => void stopTracking()}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#8b2e2e] px-4 py-2.5 text-sm font-semibold text-white"
-                    >
-                      <Square size={14} fill="currentColor" />
-                      Finish
-                    </button>
+                    <>
+                      {paused ? (
+                        <button
+                          type="button"
+                          onClick={resumeTracking}
+                          disabled={finishing}
+                          className="inline-flex items-center gap-2 rounded-full bg-[color:var(--run-ink)] px-4 py-2.5 text-sm font-semibold text-[color:var(--run-accent)] disabled:opacity-40"
+                        >
+                          <Play size={14} fill="currentColor" />
+                          Resume
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={pauseTracking}
+                          disabled={finishing}
+                          className="inline-flex items-center gap-2 rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-2.5 text-sm font-semibold text-[color:var(--run-ink)] disabled:opacity-40"
+                        >
+                          <Pause size={14} />
+                          Pause
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => void stopTracking()}
+                        disabled={finishing}
+                        className="inline-flex items-center gap-2 rounded-full bg-[#8b2e2e] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+                      >
+                        <Square size={14} fill="currentColor" />
+                        {finishing ? "Saving…" : "Finish"}
+                      </button>
+                    </>
                   ) : (
                     <button
                       type="button"
@@ -478,7 +501,7 @@ function RunClubApp() {
                       className="inline-flex items-center gap-2 rounded-full bg-[color:var(--run-ink)] px-4 py-2.5 text-sm font-semibold text-[color:var(--run-accent)] disabled:opacity-40"
                     >
                       <Navigation size={16} />
-                      Start
+                      Start {activityType}
                     </button>
                   )}
                 </div>
@@ -497,13 +520,7 @@ function RunClubApp() {
                     <div className="mt-3 max-h-[46vh] overflow-y-auto border-t border-[color:var(--run-line)] pt-3">
                       <div className="mb-2 flex items-center justify-between px-1">
                         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--run-muted)]">
-                          {panel === "chat"
-                            ? "Club chat"
-                            : panel === "stats"
-                              ? "Accumulated stats"
-                              : panel === "guide"
-                                ? "Start & route"
-                                : "Shareable finish"}
+                          {panel === "chat" ? "Club chat" : "Start & route"}
                         </p>
                         <button
                           type="button"
@@ -534,15 +551,6 @@ function RunClubApp() {
                         </div>
                       ) : null}
 
-                      {panel === "stats" ? (
-                        <StatsPanel
-                          mine={myStats}
-                          leaderboard={leaderboard}
-                          clubTotals={clubTotals}
-                          selfClientId={profile?.clientId}
-                        />
-                      ) : null}
-
                       {panel === "guide" ? (
                         <GuidePanel
                           startLabel={start.label}
@@ -554,10 +562,6 @@ function RunClubApp() {
                           onLocate={() => requestPosition(tracking)}
                         />
                       ) : null}
-
-                      {panel === "share" && finished ? (
-                        <ShareCard {...finished} />
-                      ) : null}
                     </div>
                   </motion.div>
                 ) : null}
@@ -568,16 +572,22 @@ function RunClubApp() {
               <span className="inline-flex items-center gap-1">
                 <Footprints size={12} />
                 {presence.length} nearby
+                {tracking && paused ? " · paused" : null}
               </span>
-              <Link href="/" className="hover:underline">
-                ashvinpraveen.com
-              </Link>
+              <span className="capitalize">{activityType}</span>
             </div>
           </div>
         </div>
       </div>
-    </main>
+    </RunClubShell>
   );
+}
+
+function activityTitle(activityType: ActivityType, distanceMeters: number) {
+  const km = (distanceMeters / 1000).toFixed(distanceMeters >= 10_000 ? 1 : 2);
+  const label =
+    activityType === "run" ? "Run" : activityType === "jog" ? "Jog" : "Walk";
+  return `${label} · ${km} km`;
 }
 
 function HudButton({
