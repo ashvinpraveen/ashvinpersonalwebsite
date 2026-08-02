@@ -46,7 +46,8 @@ import LiveChat from "@/features/run-club/LiveChat";
 import RunClubShell from "@/features/run-club/RunClubShell";
 import { meetupCountdown, formatMeetupWhen } from "@/features/run-club/schedule";
 import type { LatLng, RouteWaypoint, TrackPoint } from "@/features/run-club/types";
-import { JoinGate, useRunClubProfile } from "@/features/run-club/useRunClubProfile";
+import JoinGate from "@/features/run-club/JoinGate";
+import { useRunClubProfile } from "@/features/run-club/useRunClubProfile";
 import { isRunClubEnabled } from "@/lib/features";
 
 const ClubMap = dynamic(() => import("@/features/run-club/ClubMap"), {

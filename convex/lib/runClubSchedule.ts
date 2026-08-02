@@ -9,6 +9,18 @@ export function dayKeyInClubTz(timestamp: number) {
   }).format(new Date(timestamp));
 }
 
+/** ISO week key like 2026-W31 in Asia/Kuala_Lumpur. */
+export function weekKeyInClubTz(timestamp: number) {
+  const dayKey = dayKeyInClubTz(timestamp);
+  const [year, month, day] = dayKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
 export function previousDayKey(dayKey: string) {
   const [year, month, day] = dayKey.split("-").map(Number);
   const utcNoon = Date.UTC(year, month - 1, day, 4, 0, 0);

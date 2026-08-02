@@ -124,14 +124,23 @@ export default defineSchema({
     displayName: v.string(),
     avatarHue: v.number(),
     sessionId: v.optional(v.id("runClubSessions")),
+    activityType: v.optional(
+      v.union(v.literal("run"), v.literal("walk"), v.literal("jog")),
+    ),
+    title: v.optional(v.string()),
+    notes: v.optional(v.string()),
     distanceMeters: v.number(),
     durationMs: v.number(),
+    movingDurationMs: v.optional(v.number()),
     path: v.array(
       v.object({
         lat: v.number(),
         lng: v.number(),
       }),
     ),
+    splitsMeters: v.optional(v.array(v.number())),
+    kudosCount: v.optional(v.number()),
+    commentCount: v.optional(v.number()),
     shareSlug: v.string(),
     createdAt: v.number(),
     dayKey: v.string(),
@@ -148,10 +157,13 @@ export default defineSchema({
     activityCount: v.number(),
     streakDays: v.number(),
     lastDayKey: v.optional(v.string()),
+    weekDistanceMeters: v.optional(v.number()),
+    weekKey: v.optional(v.string()),
     updatedAt: v.number(),
   })
     .index("by_clientId", ["clientId"])
-    .index("by_totalDistanceMeters", ["totalDistanceMeters"]),
+    .index("by_totalDistanceMeters", ["totalDistanceMeters"])
+    .index("by_weekDistanceMeters", ["weekDistanceMeters"]),
   runClubMessages: defineTable({
     clientId: v.string(),
     displayName: v.string(),
@@ -159,4 +171,39 @@ export default defineSchema({
     body: v.string(),
     createdAt: v.number(),
   }).index("by_createdAt", ["createdAt"]),
+  runClubKudos: defineTable({
+    activityId: v.id("runClubActivities"),
+    clientId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_activityId_and_clientId", ["activityId", "clientId"])
+    .index("by_activityId", ["activityId"])
+    .index("by_clientId_and_createdAt", ["clientId", "createdAt"]),
+  runClubComments: defineTable({
+    activityId: v.id("runClubActivities"),
+    clientId: v.string(),
+    displayName: v.string(),
+    avatarHue: v.number(),
+    body: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_activityId_and_createdAt", ["activityId", "createdAt"])
+    .index("by_createdAt", ["createdAt"]),
+  runClubRsvps: defineTable({
+    sessionId: v.id("runClubSessions"),
+    clientId: v.string(),
+    displayName: v.string(),
+    avatarHue: v.number(),
+    status: v.union(
+      v.literal("going"),
+      v.literal("maybe"),
+      v.literal("declined"),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_sessionId_and_clientId", ["sessionId", "clientId"])
+    .index("by_sessionId", ["sessionId"])
+    .index("by_sessionId_and_status", ["sessionId", "status"])
+    .index("by_clientId_and_updatedAt", ["clientId", "updatedAt"]),
 });

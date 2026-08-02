@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeSplitDurations,
   distanceMeters,
   formatDistance,
   formatDuration,
@@ -38,5 +39,17 @@ describe("run-club geo", () => {
     expect(formatDistance(2450)).toBe("2.45 km");
     expect(formatDuration(65_000)).toBe("1:05");
     expect(formatPace(1000, 360_000)).toBe("6:00 /km");
+  });
+
+  it("computes km split durations from a straight path", () => {
+    const points = [
+      { lat: 0, lng: 0, recordedAt: 0 },
+      { lat: 0, lng: 0.0045, recordedAt: 180_000 },
+      { lat: 0, lng: 0.009, recordedAt: 360_000 },
+      { lat: 0, lng: 0.0135, recordedAt: 540_000 },
+    ];
+    const splits = computeSplitDurations(points, 540_000);
+    expect(splits.length).toBeGreaterThanOrEqual(1);
+    expect(splits[0]).toBeGreaterThan(100_000);
   });
 });
