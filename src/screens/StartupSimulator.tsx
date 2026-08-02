@@ -1,6 +1,10 @@
 "use client";
 
 import AshvinPet from "@/features/chat-widget/AshvinPet";
+import {
+  isCapitalRaiseAction,
+  resolveCapitalRaiseBeforeBankruptcy,
+} from "@/features/startup/capitalRaise";
 import posthog from "posthog-js";
 import {
   useEffect,
@@ -1462,11 +1466,12 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
       title: "Pitch a pre-seed",
       titleFor: (game) => {
         const offer = fundingOffer(game, "preseed");
-        return `Pitch pre-seed · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
+        return `Close pre-seed · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
       },
-      description: "Raise your first institutional capital at a $1M valuation.",
+      description:
+        "Close your first institutional round at a $1M valuation. Once unlocked, this raise always closes.",
       emoji: "🗣️",
-      days: 12,
+      days: 5,
       cost: 0,
       disabled: (game) => game.fundingStage !== 0,
       disabledReason: () => "You already raised the pre-seed",
@@ -1476,11 +1481,12 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
       title: "Pitch a seed round",
       titleFor: (game) => {
         const offer = fundingOffer(game, "seed");
-        return `Pitch seed · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
+        return `Close seed · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
       },
-      description: "Traction unlocks a larger round—and a larger tradeoff.",
+      description:
+        "Close the seed round once you have traction. Eligible raises always close—no coin flip.",
       emoji: "📈",
-      days: 16,
+      days: 7,
       cost: 0,
       disabled: (game) => game.customers < 10 || game.fundingStage !== 1,
       disabledReason: (game) => {
@@ -1494,11 +1500,12 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
       title: "Pitch Series A",
       titleFor: (game) => {
         const offer = fundingOffer(game, "seriesA");
-        return `Pitch Series A · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
+        return `Close Series A · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
       },
-      description: "Raise against real traction. Waiting can mean a much better valuation.",
+      description:
+        "Close Series A against real traction. Waiting can mean a better valuation, but the close itself is guaranteed.",
       emoji: "🏙️",
-      days: 24,
+      days: 10,
       cost: 0,
       disabled: (game) =>
         game.fundingStage !== 2 || game.customers < 100 || game.product < 70,
@@ -1514,11 +1521,12 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
       title: "Pitch Series B",
       titleFor: (game) => {
         const offer = fundingOffer(game, "seriesB");
-        return `Pitch Series B · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
+        return `Close Series B · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
       },
-      description: "A growth round whose valuation scales with ARR and everything built so far.",
+      description:
+        "Close a growth round once ARR and product quality clear the bar. Eligible raises always close.",
       emoji: "🌆",
-      days: 32,
+      days: 12,
       cost: 0,
       disabled: (game) =>
         game.fundingStage !== 3 || game.customers < 1000 || game.product < 85,
@@ -1534,11 +1542,12 @@ const actionConfigs: Record<StationId, ActionConfig[]> = {
       title: "Pitch Series C",
       titleFor: (game) => {
         const offer = fundingOffer(game, "seriesC");
-        return `Pitch Series C · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
+        return `Close Series C · ${formatCompactMoney(offer.amount)} for ${offer.dilution}% at ${formatCompactMoney(offer.valuation)}`;
       },
-      description: "Raise a late-stage growth round to build at global scale.",
+      description:
+        "Close a late-stage growth round at global scale. If you qualify, the round closes—no random pass.",
       emoji: "🌍",
-      days: 40,
+      days: 14,
       cost: 0,
       disabled: (game) =>
         game.fundingStage !== 4 || game.customers < 10_000 || game.product < 90,
@@ -2489,16 +2498,26 @@ const advanceGame = (unsafeCurrent: GameState): GameState => {
   };
 
   if (next.cash < 0) {
-    return {
-      ...next,
-      cash: 0,
-      activity: null,
-      bankrupt: true,
-      lastEvent:
-        payrollCharge > 0
-          ? `Salary day arrived, but the company could not cover its ${formatMoney(payrollCharge)} payroll.`
-          : "Runway hit zero before the next payday.",
-    };
+    const rescued = resolveCapitalRaiseBeforeBankruptcy(next, (game, actionId) =>
+      applyCompletedAction(game, actionId),
+    );
+    if (rescued) {
+      next = {
+        ...rescued,
+        lastEvent: `${rescued.lastEvent} Investors wired early and kept the company alive.`,
+      };
+    } else {
+      return {
+        ...next,
+        cash: 0,
+        activity: null,
+        bankrupt: true,
+        lastEvent:
+          payrollCharge > 0
+            ? `Salary day arrived, but the company could not cover its ${formatMoney(payrollCharge)} payroll.`
+            : "Runway hit zero before the next payday.",
+      };
+    }
   }
 
   if (next.leads > 0) {
@@ -5694,16 +5713,18 @@ const StartupSimulator = () => {
                     : `Need ${formatMoney(requiredCash - game.cash)} more`
                   : blockedByRule
                     ? action.disabledReason?.(game)
-                    : `${action.days} days${
-                        monthlyCost > 0
-                          ? action.id === "launchCampaign" ||
-                            action.id === "increasePaidMediaBudget"
-                            ? " · recurring spend"
-                            : " · recurring payroll"
-                          : cost > 0
-                            ? " · pay now"
-                            : ""
-                      }`;
+                    : isCapitalRaiseAction(action.id)
+                      ? `Closes · ${action.days} days`
+                      : `${action.days} days${
+                          monthlyCost > 0
+                            ? action.id === "launchCampaign" ||
+                              action.id === "increasePaidMediaBudget"
+                              ? " · recurring spend"
+                              : " · recurring payroll"
+                            : cost > 0
+                              ? " · pay now"
+                              : ""
+                        }`;
 
                 return (
                   <div
