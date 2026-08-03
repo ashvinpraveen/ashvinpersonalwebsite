@@ -10,6 +10,7 @@ import {
 
 const MAX_CLIENT_ID_LENGTH = 80;
 const MAX_DISPLAY_NAME_LENGTH = 24;
+const MAX_PHONE_LENGTH = 32;
 const MAX_CHAT_LENGTH = 280;
 const MAX_PATH_POINTS = 120;
 const MAX_MESSAGES = 80;
@@ -44,6 +45,9 @@ const normalizeClientId = (value: string) =>
 
 const normalizeDisplayName = (value: string) =>
   value.trim().replace(/\s+/g, " ").slice(0, MAX_DISPLAY_NAME_LENGTH);
+
+const normalizePhone = (value: string) =>
+  value.trim().replace(/\s+/g, " ").slice(0, MAX_PHONE_LENGTH);
 
 const normalizeChatBody = (value: string) =>
   value.trim().replace(/\r\n/g, "\n").slice(0, MAX_CHAT_LENGTH);
@@ -162,10 +166,13 @@ export const upsertMember = mutation({
     clientId: v.string(),
     displayName: v.string(),
     avatarHue: v.number(),
+    phone: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const clientId = normalizeClientId(args.clientId);
     const displayName = normalizeDisplayName(args.displayName);
+    const phone =
+      typeof args.phone === "string" ? normalizePhone(args.phone) : undefined;
     if (!clientId) throw new Error("Missing runner id.");
     if (!displayName) throw new Error("Pick a display name.");
     if (!Number.isFinite(args.avatarHue)) throw new Error("Pick an avatar color.");
@@ -181,6 +188,7 @@ export const upsertMember = mutation({
         displayName,
         avatarHue: args.avatarHue,
         updatedAt: now,
+        ...(phone ? { phone } : {}),
       });
       return existing._id;
     }
@@ -189,6 +197,7 @@ export const upsertMember = mutation({
       clientId,
       displayName,
       avatarHue: args.avatarHue,
+      ...(phone ? { phone } : {}),
       createdAt: now,
       updatedAt: now,
     });

@@ -51,10 +51,10 @@ function ClubApp() {
       <RunClubShell title="Club" subtitle="Chat, members, and weekly grind.">
         <JoinGate
           busy={joining}
-          onJoin={async (name) => {
+          onJoin={async (details) => {
             setJoining(true);
             try {
-              await join(name);
+              await join(details);
             } finally {
               setJoining(false);
             }

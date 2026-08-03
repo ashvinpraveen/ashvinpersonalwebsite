@@ -1,18 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { normalizeDisplayName } from "./browser";
-import { CLUB_SCHEDULE, MAX_DISPLAY_NAME_LENGTH } from "./config";
+import { normalizeDisplayName, normalizePhone } from "./browser";
+import {
+  CLUB_SCHEDULE,
+  MAX_DISPLAY_NAME_LENGTH,
+  MAX_PHONE_LENGTH,
+} from "./config";
+import type { JoinProfileInput } from "./useRunClubProfile";
 
 export default function JoinGate({
   onJoin,
   busy,
 }: {
-  onJoin: (name: string) => Promise<void>;
+  onJoin: (profile: JoinProfileInput) => Promise<void>;
   busy?: boolean;
 }) {
   const [nameDraft, setNameDraft] = useState("");
+  const [phoneDraft, setPhoneDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const canJoin =
+    Boolean(normalizeDisplayName(nameDraft)) && Boolean(normalizePhone(phoneDraft));
 
   return (
     <form
@@ -20,13 +28,13 @@ export default function JoinGate({
       onSubmit={(event) => {
         event.preventDefault();
         setError(null);
-        void onJoin(nameDraft).catch((err: unknown) => {
+        void onJoin({ name: nameDraft, phone: phoneDraft }).catch((err: unknown) => {
           setError(err instanceof Error ? err.message : "Could not join.");
         });
       }}
     >
       <h2 className="font-[family-name:var(--run-display)] text-2xl sm:text-3xl">
-        Your name
+        Join jalan
       </h2>
       <p className="mt-1 text-sm text-[color:var(--run-muted)]">
         {CLUB_SCHEDULE.days.join(" & ")} · {CLUB_SCHEDULE.localTime}
@@ -40,9 +48,18 @@ export default function JoinGate({
         autoFocus
         autoComplete="nickname"
       />
+      <input
+        value={phoneDraft}
+        onChange={(event) => setPhoneDraft(event.target.value)}
+        maxLength={MAX_PHONE_LENGTH}
+        placeholder="Phone"
+        inputMode="tel"
+        autoComplete="tel"
+        className="mt-2 w-full rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-3 text-base outline-none focus:border-[color:var(--run-accent-deep)]"
+      />
       <button
         type="submit"
-        disabled={busy || !normalizeDisplayName(nameDraft)}
+        disabled={busy || !canJoin}
         className="mt-3 w-full rounded-full bg-[color:var(--run-ink)] px-4 py-3 text-sm font-semibold text-[color:var(--run-accent)] disabled:opacity-40"
       >
         {busy ? "…" : "Join"}

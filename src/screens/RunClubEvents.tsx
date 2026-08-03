@@ -47,10 +47,10 @@ function EventsApp() {
       <RunClubShell title="Events" subtitle="RSVP so the pack knows who’s coming.">
         <JoinGate
           busy={joining}
-          onJoin={async (name) => {
+          onJoin={async (details) => {
             setJoining(true);
             try {
-              await join(name);
+              await join(details);
               await ensureMeetup({});
             } finally {
               setJoining(false);

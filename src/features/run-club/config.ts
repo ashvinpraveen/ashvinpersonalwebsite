@@ -1,6 +1,7 @@
 export const CLIENT_ID_KEY = "run-club-client-id";
 export const PROFILE_KEY = "run-club-profile";
 export const MAX_DISPLAY_NAME_LENGTH = 24;
+export const MAX_PHONE_LENGTH = 32;
 export const MAX_CHAT_LENGTH = 280;
 export const MAX_ROUTE_NAME_LENGTH = 60;
 export const MAX_ROUTE_WAYPOINTS = 40;

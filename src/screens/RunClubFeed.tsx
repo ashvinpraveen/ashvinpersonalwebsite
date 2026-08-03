@@ -48,10 +48,10 @@ function FeedApp() {
       <RunClubShell title="Feed" subtitle="Join once to kudos and comment.">
         <JoinGate
           busy={joining}
-          onJoin={async (name) => {
+          onJoin={async (details) => {
             setJoining(true);
             try {
-              await join(name);
+              await join(details);
             } finally {
               setJoining(false);
             }
