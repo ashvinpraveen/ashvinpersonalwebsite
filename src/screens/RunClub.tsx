@@ -123,11 +123,13 @@ function RunClubApp() {
     pausedRef.current = paused;
   }, [paused]);
 
-  // Prefer the meetup's pinned route until the runner picks another one.
+  // Center the map on the runner as soon as they've joined.
   useEffect(() => {
-    if (!meetup?.routeId) return;
-    setSelectedRouteId((current) => current ?? meetup.routeId ?? null);
-  }, [meetup?.routeId]);
+    if (!profile) return;
+    requestPosition(false, { silent: true });
+    // Intentionally one-shot when the local profile id appears.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.clientId]);
 
   useEffect(() => {
     if (!tracking || !startedAt) return;
@@ -189,19 +191,10 @@ function RunClubApp() {
   );
   const route = useMemo<RouteWaypoint[]>(() => {
     if (drawing) return draftWaypoints;
-    if (selectedRouteId) {
-      const selected = clubRoutes?.find((item) => item._id === selectedRouteId);
-      if (selected?.waypoints?.length) return selected.waypoints;
-    }
-    if (meetup?.routeWaypoints?.length) return meetup.routeWaypoints;
-    return [];
-  }, [
-    clubRoutes,
-    draftWaypoints,
-    drawing,
-    meetup?.routeWaypoints,
-    selectedRouteId,
-  ]);
+    if (!selectedRouteId) return [];
+    const selected = clubRoutes?.find((item) => item._id === selectedRouteId);
+    return selected?.waypoints ?? [];
+  }, [clubRoutes, draftWaypoints, drawing, selectedRouteId]);
 
   const draftDistanceMeters = useMemo(
     () => pathDistanceMeters(draftWaypoints),
@@ -209,12 +202,17 @@ function RunClubApp() {
   );
 
 
-  function requestPosition(enableWatch: boolean) {
+  function requestPosition(
+    enableWatch: boolean,
+    options?: { silent?: boolean },
+  ) {
     if (!navigator.geolocation) {
-      setGeoError("Geolocation is not available in this browser.");
+      if (!options?.silent) {
+        setGeoError("Geolocation is not available in this browser.");
+      }
       return;
     }
-    setGeoError(null);
+    if (!options?.silent) setGeoError(null);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -225,7 +223,9 @@ function RunClubApp() {
         setLivePosition(next);
       },
       () => {
-        setGeoError("Allow location to see yourself on the map and track distance.");
+        if (!options?.silent) {
+          setGeoError("Allow location to see yourself on the map and track distance.");
+        }
       },
       { enableHighAccuracy: true, maximumAge: 5_000, timeout: 12_000 },
     );
