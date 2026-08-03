@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import FeatureUnavailable from "@/components/FeatureUnavailable";
-import { avatarColor } from "@/features/run-club/browser";
+import { avatarColor, normalizeDisplayName } from "@/features/run-club/browser";
+import { MAX_DISPLAY_NAME_LENGTH } from "@/features/run-club/config";
 import { formatDistance, formatDuration } from "@/features/run-club/geo";
 import RunClubShell from "@/features/run-club/RunClubShell";
 import JoinGate from "@/features/run-club/JoinGate";
@@ -27,8 +28,12 @@ export default function RunClubYou() {
 }
 
 function YouApp() {
-  const { profile, ready, join } = useRunClubProfile();
+  const { profile, ready, join, updateDisplayName } = useRunClubProfile();
   const [joining, setJoining] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
   const mine = useQuery(
     api.runClub.getMyStats,
     profile ? { clientId: profile.clientId } : "skip",
@@ -66,6 +71,20 @@ function YouApp() {
 
   const stats = mine?.stats;
 
+  async function handleSaveName(event: FormEvent) {
+    event.preventDefault();
+    setNameError(null);
+    setSavingName(true);
+    try {
+      await updateDisplayName(nameDraft);
+      setEditingName(false);
+    } catch (err: unknown) {
+      setNameError(err instanceof Error ? err.message : "Could not update name.");
+    } finally {
+      setSavingName(false);
+    }
+  }
+
   return (
     <RunClubShell title={profile.displayName} subtitle="Your trail with the club.">
       <div className="mb-5 flex items-center gap-3">
@@ -75,13 +94,68 @@ function YouApp() {
         >
           {(profile.displayName[0] || "?").toUpperCase()}
         </span>
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-sm text-[color:var(--run-muted)]">Streak</p>
           <p className="font-[family-name:var(--run-display)] text-3xl">
             {stats?.streakDays ?? 0} days
           </p>
         </div>
       </div>
+
+      <section className="mb-8">
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--run-muted)]">
+          Display name
+        </p>
+        {editingName ? (
+          <form onSubmit={handleSaveName} className="mt-3 space-y-3">
+            <input
+              value={nameDraft}
+              onChange={(event) => setNameDraft(event.target.value)}
+              maxLength={MAX_DISPLAY_NAME_LENGTH}
+              placeholder="Your name"
+              autoFocus
+              autoComplete="nickname"
+              className="w-full rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-3 text-base outline-none focus:border-[color:var(--run-accent-deep)]"
+            />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="submit"
+                disabled={savingName || !normalizeDisplayName(nameDraft)}
+                className="rounded-full bg-[color:var(--run-ink)] px-4 py-2.5 text-sm font-semibold text-[color:var(--run-accent)] disabled:opacity-40"
+              >
+                {savingName ? "Saving…" : "Save name"}
+              </button>
+              <button
+                type="button"
+                disabled={savingName}
+                onClick={() => {
+                  setEditingName(false);
+                  setNameError(null);
+                }}
+                className="rounded-full border border-[color:var(--run-line)] bg-white/70 px-4 py-2.5 text-sm font-medium text-[color:var(--run-ink)] disabled:opacity-40"
+              >
+                Cancel
+              </button>
+            </div>
+            {nameError ? <p className="text-sm text-red-700">{nameError}</p> : null}
+          </form>
+        ) : (
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="truncate text-lg text-[color:var(--run-ink)]">{profile.displayName}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setNameDraft(profile.displayName);
+                setNameError(null);
+                setEditingName(true);
+              }}
+              className="shrink-0 rounded-full border border-[color:var(--run-line)] bg-white/70 px-4 py-2 text-sm font-medium text-[color:var(--run-ink)]"
+            >
+              Change
+            </button>
+          </div>
+        )}
+      </section>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Distance" value={formatDistance(stats?.totalDistanceMeters ?? 0)} />
