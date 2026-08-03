@@ -70,15 +70,19 @@ function samplePath(
   points: Array<{ lat: number; lng: number }>,
   maxPoints: number,
 ) {
-  if (points.length <= maxPoints) return points;
-  if (maxPoints < 2) return [points[0]];
-  const sampled = [points[0]];
+  const toPoint = (point: { lat: number; lng: number }) => ({
+    lat: point.lat,
+    lng: point.lng,
+  });
+  if (points.length <= maxPoints) return points.map(toPoint);
+  if (maxPoints < 2) return [toPoint(points[0])];
+  const sampled = [toPoint(points[0])];
   const middleSlots = maxPoints - 2;
   for (let i = 1; i <= middleSlots; i += 1) {
     const index = Math.round((i * (points.length - 1)) / (middleSlots + 1));
-    sampled.push(points[index]);
+    sampled.push(toPoint(points[index]));
   }
-  sampled.push(points[points.length - 1]);
+  sampled.push(toPoint(points[points.length - 1]));
   return sampled;
 }
 
@@ -399,19 +403,20 @@ export const finishActivity = mutation({
       .slice(0, 42)
       .map((value) => Math.round(value));
 
+    // Convex rejects `undefined` field values — omit optionals instead of setting them.
     const activityId = await ctx.db.insert("runClubActivities", {
       clientId,
       displayName,
       avatarHue: args.avatarHue,
-      sessionId: args.sessionId,
+      ...(args.sessionId ? { sessionId: args.sessionId } : {}),
       activityType,
       title,
-      notes: notes || undefined,
+      ...(notes ? { notes } : {}),
       distanceMeters,
       durationMs,
       movingDurationMs,
       path,
-      splitsMeters: splitsMeters.length ? splitsMeters : undefined,
+      ...(splitsMeters.length > 0 ? { splitsMeters } : {}),
       kudosCount: 0,
       commentCount: 0,
       shareSlug,
