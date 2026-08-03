@@ -4,10 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, QrCode, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { copyText } from "./browser";
+import { cn } from "@/lib/utils";
 
 const INVITE_PATH = "/run";
 
-export default function InviteQrButton() {
+type InviteQrButtonProps = {
+  /** `nav` sits in the top bar; `floating` is the old map overlay style. */
+  variant?: "nav" | "floating";
+};
+
+export default function InviteQrButton({ variant = "nav" }: InviteQrButtonProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [origin, setOrigin] = useState("");
@@ -41,7 +47,12 @@ export default function InviteQrButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed right-3 top-[calc(3rem+0.5rem+env(safe-area-inset-top,0px))] z-[58] inline-flex h-11 w-11 items-center justify-center rounded-full border border-[color:var(--run-line)] bg-[color:var(--run-panel)] text-[color:var(--run-ink)] shadow-[0_10px_30px_rgba(12,40,28,0.18)] backdrop-blur-md transition hover:bg-white md:right-5"
+        className={cn(
+          "inline-flex items-center justify-center text-[color:var(--run-ink)] transition",
+          variant === "nav"
+            ? "h-11 w-11 rounded-full hover:bg-white/50"
+            : "fixed right-3 top-[calc(var(--run-club-nav-h,3rem)+0.5rem)] z-[58] h-11 w-11 rounded-full border border-[color:var(--run-line)] bg-[color:var(--run-panel)] shadow-[0_10px_30px_rgba(12,40,28,0.18)] backdrop-blur-md hover:bg-white md:right-5",
+        )}
         aria-label="Show invite QR code"
       >
         <QrCode size={20} strokeWidth={2.2} />
@@ -61,17 +72,14 @@ export default function InviteQrButton() {
           >
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[color:var(--run-muted)]">
-                  Invite
-                </p>
                 <h2
                   id="run-invite-qr-title"
-                  className="mt-1 font-[family-name:var(--run-display)] text-2xl tracking-tight text-[color:var(--run-ink)]"
+                  className="font-[family-name:var(--run-display)] text-2xl tracking-tight text-[color:var(--run-ink)]"
                 >
-                  Scan to join
+                  Invite
                 </h2>
                 <p className="mt-1 text-sm text-[color:var(--run-muted)]">
-                  Opens AI Run Club on their phone.
+                  Scan to open jalan.
                 </p>
               </div>
               <button
