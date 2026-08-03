@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { Undo2, X } from "lucide-react";
 import { formatDistance } from "./geo";
-import { MAX_ROUTE_NAME_LENGTH } from "./config";
+import { MAX_ROUTE_NAME_LENGTH, MAX_ROUTE_WAYPOINTS } from "./config";
 import type { RouteWaypoint } from "./types";
 
 type RouteDrawingBarProps = {
@@ -27,6 +27,7 @@ export default function RouteDrawingBar({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pointCount = draftWaypoints.length;
+  const atMax = pointCount >= MAX_ROUTE_WAYPOINTS;
   const canSave = pointCount >= 2 && Boolean(nameDraft.trim());
 
   async function handleSave(event: FormEvent) {
@@ -50,11 +51,20 @@ export default function RouteDrawingBar({
       className="rounded-[22px] border border-white/50 bg-[color:var(--run-panel)] p-2.5 shadow-[0_18px_50px_rgba(12,40,28,0.22)] backdrop-blur-md"
     >
       <div className="flex items-center gap-2">
-        <p className="min-w-0 flex-1 truncate px-1 font-[family-name:var(--run-display)] text-xl tracking-tight text-[color:var(--run-ink)]">
-          {pointCount < 2
-            ? "Tap map"
-            : `${pointCount} pts · ${formatDistance(draftDistanceMeters)}`}
-        </p>
+        <div className="min-w-0 flex-1 px-1">
+          <p className="truncate font-[family-name:var(--run-display)] text-xl tracking-tight text-[color:var(--run-ink)]">
+            {pointCount < 2
+              ? "Tap map"
+              : `${pointCount}/${MAX_ROUTE_WAYPOINTS} · ${formatDistance(draftDistanceMeters)}`}
+          </p>
+          <p className="text-[11px] text-[color:var(--run-muted)]">
+            {pointCount < 2
+              ? `Drop points · max ${MAX_ROUTE_WAYPOINTS}`
+              : atMax
+                ? "Max points reached"
+                : `${MAX_ROUTE_WAYPOINTS - pointCount} left`}
+          </p>
+        </div>
         <button
           type="button"
           onClick={onUndoPoint}
