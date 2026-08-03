@@ -10,8 +10,7 @@ import {
   Radio,
   Users,
 } from "lucide-react";
-import SiteNav from "@/components/SiteNav";
-import InviteQrButton from "./InviteQrButton";
+import RunClubTopBar, { RUN_CLUB_NAV_HEIGHT } from "./RunClubTopBar";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -50,26 +49,23 @@ export default function RunClubShell({
       style={
         {
           "--run-club-tab-h": tabsVisible ? RUN_CLUB_TAB_HEIGHT : "0px",
+          "--run-club-nav-h": `calc(${RUN_CLUB_NAV_HEIGHT} + env(safe-area-inset-top, 0px))`,
           minHeight: "100dvh",
         } as CSSProperties
       }
     >
-      <SiteNav variant="light" />
-      <InviteQrButton />
+      <RunClubTopBar />
       <div
         className={cn(
           "mx-auto w-full",
           fullBleed
             ? "min-h-dvh"
-            : "max-w-3xl px-4 pt-[calc(3rem+env(safe-area-inset-top,0px))] pb-[calc(var(--run-club-tab-h)+env(safe-area-inset-bottom,0px)+1rem)]",
+            : "max-w-3xl px-4 pt-[calc(var(--run-club-nav-h)+0.5rem)] pb-[calc(var(--run-club-tab-h)+env(safe-area-inset-bottom,0px)+1rem)]",
         )}
       >
         {!fullBleed && title ? (
           <header className="mb-5 pt-2">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[color:var(--run-accent-deep)]">
-              AI Run Club
-            </p>
-            <h1 className="mt-1 font-[family-name:var(--run-display)] text-3xl tracking-tight md:text-4xl">
+            <h1 className="font-[family-name:var(--run-display)] text-3xl tracking-tight md:text-4xl">
               {title}
             </h1>
             {subtitle ? (
@@ -84,7 +80,7 @@ export default function RunClubShell({
         <nav
           className="fixed inset-x-0 bottom-0 z-[55] border-t border-[color:var(--run-line)] bg-[rgba(232,246,216,0.96)] px-2 pt-1.5 backdrop-blur-md"
           style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
-          aria-label="Run club sections"
+          aria-label="jalan sections"
         >
           <div className="mx-auto grid h-[3.75rem] max-w-3xl grid-cols-5 gap-1">
             {tabs.map((tab) => {
