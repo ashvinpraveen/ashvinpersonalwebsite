@@ -25,6 +25,8 @@ type ClubMapProps = {
   selfPosition?: LatLng | null;
   followSelf?: boolean;
   drawing?: boolean;
+  /** Numbered dots for drawn/club routes. Off for dense GPS tracks. */
+  showWaypoints?: boolean;
   onMapClick?: (point: LatLng) => void;
 };
 
@@ -173,6 +175,7 @@ export default function ClubMap({
   selfPosition,
   followSelf = false,
   drawing = false,
+  showWaypoints,
   onMapClick,
 }: ClubMapProps) {
   const routePositions = useMemo(
@@ -183,6 +186,7 @@ export default function ClubMap({
     () => selfPath.map((point) => [point.lat, point.lng] as [number, number]),
     [selfPath],
   );
+  const renderWaypoints = showWaypoints ?? drawing;
 
   return (
     <MapContainer
@@ -233,7 +237,7 @@ export default function ClubMap({
           weight: 1,
         }}
       />
-      {drawing || route.length > 0
+      {renderWaypoints && route.length > 0
         ? route.map((point, index) => (
             <Marker
               key={`${point.lat}-${point.lng}-${index}`}
