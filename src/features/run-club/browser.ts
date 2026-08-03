@@ -2,6 +2,7 @@ import {
   AVATAR_PALETTE,
   CLIENT_ID_KEY,
   MAX_DISPLAY_NAME_LENGTH,
+  MAX_PHONE_LENGTH,
   PROFILE_KEY,
 } from "./config";
 import type { RunClubProfile } from "./types";
@@ -47,6 +48,9 @@ export function readStoredProfile(): RunClubProfile | null {
       clientId: parsed.clientId,
       displayName: parsed.displayName.slice(0, MAX_DISPLAY_NAME_LENGTH),
       avatarHue: parsed.avatarHue,
+      ...(typeof parsed.phone === "string" && parsed.phone
+        ? { phone: parsed.phone.slice(0, MAX_PHONE_LENGTH) }
+        : {}),
     };
   } catch {
     return null;
@@ -59,6 +63,10 @@ export function saveProfile(profile: RunClubProfile) {
 
 export function normalizeDisplayName(value: string) {
   return value.trim().replace(/\s+/g, " ").slice(0, MAX_DISPLAY_NAME_LENGTH);
+}
+
+export function normalizePhone(value: string) {
+  return value.trim().replace(/\s+/g, " ").slice(0, MAX_PHONE_LENGTH);
 }
 
 export function avatarColor(hue: number) {

@@ -407,10 +407,10 @@ function RunClubApp() {
               >
                 <JoinGate
                   busy={joining}
-                  onJoin={async (name) => {
+                  onJoin={async (details) => {
                     setJoining(true);
                     try {
-                      await join(name);
+                      await join(details);
                       requestPosition(false);
                     } finally {
                       setJoining(false);

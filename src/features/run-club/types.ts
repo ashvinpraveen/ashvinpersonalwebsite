@@ -11,6 +11,7 @@ export type RunClubProfile = {
   clientId: string;
   displayName: string;
   avatarHue: number;
+  phone?: string;
 };
 
 export type TrackPoint = LatLng & {

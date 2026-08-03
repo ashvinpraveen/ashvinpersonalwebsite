@@ -5,8 +5,8 @@ import { FormEvent, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import FeatureUnavailable from "@/components/FeatureUnavailable";
-import { avatarColor, normalizeDisplayName } from "@/features/run-club/browser";
-import { MAX_DISPLAY_NAME_LENGTH } from "@/features/run-club/config";
+import { avatarColor, normalizeDisplayName, normalizePhone } from "@/features/run-club/browser";
+import { MAX_DISPLAY_NAME_LENGTH, MAX_PHONE_LENGTH } from "@/features/run-club/config";
 import { formatDistance, formatDuration } from "@/features/run-club/geo";
 import RunClubShell from "@/features/run-club/RunClubShell";
 import JoinGate from "@/features/run-club/JoinGate";
@@ -28,12 +28,13 @@ export default function RunClubYou() {
 }
 
 function YouApp() {
-  const { profile, ready, join, updateDisplayName } = useRunClubProfile();
+  const { profile, ready, join, updateProfile } = useRunClubProfile();
   const [joining, setJoining] = useState(false);
-  const [editingName, setEditingName] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
-  const [savingName, setSavingName] = useState(false);
-  const [nameError, setNameError] = useState<string | null>(null);
+  const [phoneDraft, setPhoneDraft] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const mine = useQuery(
     api.runClub.getMyStats,
     profile ? { clientId: profile.clientId } : "skip",
@@ -56,10 +57,10 @@ function YouApp() {
       <RunClubShell title="You" subtitle="Your streak, week, and history.">
         <JoinGate
           busy={joining}
-          onJoin={async (name) => {
+          onJoin={async (details) => {
             setJoining(true);
             try {
-              await join(name);
+              await join(details);
             } finally {
               setJoining(false);
             }
@@ -71,17 +72,17 @@ function YouApp() {
 
   const stats = mine?.stats;
 
-  async function handleSaveName(event: FormEvent) {
+  async function handleSaveProfile(event: FormEvent) {
     event.preventDefault();
-    setNameError(null);
-    setSavingName(true);
+    setProfileError(null);
+    setSavingProfile(true);
     try {
-      await updateDisplayName(nameDraft);
-      setEditingName(false);
+      await updateProfile({ name: nameDraft, phone: phoneDraft });
+      setEditingProfile(false);
     } catch (err: unknown) {
-      setNameError(err instanceof Error ? err.message : "Could not update name.");
+      setProfileError(err instanceof Error ? err.message : "Could not update profile.");
     } finally {
-      setSavingName(false);
+      setSavingProfile(false);
     }
   }
 
@@ -104,50 +105,69 @@ function YouApp() {
 
       <section className="mb-8">
         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--run-muted)]">
-          Display name
+          Profile
         </p>
-        {editingName ? (
-          <form onSubmit={handleSaveName} className="mt-3 space-y-3">
+        {editingProfile ? (
+          <form onSubmit={handleSaveProfile} className="mt-3 space-y-3">
             <input
               value={nameDraft}
               onChange={(event) => setNameDraft(event.target.value)}
               maxLength={MAX_DISPLAY_NAME_LENGTH}
-              placeholder="Your name"
+              placeholder="Name"
               autoFocus
               autoComplete="nickname"
+              className="w-full rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-3 text-base outline-none focus:border-[color:var(--run-accent-deep)]"
+            />
+            <input
+              value={phoneDraft}
+              onChange={(event) => setPhoneDraft(event.target.value)}
+              maxLength={MAX_PHONE_LENGTH}
+              placeholder="Phone"
+              inputMode="tel"
+              autoComplete="tel"
               className="w-full rounded-full border border-[color:var(--run-line)] bg-white/80 px-4 py-3 text-base outline-none focus:border-[color:var(--run-accent-deep)]"
             />
             <div className="flex flex-wrap gap-2">
               <button
                 type="submit"
-                disabled={savingName || !normalizeDisplayName(nameDraft)}
+                disabled={
+                  savingProfile ||
+                  !normalizeDisplayName(nameDraft) ||
+                  !normalizePhone(phoneDraft)
+                }
                 className="rounded-full bg-[color:var(--run-ink)] px-4 py-2.5 text-sm font-semibold text-[color:var(--run-accent)] disabled:opacity-40"
               >
-                {savingName ? "Saving…" : "Save name"}
+                {savingProfile ? "Saving…" : "Save"}
               </button>
               <button
                 type="button"
-                disabled={savingName}
+                disabled={savingProfile}
                 onClick={() => {
-                  setEditingName(false);
-                  setNameError(null);
+                  setEditingProfile(false);
+                  setProfileError(null);
                 }}
                 className="rounded-full border border-[color:var(--run-line)] bg-white/70 px-4 py-2.5 text-sm font-medium text-[color:var(--run-ink)] disabled:opacity-40"
               >
                 Cancel
               </button>
             </div>
-            {nameError ? <p className="text-sm text-red-700">{nameError}</p> : null}
+            {profileError ? <p className="text-sm text-red-700">{profileError}</p> : null}
           </form>
         ) : (
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <p className="truncate text-lg text-[color:var(--run-ink)]">{profile.displayName}</p>
+          <div className="mt-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-lg text-[color:var(--run-ink)]">{profile.displayName}</p>
+              <p className="mt-0.5 truncate text-sm text-[color:var(--run-muted)]">
+                {profile.phone || "No phone yet"}
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => {
                 setNameDraft(profile.displayName);
-                setNameError(null);
-                setEditingName(true);
+                setPhoneDraft(profile.phone ?? "");
+                setProfileError(null);
+                setEditingProfile(true);
               }}
               className="shrink-0 rounded-full border border-[color:var(--run-line)] bg-white/70 px-4 py-2 text-sm font-medium text-[color:var(--run-ink)]"
             >

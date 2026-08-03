@@ -79,6 +79,7 @@ export default defineSchema({
     clientId: v.string(),
     displayName: v.string(),
     avatarHue: v.number(),
+    phone: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
