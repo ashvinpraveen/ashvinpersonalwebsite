@@ -34,6 +34,19 @@ describe("run-club geo", () => {
     expect(sampled[2]).toEqual(path[4]);
   });
 
+  it("strips extra fields like recordedAt when sampling", () => {
+    const path = [
+      { lat: 0, lng: 0, recordedAt: 1 },
+      { lat: 0, lng: 0.01, recordedAt: 2 },
+      { lat: 0, lng: 0.02, recordedAt: 3 },
+    ];
+    expect(samplePath(path, 10)).toEqual([
+      { lat: 0, lng: 0 },
+      { lat: 0, lng: 0.01 },
+      { lat: 0, lng: 0.02 },
+    ]);
+  });
+
   it("formats distance, duration, and pace", () => {
     expect(formatDistance(850)).toBe("850 m");
     expect(formatDistance(2450)).toBe("2.45 km");

@@ -23,7 +23,7 @@ import {
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import FeatureUnavailable from "@/components/FeatureUnavailable";
-import { readStoredProfile } from "@/features/run-club/browser";
+import { readStoredProfile, getRunClubErrorMessage } from "@/features/run-club/browser";
 import {
   DEFAULT_START,
   MAX_PATH_POINTS,
@@ -328,7 +328,9 @@ function RunClubApp() {
       setStartedAt(null);
       router.push(`/run/a/${result.shareSlug}`);
     } catch (error) {
-      setGeoError(error instanceof Error ? error.message : "Could not save this finish.");
+      setGeoError(
+        getRunClubErrorMessage(error, "Could not save this finish. Try again."),
+      );
       setStartedAt(null);
       setFinishing(false);
     }

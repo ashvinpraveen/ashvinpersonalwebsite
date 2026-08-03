@@ -65,6 +65,22 @@ export function avatarColor(hue: number) {
   return `hsl(${hue} 72% 42%)`;
 }
 
+export function getRunClubErrorMessage(error: unknown, fallback: string) {
+  if (!(error instanceof Error)) return fallback;
+
+  const cleaned = error.message
+    .replace(/^\[CONVEX [^\]]+\]\s*/i, "")
+    .replace(/\[Request ID:[^\]]+\]\s*/i, "")
+    .replace(/^Server Error\s*/i, "")
+    .replace(/^(Uncaught Error:\s*)+/i, "")
+    .replace(/\n\s*Called by client\s*$/i, "")
+    .replace(/\n\s*at\s+[\s\S]*$/i, "")
+    .trim();
+
+  if (!cleaned || /^called by client$/i.test(cleaned)) return fallback;
+  return cleaned;
+}
+
 export async function copyText(value: string) {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(value);

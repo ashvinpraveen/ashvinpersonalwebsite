@@ -66,11 +66,13 @@ function cleanWaypoints(raw: Array<{ lat: number; lng: number; label?: string }>
       }
     })
     .slice(0, MAX_ROUTE_WAYPOINTS)
-    .map((point, index) => ({
-      lat: point.lat,
-      lng: point.lng,
-      label: point.label?.trim().slice(0, 40) || (index === 0 ? "Start" : undefined),
-    }));
+    .map((point, index) => {
+      const label =
+        point.label?.trim().slice(0, 40) || (index === 0 ? "Start" : "");
+      return label
+        ? { lat: point.lat, lng: point.lng, label }
+        : { lat: point.lat, lng: point.lng };
+    });
 
   if (waypoints.length < 2) {
     throw new Error("Add at least two points to save a route.");

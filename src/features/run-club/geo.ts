@@ -29,16 +29,17 @@ export function pathDistanceMeters(points: LatLng[]) {
 
 /** Keep first/last points and evenly sample the middle to a max count. */
 export function samplePath(points: LatLng[], maxPoints: number): LatLng[] {
-  if (points.length <= maxPoints) return points.map((point) => ({ ...point }));
-  if (maxPoints < 2) return [{ ...points[0] }];
+  const toPoint = (point: LatLng): LatLng => ({ lat: point.lat, lng: point.lng });
+  if (points.length <= maxPoints) return points.map(toPoint);
+  if (maxPoints < 2) return [toPoint(points[0])];
 
-  const sampled: LatLng[] = [{ ...points[0] }];
+  const sampled: LatLng[] = [toPoint(points[0])];
   const middleSlots = maxPoints - 2;
   for (let i = 1; i <= middleSlots; i += 1) {
     const index = Math.round((i * (points.length - 1)) / (middleSlots + 1));
-    sampled.push({ ...points[index] });
+    sampled.push(toPoint(points[index]));
   }
-  sampled.push({ ...points[points.length - 1] });
+  sampled.push(toPoint(points[points.length - 1]));
   return sampled;
 }
 
