@@ -18,6 +18,7 @@ type RoutesPanelProps = {
   address: string;
   routes: ClubRoute[] | undefined;
   selectedRouteId: string | null;
+  meetupRouteId?: string | null;
   selfClientId?: string;
   canEditMeetup: boolean;
   onLocate: () => void;
@@ -33,6 +34,7 @@ export default function RoutesPanel({
   address,
   routes,
   selectedRouteId,
+  meetupRouteId = null,
   selfClientId,
   canEditMeetup,
   onLocate,
@@ -81,6 +83,8 @@ export default function RoutesPanel({
       </div>
 
       <section className="space-y-2 border-t border-[color:var(--run-line)] pt-3">
+        <p className="text-xs text-[color:var(--run-muted)]">Tap a route to preview.</p>
+
         {routes === undefined ? (
           <p className="text-sm text-[color:var(--run-muted)]">Loading…</p>
         ) : null}
@@ -91,6 +95,7 @@ export default function RoutesPanel({
 
         {(routes ?? []).map((route) => {
           const selected = selectedRouteId === route._id;
+          const isMeetupRoute = meetupRouteId === route._id;
           return (
             <div
               key={route._id}
@@ -105,18 +110,32 @@ export default function RoutesPanel({
                 className="w-full text-left"
                 onClick={() => onSelectRoute(selected ? null : route._id)}
               >
-                <p className="font-medium">{route.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="min-w-0 flex-1 truncate font-medium">{route.name}</p>
+                  {isMeetupRoute ? (
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                        selected
+                          ? "bg-[color:var(--run-accent)] text-[color:var(--run-ink)]"
+                          : "bg-[color:var(--run-ink)]/10 text-[color:var(--run-ink)]"
+                      }`}
+                    >
+                      Meetup
+                    </span>
+                  ) : null}
+                </div>
                 <p
                   className={`text-xs ${
                     selected ? "text-[color:var(--run-accent)]/80" : "text-[color:var(--run-muted)]"
                   }`}
                 >
-                  {formatDistance(route.distanceMeters)} · {route.displayName}
+                  {formatDistance(route.distanceMeters)} · {route.waypoints.length} pts ·{" "}
+                  {route.displayName}
                 </p>
               </button>
               {selected ? (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {canEditMeetup ? (
+                  {canEditMeetup && !isMeetupRoute ? (
                     <button
                       type="button"
                       onClick={() => onApplyToMeetup(route._id)}
@@ -125,13 +144,13 @@ export default function RoutesPanel({
                       Use meetup
                     </button>
                   ) : null}
-                  {canEditMeetup ? (
+                  {canEditMeetup && isMeetupRoute ? (
                     <button
                       type="button"
                       onClick={onClearMeetupRoute}
                       className="rounded-full bg-white/15 px-3 py-1.5 text-xs"
                     >
-                      Clear
+                      Unpin meetup
                     </button>
                   ) : null}
                   {route.clientId === selfClientId ? (

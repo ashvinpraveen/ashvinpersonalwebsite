@@ -123,6 +123,12 @@ function RunClubApp() {
     pausedRef.current = paused;
   }, [paused]);
 
+  // Prefer the meetup's pinned route until the runner picks another one.
+  useEffect(() => {
+    if (!meetup?.routeId) return;
+    setSelectedRouteId((current) => current ?? meetup.routeId ?? null);
+  }, [meetup?.routeId]);
+
   useEffect(() => {
     if (!tracking || !startedAt) return;
     const tick = () => {
@@ -183,10 +189,19 @@ function RunClubApp() {
   );
   const route = useMemo<RouteWaypoint[]>(() => {
     if (drawing) return draftWaypoints;
+    if (selectedRouteId) {
+      const selected = clubRoutes?.find((item) => item._id === selectedRouteId);
+      if (selected?.waypoints?.length) return selected.waypoints;
+    }
     if (meetup?.routeWaypoints?.length) return meetup.routeWaypoints;
-    const selected = clubRoutes?.find((item) => item._id === selectedRouteId);
-    return selected?.waypoints ?? [];
-  }, [clubRoutes, draftWaypoints, drawing, meetup?.routeWaypoints, selectedRouteId]);
+    return [];
+  }, [
+    clubRoutes,
+    draftWaypoints,
+    drawing,
+    meetup?.routeWaypoints,
+    selectedRouteId,
+  ]);
 
   const draftDistanceMeters = useMemo(
     () => pathDistanceMeters(draftWaypoints),
@@ -605,7 +620,8 @@ function RunClubApp() {
                               startLabel={start.label}
                               address={DEFAULT_START.address}
                               routes={clubRoutes}
-                              selectedRouteId={meetup?.routeId ?? selectedRouteId}
+                              selectedRouteId={selectedRouteId}
+                              meetupRouteId={meetup?.routeId ?? null}
                               selfClientId={profile?.clientId}
                               canEditMeetup={Boolean(profile && meetup)}
                               onLocate={() => requestPosition(tracking)}
@@ -616,6 +632,7 @@ function RunClubApp() {
                               }}
                               onApplyToMeetup={(routeId) => {
                                 if (!profile || !meetup) return;
+                                setSelectedRouteId(routeId);
                                 void applyRouteToSession({
                                   sessionId: meetup._id,
                                   routeId: routeId as Id<"runClubRoutes">,
@@ -628,7 +645,6 @@ function RunClubApp() {
                                   sessionId: meetup._id,
                                   clientId: profile.clientId,
                                 });
-                                setSelectedRouteId(null);
                               }}
                               onStartDrawing={() => {
                                 setDraftWaypoints([]);
