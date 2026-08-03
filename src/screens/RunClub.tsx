@@ -361,6 +361,10 @@ function RunClubApp() {
             selfPosition={livePosition}
             followSelf={tracking && !paused}
             drawing={drawing && !tracking}
+            showWaypoints={
+              (drawing || route.length > 0) &&
+              route.length <= MAX_ROUTE_WAYPOINTS
+            }
             onMapClick={(point) => {
               if (!drawing || tracking) return;
               setDraftWaypoints((current) => {

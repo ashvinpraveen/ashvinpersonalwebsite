@@ -136,8 +136,9 @@ function ActivityApp({ slug }: { slug: string }) {
               start={start}
               route={activity.path}
               presence={[]}
-              selfPath={activity.path}
+              selfPath={[]}
               selfPosition={null}
+              showWaypoints={false}
             />
           </div>
         ) : null}
