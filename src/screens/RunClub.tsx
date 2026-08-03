@@ -337,7 +337,7 @@ function RunClubApp() {
   if (!ready) {
     return (
       <RunClubShell fullBleed hideTabs>
-        <div className="grid h-dvh place-items-center px-4 pt-12 text-sm text-[color:var(--run-muted)]">
+        <div className="grid h-dvh place-items-center px-4 text-sm text-[color:var(--run-muted)]" style={{ paddingTop: "var(--run-club-nav-h)" }}>
           Loading…
         </div>
       </RunClubShell>
@@ -348,8 +348,8 @@ function RunClubApp() {
 
   return (
     <RunClubShell fullBleed hideTabs={hideTabs}>
-      <div className="relative h-dvh max-h-dvh overflow-hidden pt-12">
-        <div className="run-club-map-layer absolute inset-0 top-12">
+      <div className="relative h-dvh max-h-dvh overflow-hidden" style={{ paddingTop: "var(--run-club-nav-h)" }}>
+        <div className="run-club-map-layer absolute inset-0" style={{ top: "var(--run-club-nav-h)" }}>
           <ClubMap
             start={start}
             route={route}
