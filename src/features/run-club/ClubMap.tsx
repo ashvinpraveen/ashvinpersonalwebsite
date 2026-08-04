@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo } from "react";
 import {
-  CircleMarker,
   MapContainer,
   Marker,
   Polyline,
@@ -17,7 +16,8 @@ import { avatarColor } from "./browser";
 import type { LatLng, LivePresence, RouteWaypoint } from "./types";
 
 type ClubMapProps = {
-  start: LatLng & { label: string };
+  /** Fallback center before GPS / routes are available. */
+  start: LatLng & { label?: string };
   route: RouteWaypoint[];
   presence: LivePresence[];
   selfClientId?: string;
@@ -67,13 +67,15 @@ function MapClickHandler({
   return null;
 }
 
-function FitRoute({
-  start,
+function FitViewport({
+  fallback,
+  focus,
   route,
   followSelf,
   drawing,
 }: {
-  start: LatLng;
+  fallback: LatLng;
+  focus?: LatLng | null;
   route: RouteWaypoint[];
   followSelf?: boolean;
   drawing?: boolean;
@@ -85,19 +87,30 @@ function FitRoute({
   );
 
   useEffect(() => {
-    // While drawing, leave the viewport alone so taps stay under the finger.
+    // Live tracking / drawing own the camera.
     if (followSelf || drawing) return;
 
-    if (route.length < 2) {
-      map.setView([start.lat, start.lng], 16);
+    if (route.length >= 2) {
+      const points: L.LatLngExpression[] = route.map(
+        (point) => [point.lat, point.lng] as L.LatLngExpression,
+      );
+      map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 16 });
       return;
     }
 
-    const points: L.LatLngExpression[] = route.map(
-      (point) => [point.lat, point.lng] as L.LatLngExpression,
-    );
-    map.fitBounds(L.latLngBounds(points), { padding: [48, 48], maxZoom: 16 });
-  }, [drawing, followSelf, map, route, routeKey, start.lat, start.lng]);
+    const center = focus ?? fallback;
+    map.setView([center.lat, center.lng], 16);
+  }, [
+    drawing,
+    fallback.lat,
+    fallback.lng,
+    focus?.lat,
+    focus?.lng,
+    followSelf,
+    map,
+    route,
+    routeKey,
+  ]);
 
   return null;
 }
@@ -137,22 +150,6 @@ function runnerIcon(name: string, hue: number, isSelf: boolean, isTracking: bool
   });
 }
 
-function startIcon() {
-  return L.divIcon({
-    className: "run-club-start-marker",
-    iconSize: [28, 28],
-    iconAnchor: [14, 28],
-    html: `<div style="
-      width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;
-      border-bottom:22px solid #b8e05c;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35));
-      position:relative;
-    "><span style="
-      position:absolute;left:-7px;top:8px;width:14px;height:14px;border-radius:999px;
-      background:#123526;border:2px solid #f4ffe4;display:block;
-    "></span></div>`,
-  });
-}
-
 function waypointIcon(index: number) {
   return L.divIcon({
     className: "run-club-marker",
@@ -187,10 +184,11 @@ export default function ClubMap({
     [selfPath],
   );
   const renderWaypoints = showWaypoints ?? drawing;
+  const initialCenter = selfPosition ?? start;
 
   return (
     <MapContainer
-      center={[start.lat, start.lng]}
+      center={[initialCenter.lat, initialCenter.lng]}
       zoom={15}
       className="run-club-map h-full w-full"
       zoomControl={false}
@@ -203,7 +201,13 @@ export default function ClubMap({
       />
       <MapLifecycle layoutKey={drawing} />
       <MapClickHandler enabled={drawing} onMapClick={onMapClick} />
-      <FitRoute start={start} route={route} followSelf={followSelf} drawing={drawing} />
+      <FitViewport
+        fallback={start}
+        focus={selfPosition}
+        route={route}
+        followSelf={followSelf}
+        drawing={drawing}
+      />
       <FollowSelf followSelf={followSelf} selfPosition={selfPosition} />
       {routePositions.length > 1 ? (
         <Polyline
@@ -221,22 +225,6 @@ export default function ClubMap({
           pathOptions={{ color: "#8fd13a", weight: 6, opacity: 0.95 }}
         />
       ) : null}
-      <Marker position={[start.lat, start.lng]} icon={startIcon()}>
-        <Popup>
-          <strong>{start.label}</strong>
-          <div>Club start point</div>
-        </Popup>
-      </Marker>
-      <CircleMarker
-        center={[start.lat, start.lng]}
-        radius={18}
-        pathOptions={{
-          color: "#b8e05c",
-          fillColor: "#b8e05c",
-          fillOpacity: 0.15,
-          weight: 1,
-        }}
-      />
       {renderWaypoints && route.length > 0
         ? route.map((point, index) => (
             <Marker
