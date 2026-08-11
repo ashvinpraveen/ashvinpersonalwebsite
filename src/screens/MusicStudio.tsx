@@ -217,7 +217,7 @@ function MusicStudioApp() {
 
   function handlePolishFallback() {
     toast.message("Local loop is ready", {
-      description: "Connect Convex and set SUNO_API_KEY to polish with Suno.",
+      description: "Connect Convex and set ELEVENLABS_API_KEY to polish with ElevenLabs.",
     });
   }
 
@@ -653,12 +653,12 @@ function MusicStudioApp() {
                   className="inline-flex h-12 items-center gap-2 rounded-full border border-[var(--music-accent)] bg-[var(--music-accent)] px-5 text-sm font-semibold text-[var(--music-accent-ink)]"
                 >
                   <Sparkles size={16} />
-                  Polish with Suno
+                  Polish with ElevenLabs
                 </button>
               )}
             </div>
             <p className="mt-3 text-xs text-[var(--music-muted)]">
-              Default is instrumental only — no lyrics. Local loop works offline; Polish needs Suno API.
+              Default is instrumental only — no lyrics. Local loop works offline; Polish needs ElevenLabs API.
             </p>
           </motion.div>
 

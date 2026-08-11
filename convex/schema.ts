@@ -242,6 +242,9 @@ export default defineSchema({
     bars: v.number(),
     hasMicTake: v.boolean(),
     notes: v.string(),
+    storageId: v.optional(v.id("_storage")),
+    providerSongId: v.optional(v.string()),
+    /** @deprecated Legacy Suno task id kept for existing docs. */
     sunoTaskId: v.optional(v.string()),
     audioUrl: v.optional(v.string()),
     streamAudioUrl: v.optional(v.string()),

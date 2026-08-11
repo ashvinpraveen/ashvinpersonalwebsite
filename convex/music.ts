@@ -10,7 +10,7 @@ import type { Id } from "./_generated/dataModel";
 
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_MAX = 6;
-const SUNO_API_BASE = "https://api.sunoapi.org";
+const ELEVENLABS_API_BASE = "https://api.elevenlabs.io";
 
 const drumPatternValidator = v.union(
   v.literal("none"),
@@ -24,14 +24,6 @@ function env(name: string) {
   return process.env[name]?.trim() || "";
 }
 
-function requireSiteUrl() {
-  const siteUrl = env("CONVEX_SITE_URL") || env("NEXT_PUBLIC_CONVEX_SITE_URL");
-  if (!siteUrl) {
-    throw new Error("CONVEX_SITE_URL is not configured for Suno callbacks.");
-  }
-  return siteUrl.replace(/\/$/, "");
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -40,10 +32,103 @@ function asString(value: unknown) {
   return typeof value === "string" ? value : null;
 }
 
+function musicLengthMs(bars: number, tempoBpm: number) {
+  const safeBars = Math.max(1, Math.min(16, Math.round(bars)));
+  const safeTempo = Math.max(60, Math.min(180, Math.round(tempoBpm)));
+  const ms = Math.round(safeBars * 4 * (60_000 / safeTempo));
+  return Math.min(120_000, Math.max(10_000, ms));
+}
+
+function extractBoundary(contentType: string) {
+  const match = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType);
+  return match?.[1] ?? match?.[2] ?? null;
+}
+
+function extractAudioFromMultipart(bytes: ArrayBuffer, contentType: string) {
+  const boundary = extractBoundary(contentType);
+  if (!boundary) {
+    return new Blob([bytes], { type: "audio/mpeg" });
+  }
+
+  const text = new TextDecoder().decode(bytes);
+  const parts = text.split(`--${boundary}`);
+  for (const part of parts) {
+    if (!/content-type:\s*audio\//i.test(part)) continue;
+    const headerEndCrLf = part.indexOf("\r\n\r\n");
+    const headerEndLf = part.indexOf("\n\n");
+    const headerEnd =
+      headerEndCrLf >= 0
+        ? headerEndCrLf + 4
+        : headerEndLf >= 0
+          ? headerEndLf + 2
+          : -1;
+    if (headerEnd < 0) continue;
+
+    const full = new Uint8Array(bytes);
+    // Re-find the audio body offset in the raw bytes by matching the first
+    // audio content-type header occurrence, then the following blank line.
+    const headerNeedle = new TextEncoder().encode("Content-Type: audio/");
+    const altNeedle = new TextEncoder().encode("content-type: audio/");
+    let headerAt = indexOfBytes(full, headerNeedle);
+    if (headerAt < 0) headerAt = indexOfBytes(full, altNeedle);
+    if (headerAt < 0) continue;
+
+    const afterHeader = full.subarray(headerAt);
+    const sepCrLf = indexOfBytes(afterHeader, new TextEncoder().encode("\r\n\r\n"));
+    const sepLf = indexOfBytes(afterHeader, new TextEncoder().encode("\n\n"));
+    const sep =
+      sepCrLf >= 0 ? { at: sepCrLf, len: 4 } : sepLf >= 0 ? { at: sepLf, len: 2 } : null;
+    if (!sep) continue;
+
+    const bodyStart = headerAt + sep.at + sep.len;
+    const closing = new TextEncoder().encode(`\r\n--${boundary}`);
+    let bodyEnd = indexOfBytes(full.subarray(bodyStart), closing);
+    if (bodyEnd < 0) {
+      const closingLf = new TextEncoder().encode(`\n--${boundary}`);
+      bodyEnd = indexOfBytes(full.subarray(bodyStart), closingLf);
+    }
+    const audioBytes =
+      bodyEnd >= 0
+        ? full.subarray(bodyStart, bodyStart + bodyEnd)
+        : full.subarray(bodyStart);
+
+    const typeMatch = /content-type:\s*([^\r\n;]+)/i.exec(part);
+    return new Blob([audioBytes], {
+      type: typeMatch?.[1]?.trim() || "audio/mpeg",
+    });
+  }
+
+  return new Blob([bytes], { type: "audio/mpeg" });
+}
+
+function indexOfBytes(haystack: Uint8Array, needle: Uint8Array) {
+  outer: for (let i = 0; i <= haystack.length - needle.length; i += 1) {
+    for (let j = 0; j < needle.length; j += 1) {
+      if (haystack[i + j] !== needle[j]) continue outer;
+    }
+    return i;
+  }
+  return -1;
+}
+
+async function trackAudioUrl(
+  ctx: { storage: { getUrl: (id: Id<"_storage">) => Promise<string | null> } },
+  track: {
+    storageId?: Id<"_storage">;
+    audioUrl?: string;
+    streamAudioUrl?: string;
+  },
+) {
+  if (track.storageId) {
+    return (await ctx.storage.getUrl(track.storageId)) ?? null;
+  }
+  return track.audioUrl ?? track.streamAudioUrl ?? null;
+}
+
 export const isPolishConfigured = query({
   args: {},
   handler: async () => {
-    return Boolean(env("SUNO_API_KEY"));
+    return Boolean(env("ELEVENLABS_API_KEY"));
   },
 });
 
@@ -55,13 +140,14 @@ export const getTrack = query({
   handler: async (ctx, args) => {
     const track = await ctx.db.get(args.trackId);
     if (!track || track.clientId !== args.clientId) return null;
+    const audioUrl = await trackAudioUrl(ctx, track);
     return {
       _id: track._id,
       status: track.status,
       title: track.title,
       stylePrompt: track.stylePrompt,
-      audioUrl: track.audioUrl ?? null,
-      streamAudioUrl: track.streamAudioUrl ?? null,
+      audioUrl,
+      streamAudioUrl: audioUrl,
       imageUrl: track.imageUrl ?? null,
       errorMessage: track.errorMessage ?? null,
       createdAt: track.createdAt,
@@ -80,17 +166,22 @@ export const listRecent = query({
       .order("desc")
       .take(8);
 
-    return tracks.map((track) => ({
-      _id: track._id,
-      status: track.status,
-      title: track.title,
-      stylePrompt: track.stylePrompt,
-      audioUrl: track.audioUrl ?? null,
-      streamAudioUrl: track.streamAudioUrl ?? null,
-      imageUrl: track.imageUrl ?? null,
-      errorMessage: track.errorMessage ?? null,
-      createdAt: track.createdAt,
-    }));
+    return await Promise.all(
+      tracks.map(async (track) => {
+        const audioUrl = await trackAudioUrl(ctx, track);
+        return {
+          _id: track._id,
+          status: track.status,
+          title: track.title,
+          stylePrompt: track.stylePrompt,
+          audioUrl,
+          streamAudioUrl: audioUrl,
+          imageUrl: track.imageUrl ?? null,
+          errorMessage: track.errorMessage ?? null,
+          createdAt: track.createdAt,
+        };
+      }),
+    );
   },
 });
 
@@ -111,8 +202,10 @@ export const createQueuedTrack = internalMutation({
     if (!args.clientId.trim()) {
       throw new Error("Missing client id.");
     }
-    if (!env("SUNO_API_KEY")) {
-      throw new Error("Suno polish is not configured. Set SUNO_API_KEY in Convex.");
+    if (!env("ELEVENLABS_API_KEY")) {
+      throw new Error(
+        "ElevenLabs polish is not configured. Set ELEVENLABS_API_KEY in Convex.",
+      );
     }
 
     const now = Date.now();
@@ -166,12 +259,10 @@ export const createQueuedTrack = internalMutation({
 export const markGenerating = internalMutation({
   args: {
     trackId: v.id("musicTracks"),
-    sunoTaskId: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.trackId, {
       status: "generating",
-      sunoTaskId: args.sunoTaskId,
       updatedAt: Date.now(),
     });
   },
@@ -191,31 +282,20 @@ export const markFailed = internalMutation({
   },
 });
 
-export const applySunoResult = internalMutation({
+export const markReady = internalMutation({
   args: {
-    sunoTaskId: v.string(),
-    status: v.union(v.literal("generating"), v.literal("ready"), v.literal("failed")),
-    audioUrl: v.optional(v.string()),
-    streamAudioUrl: v.optional(v.string()),
-    imageUrl: v.optional(v.string()),
-    errorMessage: v.optional(v.string()),
+    trackId: v.id("musicTracks"),
+    storageId: v.id("_storage"),
+    providerSongId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const track = await ctx.db
-      .query("musicTracks")
-      .withIndex("by_sunoTaskId", (q) => q.eq("sunoTaskId", args.sunoTaskId))
-      .unique();
-    if (!track) return null;
-
-    await ctx.db.patch(track._id, {
-      status: args.status,
-      audioUrl: args.audioUrl ?? track.audioUrl,
-      streamAudioUrl: args.streamAudioUrl ?? track.streamAudioUrl,
-      imageUrl: args.imageUrl ?? track.imageUrl,
-      errorMessage: args.errorMessage ?? track.errorMessage,
+    await ctx.db.patch(args.trackId, {
+      status: "ready",
+      storageId: args.storageId,
+      providerSongId: args.providerSongId,
+      errorMessage: undefined,
       updatedAt: Date.now(),
     });
-    return track._id;
   },
 });
 
@@ -239,42 +319,63 @@ export const polish = action({
     hasMicTake: v.boolean(),
     notes: v.string(),
   },
-  handler: async (ctx, args): Promise<{ trackId: Id<"musicTracks"> }> => {
-    const apiKey = env("SUNO_API_KEY");
+  handler: async (ctx, args): Promise<{ trackId: Id<"musicTracks">; audioUrl: string | null }> => {
+    const apiKey = env("ELEVENLABS_API_KEY");
     if (!apiKey) {
-      throw new Error("Suno polish is not configured. Set SUNO_API_KEY in Convex.");
+      throw new Error(
+        "ElevenLabs polish is not configured. Set ELEVENLABS_API_KEY in Convex.",
+      );
     }
 
     const trackId: Id<"musicTracks"> = await ctx.runMutation(
       internal.music.createQueuedTrack,
       args,
     );
-    const callBackUrl = `${requireSiteUrl()}/music/suno-callback`;
+
+    await ctx.runMutation(internal.music.markGenerating, { trackId });
+
+    const lengthMs = musicLengthMs(args.bars, args.tempoBpm);
+    const modelId = env("ELEVENLABS_MUSIC_MODEL") || "music_v2";
+    const prompt = [
+      args.stylePrompt.slice(0, 900),
+      "seamless loopable instrumental backing track",
+      "no vocals, no lyrics, no singing",
+    ].join(", ");
 
     try {
-      const response = await fetch(`${SUNO_API_BASE}/api/v1/generate`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${ELEVENLABS_API_BASE}/v1/music?output_format=mp3_44100_128`,
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "Content-Type": "application/json",
+            Accept: "audio/mpeg, application/octet-stream, multipart/mixed",
+          },
+          body: JSON.stringify({
+            prompt,
+            music_length_ms: lengthMs,
+            model_id: modelId,
+            force_instrumental: true,
+          }),
         },
-        body: JSON.stringify({
-          customMode: true,
-          instrumental: true,
-          model: env("SUNO_MODEL") || "V4_5ALL",
-          style: args.stylePrompt.slice(0, 1000),
-          title: args.title.slice(0, 80),
-          callBackUrl,
-          negativeTags: "vocals, lyrics, singing, rap, voice",
-        }),
-      });
+      );
 
-      const payload: unknown = await response.json().catch(() => null);
       if (!response.ok) {
-        const detail =
-          (isRecord(payload) && asString(payload.msg)) ||
-          (isRecord(payload) && asString(payload.message)) ||
-          `Suno request failed (${response.status})`;
+        let detail = `ElevenLabs request failed (${response.status})`;
+        try {
+          const payload: unknown = await response.json();
+          detail =
+            (isRecord(payload) && asString(payload.detail)) ||
+            (isRecord(payload) &&
+              isRecord(payload.detail) &&
+              asString(payload.detail.message)) ||
+            (isRecord(payload) && asString(payload.message)) ||
+            detail;
+        } catch {
+          const text = await response.text().catch(() => "");
+          if (text) detail = text.slice(0, 300);
+        }
         await ctx.runMutation(internal.music.markFailed, {
           trackId,
           errorMessage: detail,
@@ -282,29 +383,44 @@ export const polish = action({
         throw new Error(detail);
       }
 
-      const data = isRecord(payload) ? payload.data : null;
-      const taskId =
-        (isRecord(data) && asString(data.taskId)) ||
-        (isRecord(payload) && asString(payload.taskId));
+      const contentType = response.headers.get("content-type") || "audio/mpeg";
+      const providerSongId =
+        response.headers.get("song-id") ||
+        response.headers.get("Song-Id") ||
+        undefined;
 
-      if (!taskId) {
-        await ctx.runMutation(internal.music.markFailed, {
-          trackId,
-          errorMessage: "Suno did not return a task id.",
-        });
-        throw new Error("Suno did not return a task id.");
+      let audioBlob: Blob;
+      if (contentType.includes("multipart")) {
+        const bytes = await response.arrayBuffer();
+        audioBlob = extractAudioFromMultipart(bytes, contentType);
+      } else {
+        audioBlob = await response.blob();
       }
 
-      await ctx.runMutation(internal.music.markGenerating, {
+      if (audioBlob.size < 1000) {
+        await ctx.runMutation(internal.music.markFailed, {
+          trackId,
+          errorMessage: "ElevenLabs returned empty audio.",
+        });
+        throw new Error("ElevenLabs returned empty audio.");
+      }
+
+      const storageId = await ctx.storage.store(
+        new Blob([audioBlob], { type: audioBlob.type || "audio/mpeg" }),
+      );
+
+      await ctx.runMutation(internal.music.markReady, {
         trackId,
-        sunoTaskId: taskId,
+        storageId,
+        providerSongId,
       });
 
-      return { trackId };
+      const audioUrl = await ctx.storage.getUrl(storageId);
+      return { trackId, audioUrl };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Polish failed.";
       const track = await ctx.runQuery(internal.music.getTrackInternal, { trackId });
-      if (track && track.status !== "failed") {
+      if (track && track.status !== "failed" && track.status !== "ready") {
         await ctx.runMutation(internal.music.markFailed, {
           trackId,
           errorMessage: message,
@@ -312,96 +428,5 @@ export const polish = action({
       }
       throw error instanceof Error ? error : new Error(message);
     }
-  },
-});
-
-export const refreshFromSuno = action({
-  args: {
-    trackId: v.id("musicTracks"),
-    clientId: v.string(),
-  },
-  handler: async (ctx, args): Promise<{ status: string }> => {
-    const apiKey = env("SUNO_API_KEY");
-    if (!apiKey) {
-      throw new Error("Suno polish is not configured.");
-    }
-
-    const track = await ctx.runQuery(internal.music.getTrackInternal, {
-      trackId: args.trackId,
-    });
-    if (!track || track.clientId !== args.clientId) {
-      throw new Error("Track not found.");
-    }
-    if (!track.sunoTaskId) {
-      return { status: track.status };
-    }
-    if (track.status === "ready" || track.status === "failed") {
-      return { status: track.status };
-    }
-
-    const response = await fetch(
-      `${SUNO_API_BASE}/api/v1/generate/record-info?taskId=${encodeURIComponent(track.sunoTaskId)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-      },
-    );
-    const payload: unknown = await response.json().catch(() => null);
-    if (!response.ok) {
-      return { status: track.status };
-    }
-
-    const data = isRecord(payload) ? payload.data : null;
-    const statusRaw =
-      (isRecord(data) && asString(data.status)) ||
-      (isRecord(payload) && asString(payload.status)) ||
-      "";
-
-    const sunoTracks =
-      (isRecord(data) && Array.isArray(data.response) && data.response) ||
-      (isRecord(data) && Array.isArray(data.data) && data.data) ||
-      (Array.isArray(data) ? data : []);
-
-    const first = sunoTracks.find((item) => isRecord(item)) as
-      | Record<string, unknown>
-      | undefined;
-    const audioUrl =
-      (first && (asString(first.audio_url) || asString(first.audioUrl))) || undefined;
-    const streamAudioUrl =
-      (first &&
-        (asString(first.stream_audio_url) || asString(first.streamAudioUrl))) ||
-      undefined;
-    const imageUrl =
-      (first && (asString(first.image_url) || asString(first.imageUrl))) || undefined;
-
-    const normalized = statusRaw.toLowerCase();
-    if (audioUrl || normalized.includes("complete") || normalized.includes("success")) {
-      await ctx.runMutation(internal.music.applySunoResult, {
-        sunoTaskId: track.sunoTaskId,
-        status: "ready",
-        audioUrl,
-        streamAudioUrl,
-        imageUrl,
-      });
-      return { status: "ready" };
-    }
-
-    if (normalized.includes("fail") || normalized.includes("error")) {
-      await ctx.runMutation(internal.music.applySunoResult, {
-        sunoTaskId: track.sunoTaskId,
-        status: "failed",
-        errorMessage: "Suno generation failed.",
-      });
-      return { status: "failed" };
-    }
-
-    await ctx.runMutation(internal.music.applySunoResult, {
-      sunoTaskId: track.sunoTaskId,
-      status: "generating",
-      streamAudioUrl,
-      imageUrl,
-    });
-    return { status: "generating" };
   },
 });
