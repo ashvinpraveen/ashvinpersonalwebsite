@@ -13,6 +13,7 @@ const base: BackingTrackParams = {
   progressionId: "I-V-vi-IV",
   chords: ["I", "V", "vi", "IV"],
   drumPatternId: "softPop",
+  padVoiceId: "warm",
   bars: 4,
   hasMicTake: false,
   notes: "",
@@ -21,7 +22,17 @@ const base: BackingTrackParams = {
 describe("music prompt builder", () => {
   it("resolves preset chords", () => {
     expect(resolveChords(base)).toEqual(["I", "V", "vi", "IV"]);
-    expect(formatChordProgression(base)).toBe("I – V – vi – IV");
+    expect(formatChordProgression(base)).toBe("Pop axis · I V vi IV");
+  });
+
+  it("resolves 12-bar blues", () => {
+    const blues = resolveChords({
+      progressionId: "blues-12",
+      chords: [],
+    });
+    expect(blues).toHaveLength(12);
+    expect(blues.slice(0, 4)).toEqual(["I7", "I7", "I7", "I7"]);
+    expect(blues.slice(8)).toEqual(["V7", "IV7", "I7", "V7"]);
   });
 
   it("uses custom chords when progression is custom", () => {
@@ -37,7 +48,8 @@ describe("music prompt builder", () => {
     const prompt = buildStylePrompt(base);
     expect(prompt).toContain("Instrumental loopable backing track in G major");
     expect(prompt).toContain("96 BPM");
-    expect(prompt).toContain("chord progression I – V – vi – IV");
+    expect(prompt).toContain("chord progression Pop axis · I V vi IV");
+    expect(prompt).toContain("Warm pad harmony");
     expect(prompt).toContain("Soft pop drum groove");
     expect(prompt).toContain("no vocals, no lyrics");
     expect(prompt).not.toContain("inspired by a hummed");
@@ -54,6 +66,13 @@ describe("music prompt builder", () => {
   });
 
   it("builds a short title", () => {
-    expect(buildTrackTitle(base)).toBe("G 96 I-V-vi-IV");
+    expect(buildTrackTitle(base)).toBe("G 96 I–V–vi–IV");
+    expect(
+      buildTrackTitle({
+        ...base,
+        progressionId: "blues-12",
+        bars: 12,
+      }),
+    ).toBe("G 96 Blues");
   });
 });

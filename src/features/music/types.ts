@@ -14,10 +14,13 @@ export type MusicKey =
 
 export type RomanNumeral =
   | "I"
+  | "I7"
   | "ii"
   | "iii"
   | "IV"
+  | "IV7"
   | "V"
+  | "V7"
   | "vi"
   | "vii°";
 
@@ -29,12 +32,17 @@ export type DrumPatternId =
   | "boomBap";
 
 export type ProgressionPresetId =
+  | "blues-12"
   | "I-V-vi-IV"
-  | "I-IV-V-I"
-  | "I-V-IV-V"
-  | "ii-V-I-I"
   | "I-vi-IV-V"
+  | "vi-IV-I-V"
+  | "I-IV-V-I"
+  | "I-IV-I-V"
+  | "ii-V-I-I"
+  | "canon"
   | "custom";
+
+export type PadVoiceId = "warm" | "rhodes" | "organ" | "softSaw" | "glass";
 
 export type BackingTrackParams = {
   tempoBpm: number;
@@ -42,9 +50,17 @@ export type BackingTrackParams = {
   progressionId: ProgressionPresetId;
   chords: RomanNumeral[];
   drumPatternId: DrumPatternId;
+  padVoiceId: PadVoiceId;
   bars: number;
   hasMicTake: boolean;
   notes: string;
+};
+
+export type TransportState = {
+  beat: 1 | 2 | 3 | 4;
+  barIndex: number;
+  chord: RomanNumeral;
+  playing: boolean;
 };
 
 export type PolishedTrackStatus =

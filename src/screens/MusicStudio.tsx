@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import {
+  AudioLines,
   Mic,
   Pause,
   Play,
@@ -23,6 +24,7 @@ import {
 import { toast } from "sonner";
 import type { Id } from "../../convex/_generated/dataModel";
 import { BackingLoopEngine } from "@/features/music/audioEngine";
+import BeatMeter from "@/features/music/BeatMeter";
 import {
   getOrCreateMusicClientId,
   readMusicDraft,
@@ -31,14 +33,17 @@ import {
 import {
   DEFAULT_BARS,
   DEFAULT_KEY,
+  DEFAULT_PAD_VOICE,
   DEFAULT_TEMPO_BPM,
   DRUM_PATTERNS,
   KEYS,
   MAX_TEMPO_BPM,
   MIN_TEMPO_BPM,
+  PAD_VOICES,
   PROGRESSION_PRESETS,
   ROMAN_OPTIONS,
 } from "@/features/music/config";
+import MusicTunerPanel from "@/features/music/MusicTunerPanel";
 import {
   buildLocalPreviewLabel,
   buildStylePrompt,
@@ -48,8 +53,10 @@ import type {
   BackingTrackParams,
   DrumPatternId,
   MusicKey,
+  PadVoiceId,
   ProgressionPresetId,
   RomanNumeral,
+  TransportState,
 } from "@/features/music/types";
 import { useMicRecorder } from "@/features/music/useMicRecorder";
 import { useTapTempo } from "@/features/music/useTapTempo";
@@ -65,22 +72,45 @@ const PRESET_IDS = Object.keys(PROGRESSION_PRESETS) as Array<
   Exclude<ProgressionPresetId, "custom">
 >;
 
+const PAD_VOICE_IDS = Object.keys(PAD_VOICES) as PadVoiceId[];
+
+function barsForProgression(id: ProgressionPresetId) {
+  if (id === "custom") return DEFAULT_BARS;
+  return PROGRESSION_PRESETS[id].chords.length;
+}
+
 function MusicStudioApp() {
   const [clientId, setClientId] = useState("");
   const [key, setKey] = useState<MusicKey>(DEFAULT_KEY);
   const [progressionId, setProgressionId] =
-    useState<ProgressionPresetId>("I-V-vi-IV");
+    useState<ProgressionPresetId>("blues-12");
   const [customChords, setCustomChords] = useState<RomanNumeral[]>([
-    "I",
-    "V",
-    "IV",
-    "V",
+    "I7",
+    "I7",
+    "I7",
+    "I7",
+    "IV7",
+    "IV7",
+    "I7",
+    "I7",
+    "V7",
+    "IV7",
+    "I7",
+    "V7",
   ]);
   const [drumPatternId, setDrumPatternId] =
     useState<DrumPatternId>("softPop");
-  const [bars, setBars] = useState(DEFAULT_BARS);
+  const [padVoiceId, setPadVoiceId] = useState<PadVoiceId>(DEFAULT_PAD_VOICE);
+  const [bars, setBars] = useState(12);
   const [notes, setNotes] = useState("");
   const [isLoopPlaying, setIsLoopPlaying] = useState(false);
+  const [tunerOpen, setTunerOpen] = useState(false);
+  const [transport, setTransport] = useState<TransportState>({
+    beat: 1,
+    barIndex: 0,
+    chord: "I7",
+    playing: false,
+  });
   const [polishTrackId, setPolishTrackId] = useState<Id<"musicTracks"> | null>(
     null,
   );
@@ -103,6 +133,7 @@ function MusicStudioApp() {
           ? customChords
           : PROGRESSION_PRESETS[progressionId].chords,
       drumPatternId,
+      padVoiceId,
       bars,
       hasMicTake: mic.hasTake,
       notes,
@@ -114,6 +145,7 @@ function MusicStudioApp() {
       key,
       mic.hasTake,
       notes,
+      padVoiceId,
       progressionId,
       tempoBpm,
     ],
@@ -133,16 +165,27 @@ function MusicStudioApp() {
     if (draft) {
       if (typeof draft.tempoBpm === "number") setTempo(draft.tempoBpm);
       if (draft.key) setKey(draft.key);
-      if (draft.progressionId) setProgressionId(draft.progressionId);
+      if (
+        draft.progressionId === "custom" ||
+        (draft.progressionId && draft.progressionId in PROGRESSION_PRESETS)
+      ) {
+        setProgressionId(draft.progressionId);
+      }
       if (draft.chords?.length) setCustomChords(draft.chords);
       if (draft.drumPatternId) setDrumPatternId(draft.drumPatternId);
+      if (draft.padVoiceId && draft.padVoiceId in PAD_VOICES) {
+        setPadVoiceId(draft.padVoiceId);
+      }
       if (typeof draft.bars === "number") setBars(draft.bars);
       if (typeof draft.notes === "string") setNotes(draft.notes);
     }
     setDraftReady(true);
-    engineRef.current = new BackingLoopEngine();
+    const engine = new BackingLoopEngine();
+    engineRef.current = engine;
+    const unsubscribe = engine.subscribeTransport(setTransport);
     return () => {
-      engineRef.current?.dispose();
+      unsubscribe();
+      engine.dispose();
       engineRef.current = null;
     };
   }, [setTempo]);
@@ -176,6 +219,14 @@ function MusicStudioApp() {
     toast.message("Local loop is ready", {
       description: "Connect Convex and set SUNO_API_KEY to polish with Suno.",
     });
+  }
+
+  function selectProgression(id: ProgressionPresetId) {
+    setProgressionId(id);
+    if (id !== "custom") {
+      setBars(barsForProgression(id));
+      setCustomChords([...PROGRESSION_PRESETS[id].chords]);
+    }
   }
 
   function updateCustomChord(index: number, value: RomanNumeral) {
@@ -231,7 +282,23 @@ function MusicStudioApp() {
             Backing Track
           </h1>
         </div>
-        <div className="w-10 sm:w-[4.5rem]" />
+        <div className="relative flex w-10 justify-end sm:w-[4.5rem]">
+          <button
+            type="button"
+            onClick={() => setTunerOpen((open) => !open)}
+            className={cn(
+              "inline-flex h-10 w-10 items-center justify-center rounded-full border transition",
+              tunerOpen
+                ? "border-[var(--music-accent)] bg-[var(--music-accent-soft)] text-[var(--music-accent)]"
+                : "border-[var(--music-line)] bg-[var(--music-panel)] text-[var(--music-muted)] hover:border-[var(--music-accent)] hover:text-[var(--music-ink)]",
+            )}
+            aria-label={tunerOpen ? "Close tuner" : "Open tuner"}
+            aria-expanded={tunerOpen}
+          >
+            <AudioLines size={18} />
+          </button>
+          <MusicTunerPanel open={tunerOpen} onClose={() => setTunerOpen(false)} />
+        </div>
       </header>
 
       <main className="relative z-10 mx-auto grid max-w-5xl gap-5 px-4 pb-28 pt-4 sm:px-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -274,6 +341,9 @@ function MusicStudioApp() {
               className="music-slider mt-5 w-full"
               aria-label="Tempo BPM"
             />
+            <div className="mt-4">
+              <BeatMeter transport={transport} />
+            </div>
           </motion.div>
 
           <motion.div
@@ -327,7 +397,7 @@ function MusicStudioApp() {
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setProgressionId(id)}
+                  onClick={() => selectProgression(id)}
                   className={cn(
                     "rounded-full border px-3 py-1.5 text-sm transition",
                     progressionId === id
@@ -335,11 +405,21 @@ function MusicStudioApp() {
                       : "border-[var(--music-line)] hover:border-[var(--music-accent)]",
                   )}
                 >
-                  {PROGRESSION_PRESETS[id].label}
+                  {PROGRESSION_PRESETS[id].shortLabel}
                 </button>
               ))}
             </div>
-            <div className="mt-4 grid grid-cols-4 gap-2">
+            <p className="mt-3 text-xs text-[var(--music-muted)]">
+              {progressionId === "custom"
+                ? "Custom mix"
+                : PROGRESSION_PRESETS[progressionId].label}
+            </p>
+            <div
+              className={cn(
+                "mt-4 grid gap-2",
+                chords.length > 8 ? "grid-cols-4 sm:grid-cols-6" : "grid-cols-4",
+              )}
+            >
               {chords.map((chord, index) => (
                 <label key={`${chord}-${index}`} className="block">
                   <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--music-muted)]">
@@ -359,6 +439,37 @@ function MusicStudioApp() {
                     ))}
                   </select>
                 </label>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.12 }}
+            className="rounded-[28px] border border-[var(--music-line)] bg-[var(--music-panel)] p-5 sm:p-6"
+          >
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--music-muted)]">
+              Pad voice
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {PAD_VOICE_IDS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setPadVoiceId(id)}
+                  className={cn(
+                    "rounded-2xl border px-3 py-3 text-left transition",
+                    padVoiceId === id
+                      ? "border-[var(--music-accent)] bg-[var(--music-accent-soft)]"
+                      : "border-[var(--music-line)] hover:border-[var(--music-accent)]",
+                  )}
+                >
+                  <p className="text-sm font-semibold">{PAD_VOICES[id].label}</p>
+                  <p className="mt-1 text-xs text-[var(--music-muted)]">
+                    {PAD_VOICES[id].description}
+                  </p>
+                </button>
               ))}
             </div>
           </motion.div>
@@ -486,7 +597,7 @@ function MusicStudioApp() {
                 onChange={(event) => setBars(Number(event.target.value))}
                 className="rounded-xl border border-[var(--music-line)] bg-[var(--music-inset)] px-3 py-2"
               >
-                {[2, 4, 8].map((value) => (
+                {[2, 4, 8, 12].map((value) => (
                   <option key={value} value={value}>
                     {value} bars
                   </option>
