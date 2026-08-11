@@ -21,6 +21,7 @@ import type * as lib_chatAiShared from "../lib/chatAiShared.js";
 import type * as lib_chatAiTypes from "../lib/chatAiTypes.js";
 import type * as lib_runClubSchedule from "../lib/runClubSchedule.js";
 import type * as migrations from "../migrations.js";
+import type * as music from "../music.js";
 import type * as postcards from "../postcards.js";
 import type * as runClub from "../runClub.js";
 import type * as runClubRoutes from "../runClubRoutes.js";
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   "lib/chatAiTypes": typeof lib_chatAiTypes;
   "lib/runClubSchedule": typeof lib_runClubSchedule;
   migrations: typeof migrations;
+  music: typeof music;
   postcards: typeof postcards;
   runClub: typeof runClub;
   runClubRoutes: typeof runClubRoutes;

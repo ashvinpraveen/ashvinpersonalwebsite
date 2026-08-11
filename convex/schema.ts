@@ -225,4 +225,38 @@ export default defineSchema({
     .index("by_sessionId", ["sessionId"])
     .index("by_sessionId_and_status", ["sessionId", "status"])
     .index("by_clientId_and_updatedAt", ["clientId", "updatedAt"]),
+  musicTracks: defineTable({
+    clientId: v.string(),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("generating"),
+      v.literal("ready"),
+      v.literal("failed"),
+    ),
+    title: v.string(),
+    stylePrompt: v.string(),
+    tempoBpm: v.number(),
+    key: v.string(),
+    progression: v.string(),
+    drumPatternId: v.string(),
+    bars: v.number(),
+    hasMicTake: v.boolean(),
+    notes: v.string(),
+    sunoTaskId: v.optional(v.string()),
+    audioUrl: v.optional(v.string()),
+    streamAudioUrl: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_clientId_and_createdAt", ["clientId", "createdAt"])
+    .index("by_sunoTaskId", ["sunoTaskId"])
+    .index("by_createdAt", ["createdAt"]),
+  musicRateLimits: defineTable({
+    key: v.string(),
+    windowStart: v.number(),
+    count: v.number(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 });
