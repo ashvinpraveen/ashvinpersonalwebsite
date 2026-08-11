@@ -266,7 +266,12 @@ function MusicStudioApp() {
         <div className="music-grid" />
       </div>
 
-      <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
+      <header
+        className={cn(
+          "relative flex items-center justify-between gap-3 px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6",
+          tunerOpen ? "z-30" : "z-10",
+        )}
+      >
         <Link
           href="/"
           className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--music-line)] bg-[var(--music-panel)] px-3 text-sm transition hover:border-[var(--music-accent)]"
@@ -282,7 +287,7 @@ function MusicStudioApp() {
             Backing Track
           </h1>
         </div>
-        <div className="relative flex w-10 justify-end sm:w-[4.5rem]">
+        <div className="relative z-30 flex w-10 justify-end sm:w-[4.5rem]">
           <button
             type="button"
             onClick={() => setTunerOpen((open) => !open)}
