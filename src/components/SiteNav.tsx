@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
-import { isBlogEnabled, isPostcardsEnabled } from "@/lib/features";
+import { isBlogEnabled, isMusicEnabled, isPostcardsEnabled } from "@/lib/features";
 
 type SiteNavProps = {
   variant?: "light" | "dark" | "diary";
 };
 
 const navLinks = [
+  { href: "/music", label: "Music" },
   { href: "/startup", label: "Startup game" },
   { href: "/diary", label: "Diary" },
   { href: "/postcards", label: "Postcards" },
@@ -19,6 +20,7 @@ const navLinks = [
 ].filter((link) => {
   if (link.href === "/blog") return isBlogEnabled;
   if (link.href === "/postcards") return isPostcardsEnabled;
+  if (link.href === "/music") return isMusicEnabled;
   return true;
 });
 

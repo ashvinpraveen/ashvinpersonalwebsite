@@ -33,6 +33,7 @@ export default function Providers({ children }: { children: ReactNode }) {
     !pathname?.startsWith("/admin") &&
     pathname !== "/diary" &&
     pathname !== "/startup" &&
+    pathname !== "/music" &&
     !pathname?.startsWith("/run");
 
   return (

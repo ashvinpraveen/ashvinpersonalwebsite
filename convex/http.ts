@@ -1,6 +1,6 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 const http = httpRouter();
 
@@ -429,6 +429,104 @@ http.route({
     } catch (error) {
       return jsonResponse(
         { error: error instanceof Error ? error.message : "Failed to fetch views" },
+        { status: 500 },
+      );
+    }
+  }),
+});
+
+http.route({
+  path: "/music/suno-callback",
+  method: "OPTIONS",
+  handler: httpAction(async () => new Response(null, { headers: corsHeaders })),
+});
+
+http.route({
+  path: "/music/suno-callback",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    try {
+      const payload: unknown = await req.json();
+      if (!isRecord(payload)) {
+        return jsonResponse({ error: "Invalid callback payload" }, { status: 400 });
+      }
+
+      const data = isRecord(payload.data) ? payload.data : payload;
+      const callbackType =
+        (typeof data.callbackType === "string" && data.callbackType) ||
+        (typeof data.callback_type === "string" && data.callback_type) ||
+        "";
+      const taskId =
+        (typeof data.task_id === "string" && data.task_id) ||
+        (typeof data.taskId === "string" && data.taskId) ||
+        "";
+
+      if (!taskId) {
+        return jsonResponse({ error: "Missing task id" }, { status: 400 });
+      }
+
+      const tracks = Array.isArray(data.data)
+        ? data.data
+        : Array.isArray(payload.data) && !isRecord(payload.data)
+          ? payload.data
+          : [];
+      const first = tracks.find((item) => isRecord(item));
+      const audioUrl =
+        isRecord(first) && typeof first.audio_url === "string"
+          ? first.audio_url
+          : isRecord(first) && typeof first.audioUrl === "string"
+            ? first.audioUrl
+            : undefined;
+      const streamAudioUrl =
+        isRecord(first) && typeof first.stream_audio_url === "string"
+          ? first.stream_audio_url
+          : isRecord(first) && typeof first.streamAudioUrl === "string"
+            ? first.streamAudioUrl
+            : undefined;
+      const imageUrl =
+        isRecord(first) && typeof first.image_url === "string"
+          ? first.image_url
+          : isRecord(first) && typeof first.imageUrl === "string"
+            ? first.imageUrl
+            : undefined;
+
+      const normalized = callbackType.toLowerCase();
+      if (normalized.includes("complete") || audioUrl) {
+        await ctx.runMutation(internal.music.applySunoResult, {
+          sunoTaskId: taskId,
+          status: "ready",
+          audioUrl,
+          streamAudioUrl,
+          imageUrl,
+        });
+      } else if (normalized.includes("first") || streamAudioUrl) {
+        await ctx.runMutation(internal.music.applySunoResult, {
+          sunoTaskId: taskId,
+          status: "generating",
+          streamAudioUrl,
+          imageUrl,
+        });
+      } else if (normalized.includes("error") || normalized.includes("fail")) {
+        await ctx.runMutation(internal.music.applySunoResult, {
+          sunoTaskId: taskId,
+          status: "failed",
+          errorMessage:
+            (typeof payload.msg === "string" && payload.msg) ||
+            "Suno generation failed.",
+        });
+      } else {
+        await ctx.runMutation(internal.music.applySunoResult, {
+          sunoTaskId: taskId,
+          status: "generating",
+          streamAudioUrl,
+          imageUrl,
+        });
+      }
+
+      return jsonResponse({ ok: true });
+    } catch (error) {
+      return jsonResponse(
+        { error: error instanceof Error ? error.message : "Callback failed" },
         { status: 500 },
       );
     }
