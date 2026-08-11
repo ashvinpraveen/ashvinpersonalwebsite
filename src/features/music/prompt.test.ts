@@ -44,7 +44,7 @@ describe("music prompt builder", () => {
     ).toEqual(["I", "IV", "V"]);
   });
 
-  it("builds an instrumental suno-ready style prompt", () => {
+  it("builds an instrumental elevenlabs-ready style prompt", () => {
     const prompt = buildStylePrompt(base);
     expect(prompt).toContain("Instrumental loopable backing track in G major");
     expect(prompt).toContain("96 BPM");

@@ -10,7 +10,7 @@ export const metadata: Metadata = createMetadata({
   title,
   description,
   path: "/music",
-  imageAlt: "Backing Track Studio — tempo, chords, drums, and Suno polish",
+  imageAlt: "Backing Track Studio — tempo, chords, drums, and ElevenLabs polish",
 });
 
 export default function MusicPage() {

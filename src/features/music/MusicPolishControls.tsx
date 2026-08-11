@@ -35,7 +35,6 @@ export default function MusicPolishControls({
   onLocalStop,
 }: MusicPolishControlsProps) {
   const polish = useAction(api.music.polish);
-  const refreshFromSuno = useAction(api.music.refreshFromSuno);
   const polishConfigured = useQuery(api.music.isPolishConfigured, {});
   const polishedTrack = useQuery(
     api.music.getTrack,
@@ -62,31 +61,10 @@ export default function MusicPolishControls({
     }
   }, [onAiAudioUrl, onLocalStop, onPolishingChange, polishedTrack]);
 
-  useEffect(() => {
-    if (!polishTrackId || !clientId || !isPolishing) return;
-    if (polishedTrack?.status === "ready" || polishedTrack?.status === "failed") {
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      void refreshFromSuno({ trackId: polishTrackId, clientId }).catch(() => {
-        // Keep waiting on callbacks if polling fails.
-      });
-    }, 4000);
-
-    return () => window.clearInterval(interval);
-  }, [
-    clientId,
-    isPolishing,
-    polishTrackId,
-    polishedTrack?.status,
-    refreshFromSuno,
-  ]);
-
   async function handlePolish() {
     if (polishConfigured === false) {
-      toast.message("Suno not configured", {
-        description: "Set SUNO_API_KEY in Convex env to enable Polish.",
+      toast.message("ElevenLabs not configured", {
+        description: "Set ELEVENLABS_API_KEY in Convex env to enable Polish.",
       });
       return;
     }
@@ -94,6 +72,9 @@ export default function MusicPolishControls({
     try {
       onPolishingChange(true);
       onAiAudioUrl(null);
+      toast.message("Polishing with ElevenLabs", {
+        description: "Composing an instrumental loop — usually under a minute.",
+      });
       const stylePrompt = buildStylePrompt(params);
       const result = await polish({
         clientId,
@@ -108,9 +89,11 @@ export default function MusicPolishControls({
         notes: params.notes,
       });
       onPolishTrackId(result.trackId);
-      toast.message("Polishing with Suno", {
-        description: "Instrumental loop incoming — usually 1–2 minutes.",
-      });
+      if (result.audioUrl) {
+        onAiAudioUrl(result.audioUrl);
+        onLocalStop();
+      }
+      onPolishingChange(false);
     } catch (error) {
       onPolishingChange(false);
       toast.error(error instanceof Error ? error.message : "Polish failed.");
@@ -131,7 +114,7 @@ export default function MusicPolishControls({
         className="inline-flex h-12 items-center gap-2 rounded-full border border-[var(--music-accent)] bg-[var(--music-accent)] px-5 text-sm font-semibold text-[var(--music-accent-ink)] transition hover:brightness-105 disabled:cursor-wait disabled:opacity-70"
       >
         <Sparkles size={16} />
-        {polishBusy ? "Polishing…" : "Polish with Suno"}
+        {polishBusy ? "Polishing…" : "Polish with ElevenLabs"}
       </button>
 
       {recentTracks && recentTracks.length > 0 ? (
