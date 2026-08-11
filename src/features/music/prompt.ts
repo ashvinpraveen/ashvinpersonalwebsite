@@ -1,4 +1,4 @@
-import { DRUM_PATTERNS, PROGRESSION_PRESETS } from "./config";
+import { DRUM_PATTERNS, PAD_VOICES, PROGRESSION_PRESETS } from "./config";
 import type { BackingTrackParams } from "./types";
 
 function clampTempo(tempoBpm: number) {
@@ -12,7 +12,12 @@ export function resolveChords(params: Pick<BackingTrackParams, "progressionId" |
   return PROGRESSION_PRESETS[params.progressionId].chords;
 }
 
-export function formatChordProgression(params: Pick<BackingTrackParams, "progressionId" | "chords">) {
+export function formatChordProgression(
+  params: Pick<BackingTrackParams, "progressionId" | "chords">,
+) {
+  if (params.progressionId !== "custom") {
+    return PROGRESSION_PRESETS[params.progressionId].label;
+  }
   return resolveChords(params).join(" – ");
 }
 
@@ -20,15 +25,21 @@ export function buildStylePrompt(params: BackingTrackParams) {
   const tempo = clampTempo(params.tempoBpm);
   const chords = formatChordProgression(params);
   const drums = DRUM_PATTERNS[params.drumPatternId];
-  const bars = Math.max(1, Math.min(16, Math.round(params.bars)));
+  const pad = PAD_VOICES[params.padVoiceId];
+  const chordCount = resolveChords(params).length;
+  const bars = Math.max(1, Math.min(16, Math.round(params.bars || chordCount)));
   const notes = params.notes.trim();
+  const isBlues = params.progressionId === "blues-12";
 
   const parts = [
-    `Instrumental loopable backing track in ${params.key} major`,
+    `Instrumental loopable backing track in ${params.key} ${isBlues ? "blues" : "major"}`,
     `${tempo} BPM`,
     `4/4 time`,
     `${bars}-bar loop`,
-    `chord progression ${chords}`,
+    isBlues
+      ? `classic 12-bar blues progression (${resolveChords(params).join(" ")})`
+      : `chord progression ${chords}`,
+    `${pad.label} harmony (${pad.description})`,
     drums.label === "No drums"
       ? "no drums, soft harmonic pads only"
       : `${drums.label} drum groove (${drums.description})`,
@@ -46,6 +57,10 @@ export function buildStylePrompt(params: BackingTrackParams) {
 }
 
 export function buildTrackTitle(params: BackingTrackParams) {
+  if (params.progressionId !== "custom") {
+    const short = PROGRESSION_PRESETS[params.progressionId].shortLabel;
+    return `${params.key} ${clampTempo(params.tempoBpm)} ${short}`.slice(0, 80);
+  }
   const chords = resolveChords(params).join("-");
   return `${params.key} ${clampTempo(params.tempoBpm)} ${chords}`.slice(0, 80);
 }
