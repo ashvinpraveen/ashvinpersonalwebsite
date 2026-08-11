@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCompositionPlan,
+  buildPositiveStyles,
   buildStylePrompt,
   buildTrackTitle,
   formatChordProgression,
@@ -15,7 +17,6 @@ const base: BackingTrackParams = {
   drumPatternId: "softPop",
   padVoiceId: "warm",
   bars: 4,
-  hasMicTake: false,
   notes: "",
 };
 
@@ -44,35 +45,40 @@ describe("music prompt builder", () => {
     ).toEqual(["I", "IV", "V"]);
   });
 
-  it("builds an instrumental elevenlabs-ready style prompt", () => {
-    const prompt = buildStylePrompt(base);
-    expect(prompt).toContain("Instrumental loopable backing track in G major");
-    expect(prompt).toContain("96 BPM");
-    expect(prompt).toContain("chord progression Pop axis · I V vi IV");
-    expect(prompt).toContain("Warm pad harmony");
-    expect(prompt).toContain("Soft pop drum groove");
-    expect(prompt).toContain("no vocals, no lyrics");
-    expect(prompt).not.toContain("inspired by a hummed");
+  it("builds compact positive styles for composition plans", () => {
+    const styles = buildPositiveStyles(base);
+    expect(styles).toContain("96 BPM");
+    expect(styles).toContain("G major");
+    expect(styles).toContain("chord progression Pop axis · I V vi IV");
+    expect(styles).toContain("Warm pad");
+    expect(styles).toContain("Soft pop drums");
+    expect(styles).toContain("instrumental backing track");
   });
 
-  it("mentions mic take and custom notes when present", () => {
-    const prompt = buildStylePrompt({
+  it("includes custom notes in styles when present", () => {
+    const styles = buildPositiveStyles({
       ...base,
-      hasMicTake: true,
       notes: "warm Rhodes, slight swing",
     });
-    expect(prompt).toContain("inspired by a hummed or recorded melodic reference");
-    expect(prompt).toContain("warm Rhodes, slight swing");
+    expect(styles).toContain("warm Rhodes, slight swing");
   });
 
-  it("builds a short title", () => {
+  it("builds a composition plan conditioned on uploaded audio", () => {
+    const plan = buildCompositionPlan({
+      songId: "abc123",
+      conditionEndMs: 30_000,
+      positiveStyles: buildPositiveStyles(base),
+      negativeStyles: ["vocals", "lyrics"],
+    });
+    expect(plan.chunks).toHaveLength(2);
+    expect(plan.chunks[0]?.conditioning_ref?.song_id).toBe("abc123");
+    expect(plan.chunks[0]?.conditioning_ref?.range.end_ms).toBe(30_000);
+    expect(plan.chunks[0]?.condition_strength).toBe("high");
+    expect(plan.chunks[0]?.duration_ms + plan.chunks[1]!.duration_ms).toBe(120_000);
+  });
+
+  it("builds a short title and style summary", () => {
     expect(buildTrackTitle(base)).toBe("G 96 I–V–vi–IV");
-    expect(
-      buildTrackTitle({
-        ...base,
-        progressionId: "blues-12",
-        bars: 12,
-      }),
-    ).toBe("G 96 Blues");
+    expect(buildStylePrompt(base)).toContain("96 BPM");
   });
 });

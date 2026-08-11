@@ -3,13 +3,14 @@ import {
   action,
   internalMutation,
   internalQuery,
+  mutation,
   query,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-const RATE_LIMIT_MAX = 6;
+const RATE_LIMIT_MAX = 100;
 const ELEVENLABS_API_BASE = "https://api.elevenlabs.io";
 
 const drumPatternValidator = v.union(
@@ -32,12 +33,9 @@ function asString(value: unknown) {
   return typeof value === "string" ? value : null;
 }
 
-function musicLengthMs(bars: number, tempoBpm: number) {
-  const safeBars = Math.max(1, Math.min(16, Math.round(bars)));
-  const safeTempo = Math.max(60, Math.min(180, Math.round(tempoBpm)));
-  const ms = Math.round(safeBars * 4 * (60_000 / safeTempo));
-  return Math.min(120_000, Math.max(10_000, ms));
-}
+/** Polish generates a continuous practice take instead of a short seamless loop. */
+const POLISH_DURATION_MS = 120_000;
+const REFERENCE_CONDITION_MS = 30_000;
 
 function extractBoundary(contentType: string) {
   const match = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType);
@@ -185,6 +183,39 @@ export const listRecent = query({
   },
 });
 
+export const deleteTrack = mutation({
+  args: {
+    trackId: v.id("musicTracks"),
+    clientId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const clientId = args.clientId.trim();
+    if (!clientId) throw new Error("Missing client id.");
+
+    const track = await ctx.db.get(args.trackId);
+    if (!track) return null;
+    if (track.clientId !== clientId) {
+      throw new Error("You can only delete your own tracks.");
+    }
+
+    if (track.storageId) {
+      await ctx.storage.delete(track.storageId);
+    }
+    await ctx.db.delete(args.trackId);
+    return null;
+  },
+});
+
+export const generateUploadUrl = mutation({
+  args: {
+    clientId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (!args.clientId.trim()) throw new Error("Missing client id.");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
 export const createQueuedTrack = internalMutation({
   args: {
     clientId: v.string(),
@@ -195,7 +226,6 @@ export const createQueuedTrack = internalMutation({
     progression: v.string(),
     drumPatternId: drumPatternValidator,
     bars: v.number(),
-    hasMicTake: v.boolean(),
     notes: v.string(),
   },
   handler: async (ctx, args) => {
@@ -248,7 +278,7 @@ export const createQueuedTrack = internalMutation({
       progression: args.progression,
       drumPatternId: args.drumPatternId,
       bars: args.bars,
-      hasMicTake: args.hasMicTake,
+      hasMicTake: false,
       notes: args.notes.slice(0, 400),
       createdAt: now,
       updatedAt: now,
@@ -316,8 +346,11 @@ export const polish = action({
     progression: v.string(),
     drumPatternId: drumPatternValidator,
     bars: v.number(),
-    hasMicTake: v.boolean(),
     notes: v.string(),
+    referenceStorageId: v.id("_storage"),
+    positiveStyles: v.array(v.string()),
+    negativeStyles: v.array(v.string()),
+    conditionEndMs: v.number(),
   },
   handler: async (ctx, args): Promise<{ trackId: Id<"musicTracks">; audioUrl: string | null }> => {
     const apiKey = env("ELEVENLABS_API_KEY");
@@ -329,20 +362,118 @@ export const polish = action({
 
     const trackId: Id<"musicTracks"> = await ctx.runMutation(
       internal.music.createQueuedTrack,
-      args,
+      {
+        clientId: args.clientId,
+        title: args.title,
+        stylePrompt: args.stylePrompt,
+        tempoBpm: args.tempoBpm,
+        key: args.key,
+        progression: args.progression,
+        drumPatternId: args.drumPatternId,
+        bars: args.bars,
+        notes: args.notes,
+      },
     );
 
     await ctx.runMutation(internal.music.markGenerating, { trackId });
 
-    const lengthMs = musicLengthMs(args.bars, args.tempoBpm);
     const modelId = env("ELEVENLABS_MUSIC_MODEL") || "music_v2";
-    const prompt = [
-      args.stylePrompt.slice(0, 900),
-      "seamless loopable instrumental backing track",
-      "no vocals, no lyrics, no singing",
-    ].join(", ");
+    const conditionEndMs = Math.max(
+      3000,
+      Math.min(REFERENCE_CONDITION_MS, Math.round(args.conditionEndMs)),
+    );
 
     try {
+      const referenceUrl = await ctx.storage.getUrl(args.referenceStorageId);
+      if (!referenceUrl) {
+        throw new Error("Reference audio missing. Try polishing again.");
+      }
+
+      const referenceResponse = await fetch(referenceUrl);
+      if (!referenceResponse.ok) {
+        throw new Error("Could not load reference audio.");
+      }
+      const referenceBlob = await referenceResponse.blob();
+
+      const uploadForm = new FormData();
+      uploadForm.append(
+        "file",
+        new Blob([referenceBlob], { type: referenceBlob.type || "audio/wav" }),
+        "reference.wav",
+      );
+
+      const uploadResponse = await fetch(`${ELEVENLABS_API_BASE}/v1/music/upload`, {
+        method: "POST",
+        headers: {
+          "xi-api-key": apiKey,
+        },
+        body: uploadForm,
+      });
+
+      if (!uploadResponse.ok) {
+        let detail = `ElevenLabs upload failed (${uploadResponse.status})`;
+        try {
+          const payload: unknown = await uploadResponse.json();
+          detail =
+            (isRecord(payload) && asString(payload.detail)) ||
+            (isRecord(payload) &&
+              isRecord(payload.detail) &&
+              asString(payload.detail.message)) ||
+            (isRecord(payload) && asString(payload.message)) ||
+            detail;
+        } catch {
+          const text = await uploadResponse.text().catch(() => "");
+          if (text) detail = text.slice(0, 300);
+        }
+        throw new Error(detail);
+      }
+
+      const uploadPayload: unknown = await uploadResponse.json();
+      const songId =
+        isRecord(uploadPayload) && asString(uploadPayload.song_id);
+      if (!songId) {
+        throw new Error("ElevenLabs upload did not return a song id.");
+      }
+
+      const half = Math.floor(POLISH_DURATION_MS / 2);
+      const positiveStyles = args.positiveStyles
+        .map((style) => style.trim())
+        .filter(Boolean)
+        .slice(0, 50);
+      const negativeStyles = args.negativeStyles
+        .map((style) => style.trim())
+        .filter(Boolean)
+        .slice(0, 50);
+
+      const compositionPlan = {
+        chunks: [
+          {
+            text: "[Groove]\n{instrumental backing}",
+            duration_ms: half,
+            positive_styles: positiveStyles,
+            negative_styles: negativeStyles,
+            context_adherence: "high",
+            conditioning_ref: {
+              song_id: songId,
+              range: { start_ms: 0, end_ms: conditionEndMs },
+            },
+            condition_strength: "high",
+          },
+          {
+            text: "[Groove]\n{continue same instrumental groove}",
+            duration_ms: half,
+            positive_styles: [
+              "same groove",
+              "steady energy",
+              "instrumental",
+              "great production quality",
+            ],
+            negative_styles: negativeStyles,
+            context_adherence: "high",
+          },
+        ],
+      };
+
       const response = await fetch(
         `${ELEVENLABS_API_BASE}/v1/music?output_format=mp3_44100_128`,
         {
@@ -353,10 +484,8 @@ export const polish = action({
             Accept: "audio/mpeg, application/octet-stream, multipart/mixed",
           },
           body: JSON.stringify({
-            prompt,
-            music_length_ms: lengthMs,
+            composition_plan: compositionPlan,
             model_id: modelId,
-            force_instrumental: true,
           }),
         },
       );
@@ -387,7 +516,7 @@ export const polish = action({
       const providerSongId =
         response.headers.get("song-id") ||
         response.headers.get("Song-Id") ||
-        undefined;
+        songId;
 
       let audioBlob: Blob;
       if (contentType.includes("multipart")) {
@@ -415,6 +544,12 @@ export const polish = action({
         providerSongId,
       });
 
+      try {
+        await ctx.storage.delete(args.referenceStorageId);
+      } catch {
+        // reference cleanup is best-effort
+      }
+
       const audioUrl = await ctx.storage.getUrl(storageId);
       return { trackId, audioUrl };
     } catch (error) {
@@ -425,6 +560,11 @@ export const polish = action({
           trackId,
           errorMessage: message,
         });
+      }
+      try {
+        await ctx.storage.delete(args.referenceStorageId);
+      } catch {
+        // reference cleanup is best-effort
       }
       throw error instanceof Error ? error : new Error(message);
     }

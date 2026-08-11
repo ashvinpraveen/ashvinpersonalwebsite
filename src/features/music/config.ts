@@ -13,7 +13,6 @@ export const DEFAULT_KEY: MusicKey = "G";
 export const DEFAULT_BARS = 4;
 export const DEFAULT_PAD_VOICE: PadVoiceId = "warm";
 export const TAP_TEMPO_WINDOW_MS = 2500;
-export const MAX_MIC_SECONDS = 20;
 export const MUSIC_CLIENT_ID_KEY = "ashvin-music-client-id-v1";
 export const MUSIC_DRAFT_KEY = "ashvin-music-draft-v1";
 

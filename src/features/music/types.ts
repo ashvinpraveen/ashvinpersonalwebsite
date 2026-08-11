@@ -52,7 +52,6 @@ export type BackingTrackParams = {
   drumPatternId: DrumPatternId;
   padVoiceId: PadVoiceId;
   bars: number;
-  hasMicTake: boolean;
   notes: string;
 };
 

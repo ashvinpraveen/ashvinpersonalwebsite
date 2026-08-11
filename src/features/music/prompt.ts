@@ -1,6 +1,9 @@
 import { DRUM_PATTERNS, PAD_VOICES, PROGRESSION_PRESETS } from "./config";
 import type { BackingTrackParams } from "./types";
 
+export const POLISH_DURATION_MS = 120_000;
+export const REFERENCE_CONDITION_MS = 30_000;
+
 function clampTempo(tempoBpm: number) {
   return Math.round(Math.min(180, Math.max(60, tempoBpm)));
 }
@@ -21,39 +24,93 @@ export function formatChordProgression(
   return resolveChords(params).join(" – ");
 }
 
-export function buildStylePrompt(params: BackingTrackParams) {
+export function buildPositiveStyles(params: BackingTrackParams) {
   const tempo = clampTempo(params.tempoBpm);
-  const chords = formatChordProgression(params);
   const drums = DRUM_PATTERNS[params.drumPatternId];
   const pad = PAD_VOICES[params.padVoiceId];
   const chordCount = resolveChords(params).length;
   const bars = Math.max(1, Math.min(16, Math.round(params.bars || chordCount)));
-  const notes = params.notes.trim();
   const isBlues = params.progressionId === "blues-12";
+  const notes = params.notes.trim();
 
-  const parts = [
-    `Instrumental loopable backing track in ${params.key} ${isBlues ? "blues" : "major"}`,
+  const styles = [
     `${tempo} BPM`,
-    `4/4 time`,
-    `${bars}-bar loop`,
+    isBlues ? `${params.key} blues` : `${params.key} major`,
     isBlues
-      ? `classic 12-bar blues progression (${resolveChords(params).join(" ")})`
-      : `chord progression ${chords}`,
-    `${pad.label} harmony (${pad.description})`,
-    drums.label === "No drums"
-      ? "no drums, soft harmonic pads only"
-      : `${drums.label} drum groove (${drums.description})`,
-    "clean mix, studio quality, seamless loop, no vocals, no lyrics, no singing",
+      ? "classic 12-bar blues progression"
+      : `chord progression ${formatChordProgression(params)}`,
+    `repeating ${bars}-bar loop`,
+    `${pad.label}`,
+    pad.description,
+    drums.label === "No drums" ? "no drums" : `${drums.label} drums`,
+    "instrumental backing track",
+    "steady groove",
+    "studio quality",
+    "great production quality",
   ];
 
-  if (params.hasMicTake) {
-    parts.push("inspired by a hummed or recorded melodic reference from the musician");
-  }
-  if (notes) {
-    parts.push(notes);
-  }
+  if (notes) styles.push(notes);
+  return styles.slice(0, 50);
+}
 
-  return parts.join(", ");
+export function buildNegativeStyles() {
+  return [
+    "vocals",
+    "lyrics",
+    "singing",
+    "rap",
+    "choir",
+    "spoken word",
+    "dramatic intro",
+    "big finale",
+  ];
+}
+
+/** Short human-readable summary stored on the track + shown in UI. */
+export function buildStylePrompt(params: BackingTrackParams) {
+  return buildPositiveStyles(params).join(", ");
+}
+
+export function buildCompositionPlan(params: {
+  songId: string;
+  conditionEndMs: number;
+  positiveStyles: string[];
+  negativeStyles: string[];
+}) {
+  const conditionEndMs = Math.max(
+    3000,
+    Math.min(REFERENCE_CONDITION_MS, Math.round(params.conditionEndMs)),
+  );
+  const half = Math.floor(POLISH_DURATION_MS / 2);
+
+  return {
+    chunks: [
+      {
+        text: "[Groove]\n{instrumental backing}",
+        duration_ms: half,
+        positive_styles: params.positiveStyles,
+        negative_styles: params.negativeStyles,
+        context_adherence: "high" as const,
+        conditioning_ref: {
+          song_id: params.songId,
+          range: { start_ms: 0, end_ms: conditionEndMs },
+        },
+        condition_strength: "high" as const,
+      },
+      {
+        text: "[Groove]\n{continue same instrumental groove}",
+        duration_ms: half,
+        positive_styles: [
+          "same groove",
+          "steady energy",
+          "instrumental",
+          "great production quality",
+        ],
+        negative_styles: params.negativeStyles,
+        context_adherence: "high" as const,
+      },
+    ],
+  };
 }
 
 export function buildTrackTitle(params: BackingTrackParams) {

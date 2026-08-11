@@ -13,6 +13,9 @@ import type {
   RomanNumeral,
   TransportState,
 } from "./types";
+import { audioBufferToWavBlob } from "./wav";
+
+export const REFERENCE_RENDER_SECONDS = 30;
 
 function midiToFreq(midi: number) {
   return 440 * 2 ** ((midi - 69) / 12);
@@ -43,7 +46,9 @@ type ScheduledStop = {
 
 type TransportListener = (state: TransportState) => void;
 
-function createNoiseBuffer(ctx: AudioContext) {
+type AudioGraphContext = AudioContext | OfflineAudioContext;
+
+function createNoiseBuffer(ctx: AudioGraphContext) {
   const length = ctx.sampleRate * 0.2;
   const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
   const data = buffer.getChannelData(0);
@@ -72,8 +77,12 @@ export class BackingLoopEngine {
     chord: "I",
     playing: false,
   };
-  private pendingBeats: Array<{ when: number; beat: 1 | 2 | 3 | 4; barIndex: number; chord: RomanNumeral }> =
-    [];
+  private pendingBeats: Array<{
+    when: number;
+    beat: 1 | 2 | 3 | 4;
+    barIndex: number;
+    chord: RomanNumeral;
+  }> = [];
 
   get isPlaying() {
     return this.playing;
@@ -124,6 +133,51 @@ export class BackingLoopEngine {
 
   setParams(params: BackingTrackParams) {
     this.params = params;
+  }
+
+  /** Offline-render a short WAV preview for ElevenLabs conditioning. */
+  async renderReferenceWav(
+    params: BackingTrackParams,
+    durationSec = REFERENCE_RENDER_SECONDS,
+  ): Promise<Blob> {
+    const sampleRate = 44100;
+    const duration = Math.max(3, Math.min(30, durationSec));
+    const offline = new OfflineAudioContext(
+      2,
+      Math.ceil(duration * sampleRate),
+      sampleRate,
+    );
+    const master = offline.createGain();
+    master.gain.value = 0.9;
+    const padBus = offline.createGain();
+    padBus.gain.value = 0.72;
+    const drumBus = offline.createGain();
+    drumBus.gain.value = 0.95;
+    padBus.connect(master);
+    drumBus.connect(master);
+    master.connect(offline.destination);
+
+    const noiseBuffer = createNoiseBuffer(offline);
+    const secondsPerBar = (60 / clampTempo(params.tempoBpm)) * 4;
+    let t = 0;
+    let chordIndex = 0;
+    while (t < duration - 0.05) {
+      this.scheduleBarOnContext({
+        ctx: offline,
+        padBus,
+        drumBus,
+        noiseBuffer,
+        start: t,
+        params,
+        barIndex: chordIndex,
+        trackNodes: false,
+      });
+      t += secondsPerBar;
+      chordIndex += 1;
+    }
+
+    const rendered = await offline.startRendering();
+    return audioBufferToWavBlob(rendered);
   }
 
   async play(params: BackingTrackParams) {
@@ -219,11 +273,10 @@ export class BackingLoopEngine {
   }
 
   private scheduleBar(start: number, params: BackingTrackParams, barIndex: number) {
-    if (!this.ctx || !this.padBus) return;
+    if (!this.ctx || !this.padBus || !this.drumBus || !this.noiseBuffer) return;
     const chords = resolveChords(params);
     const roman = chords[barIndex % chords.length] ?? "I";
     const beat = 60 / clampTempo(params.tempoBpm);
-    const notes = chordMidiNotes(params.key, roman);
 
     for (let i = 0; i < 4; i += 1) {
       this.pendingBeats.push({
@@ -234,36 +287,86 @@ export class BackingLoopEngine {
       });
     }
 
-    for (const midi of notes) {
-      this.schedulePad(start, beat * 4 * 0.95, midiToFreq(midi), params.padVoiceId);
-    }
-
-    this.scheduleDrums(start, beat, params.drumPatternId);
+    this.scheduleBarOnContext({
+      ctx: this.ctx,
+      padBus: this.padBus,
+      drumBus: this.drumBus,
+      noiseBuffer: this.noiseBuffer,
+      start,
+      params,
+      barIndex,
+      trackNodes: true,
+    });
   }
 
-  private schedulePad(
+  private scheduleBarOnContext(opts: {
+    ctx: AudioGraphContext;
+    padBus: GainNode;
+    drumBus: GainNode;
+    noiseBuffer: AudioBuffer;
+    start: number;
+    params: BackingTrackParams;
+    barIndex: number;
+    trackNodes: boolean;
+  }) {
+    const { ctx, padBus, drumBus, noiseBuffer, start, params, barIndex, trackNodes } =
+      opts;
+    const chords = resolveChords(params);
+    const roman = chords[barIndex % chords.length] ?? "I";
+    const beat = 60 / clampTempo(params.tempoBpm);
+    const notes = chordMidiNotes(params.key, roman);
+
+    for (const midi of notes) {
+      this.schedulePadOn(
+        ctx,
+        padBus,
+        start,
+        beat * 4 * 0.95,
+        midiToFreq(midi),
+        params.padVoiceId,
+        trackNodes,
+      );
+    }
+
+    this.scheduleDrumsOn(
+      ctx,
+      drumBus,
+      noiseBuffer,
+      start,
+      beat,
+      params.drumPatternId,
+      trackNodes,
+    );
+  }
+
+  private pushNode(node: ScheduledStop, trackNodes: boolean) {
+    if (trackNodes) this.activeNodes.push(node);
+  }
+
+  private schedulePadOn(
+    ctx: AudioGraphContext,
+    padBus: GainNode,
     when: number,
     duration: number,
     freq: number,
     voice: PadVoiceId,
+    trackNodes: boolean,
   ) {
-    if (!this.ctx || !this.padBus) return;
-
     switch (voice) {
       case "warm":
-        this.scheduleWarmPad(when, duration, freq);
+        this.scheduleWarmPadOn(ctx, padBus, when, duration, freq, trackNodes);
         break;
       case "rhodes":
-        this.scheduleRhodesPad(when, duration, freq);
+        this.scheduleRhodesPadOn(ctx, padBus, when, duration, freq, trackNodes);
         break;
       case "organ":
-        this.scheduleOrganPad(when, duration, freq);
+        this.scheduleOrganPadOn(ctx, padBus, when, duration, freq, trackNodes);
         break;
       case "softSaw":
-        this.scheduleSoftSawPad(when, duration, freq);
+        this.scheduleSoftSawPadOn(ctx, padBus, when, duration, freq, trackNodes);
         break;
       case "glass":
-        this.scheduleGlassPad(when, duration, freq);
+        this.scheduleGlassPadOn(ctx, padBus, when, duration, freq, trackNodes);
         break;
       default: {
         const _exhaustive: never = voice;
@@ -272,40 +375,52 @@ export class BackingLoopEngine {
     }
   }
 
-  private scheduleWarmPad(when: number, duration: number, freq: number) {
-    if (!this.ctx || !this.padBus) return;
-    const gain = this.ctx.createGain();
+  private scheduleWarmPadOn(
+    ctx: AudioGraphContext,
+    padBus: GainNode,
+    when: number,
+    duration: number,
+    freq: number,
+    trackNodes: boolean,
+  ) {
+    const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, when);
     gain.gain.exponentialRampToValueAtTime(0.07, when + 0.08);
     gain.gain.exponentialRampToValueAtTime(0.05, when + duration * 0.6);
     gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
-    gain.connect(this.padBus);
+    gain.connect(padBus);
 
     for (const [type, ratio, level] of [
       ["sine", 1, 0.7],
       ["triangle", 1.002, 0.35],
       ["sine", 0.5, 0.25],
     ] as const) {
-      const osc = this.ctx.createOscillator();
+      const osc = ctx.createOscillator();
       osc.type = type;
       osc.frequency.value = freq * ratio;
-      const partial = this.ctx.createGain();
+      const partial = ctx.createGain();
       partial.gain.value = level;
       osc.connect(partial);
       partial.connect(gain);
       osc.start(when);
       osc.stop(when + duration + 0.03);
-      this.activeNodes.push(osc);
+      this.pushNode(osc, trackNodes);
     }
   }
 
-  private scheduleRhodesPad(when: number, duration: number, freq: number) {
-    if (!this.ctx || !this.padBus) return;
-    const modulator = this.ctx.createOscillator();
-    const modGain = this.ctx.createGain();
-    const carrier = this.ctx.createOscillator();
-    const filter = this.ctx.createBiquadFilter();
-    const gain = this.ctx.createGain();
+  private scheduleRhodesPadOn(
+    ctx: AudioGraphContext,
+    padBus: GainNode,
+    when: number,
+    duration: number,
+    freq: number,
+    trackNodes: boolean,
+  ) {
+    const modulator = ctx.createOscillator();
+    const modGain = ctx.createGain();
+    const carrier = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
 
     modulator.type = "sine";
     carrier.type = "sine";
@@ -324,22 +439,29 @@ export class BackingLoopEngine {
     modGain.connect(carrier.frequency);
     carrier.connect(filter);
     filter.connect(gain);
-    gain.connect(this.padBus);
+    gain.connect(padBus);
 
     modulator.start(when);
     carrier.start(when);
     modulator.stop(when + duration + 0.05);
     carrier.stop(when + duration + 0.05);
-    this.activeNodes.push(modulator, carrier);
+    this.pushNode(modulator, trackNodes);
+    this.pushNode(carrier, trackNodes);
   }
 
-  private scheduleOrganPad(when: number, duration: number, freq: number) {
-    if (!this.ctx || !this.padBus) return;
-    const gain = this.ctx.createGain();
+  private scheduleOrganPadOn(
+    ctx: AudioGraphContext,
+    padBus: GainNode,
+    when: number,
+    duration: number,
+    freq: number,
+    trackNodes: boolean,
+  ) {
+    const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, when);
     gain.gain.exponentialRampToValueAtTime(0.055, when + 0.03);
     gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
-    gain.connect(this.padBus);
+    gain.connect(padBus);
 
     for (const [ratio, level] of [
       [1, 0.55],
@@ -347,24 +469,30 @@ export class BackingLoopEngine {
       [3, 0.18],
       [4, 0.1],
     ] as const) {
-      const osc = this.ctx.createOscillator();
+      const osc = ctx.createOscillator();
       osc.type = "sine";
       osc.frequency.value = freq * ratio;
-      const partial = this.ctx.createGain();
+      const partial = ctx.createGain();
       partial.gain.value = level;
       osc.connect(partial);
       partial.connect(gain);
       osc.start(when);
       osc.stop(when + duration + 0.03);
-      this.activeNodes.push(osc);
+      this.pushNode(osc, trackNodes);
     }
   }
 
-  private scheduleSoftSawPad(when: number, duration: number, freq: number) {
-    if (!this.ctx || !this.padBus) return;
-    const osc = this.ctx.createOscillator();
-    const filter = this.ctx.createBiquadFilter();
-    const gain = this.ctx.createGain();
+  private scheduleSoftSawPadOn(
+    ctx: AudioGraphContext,
+    padBus: GainNode,
+    when: number,
+    duration: number,
+    freq: number,
+    trackNodes: boolean,
+  ) {
+    const osc = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
     osc.type = "sawtooth";
     osc.frequency.value = freq;
     filter.type = "lowpass";
@@ -377,39 +505,53 @@ export class BackingLoopEngine {
     gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
     osc.connect(filter);
     filter.connect(gain);
-    gain.connect(this.padBus);
+    gain.connect(padBus);
     osc.start(when);
     osc.stop(when + duration + 0.03);
-    this.activeNodes.push(osc);
+    this.pushNode(osc, trackNodes);
   }
 
-  private scheduleGlassPad(when: number, duration: number, freq: number) {
-    if (!this.ctx || !this.padBus) return;
-    const gain = this.ctx.createGain();
+  private scheduleGlassPadOn(
+    ctx: AudioGraphContext,
+    padBus: GainNode,
+    when: number,
+    duration: number,
+    freq: number,
+    trackNodes: boolean,
+  ) {
+    const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, when);
     gain.gain.exponentialRampToValueAtTime(0.06, when + 0.04);
     gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
-    gain.connect(this.padBus);
+    gain.connect(padBus);
 
     for (const [ratio, level, type] of [
       [1, 0.5, "sine"],
       [2.01, 0.22, "sine"],
       [3.01, 0.12, "triangle"],
     ] as const) {
-      const osc = this.ctx.createOscillator();
+      const osc = ctx.createOscillator();
       osc.type = type;
       osc.frequency.value = freq * ratio;
-      const partial = this.ctx.createGain();
+      const partial = ctx.createGain();
       partial.gain.value = level;
       osc.connect(partial);
       partial.connect(gain);
       osc.start(when);
       osc.stop(when + duration + 0.03);
-      this.activeNodes.push(osc);
+      this.pushNode(osc, trackNodes);
     }
   }
 
-  private scheduleDrums(start: number, beat: number, pattern: DrumPatternId) {
+  private scheduleDrumsOn(
+    ctx: AudioGraphContext,
+    drumBus: GainNode,
+    noiseBuffer: AudioBuffer,
+    start: number,
+    beat: number,
+    pattern: DrumPatternId,
+    trackNodes: boolean,
+  ) {
     if (pattern === "none") return;
 
     const hits: Array<{ t: number; kind: "kick" | "snare" | "hat"; open?: boolean }> =
@@ -448,16 +590,33 @@ export class BackingLoopEngine {
     }
 
     for (const hit of hits) {
-      if (hit.kind === "kick") this.scheduleKick(start + hit.t);
-      if (hit.kind === "snare") this.scheduleSnare(start + hit.t);
-      if (hit.kind === "hat") this.scheduleHat(start + hit.t, hit.open ?? false);
+      if (hit.kind === "kick") {
+        this.scheduleKickOn(ctx, drumBus, start + hit.t, trackNodes);
+      }
+      if (hit.kind === "snare") {
+        this.scheduleSnareOn(ctx, drumBus, noiseBuffer, start + hit.t, trackNodes);
+      }
+      if (hit.kind === "hat") {
+        this.scheduleHatOn(
+          ctx,
+          drumBus,
+          noiseBuffer,
+          start + hit.t,
+          hit.open ?? false,
+          trackNodes,
+        );
+      }
     }
   }
 
-  private scheduleKick(when: number) {
-    if (!this.ctx || !this.drumBus) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
+  private scheduleKickOn(
+    ctx: AudioGraphContext,
+    drumBus: GainNode,
+    when: number,
+    trackNodes: boolean,
+  ) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
     osc.type = "sine";
     osc.frequency.setValueAtTime(140, when);
     osc.frequency.exponentialRampToValueAtTime(42, when + 0.12);
@@ -465,48 +624,59 @@ export class BackingLoopEngine {
     gain.gain.exponentialRampToValueAtTime(0.55, when + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.28);
     osc.connect(gain);
-    gain.connect(this.drumBus);
+    gain.connect(drumBus);
     osc.start(when);
     osc.stop(when + 0.3);
-    this.activeNodes.push(osc);
+    this.pushNode(osc, trackNodes);
   }
 
-  private scheduleSnare(when: number) {
-    if (!this.ctx || !this.drumBus || !this.noiseBuffer) return;
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = this.noiseBuffer;
-    const filter = this.ctx.createBiquadFilter();
+  private scheduleSnareOn(
+    ctx: AudioGraphContext,
+    drumBus: GainNode,
+    noiseBuffer: AudioBuffer,
+    when: number,
+    trackNodes: boolean,
+  ) {
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    const filter = ctx.createBiquadFilter();
     filter.type = "bandpass";
     filter.frequency.value = 1800;
-    const gain = this.ctx.createGain();
+    const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, when);
     gain.gain.exponentialRampToValueAtTime(0.28, when + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.16);
     noise.connect(filter);
     filter.connect(gain);
-    gain.connect(this.drumBus);
+    gain.connect(drumBus);
     noise.start(when);
     noise.stop(when + 0.18);
-    this.activeNodes.push(noise);
+    this.pushNode(noise, trackNodes);
   }
 
-  private scheduleHat(when: number, open: boolean) {
-    if (!this.ctx || !this.drumBus || !this.noiseBuffer) return;
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = this.noiseBuffer;
-    const filter = this.ctx.createBiquadFilter();
+  private scheduleHatOn(
+    ctx: AudioGraphContext,
+    drumBus: GainNode,
+    noiseBuffer: AudioBuffer,
+    when: number,
+    open: boolean,
+    trackNodes: boolean,
+  ) {
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    const filter = ctx.createBiquadFilter();
     filter.type = "highpass";
     filter.frequency.value = 7000;
-    const gain = this.ctx.createGain();
+    const gain = ctx.createGain();
     const dur = open ? 0.18 : 0.05;
     gain.gain.setValueAtTime(0.0001, when);
     gain.gain.exponentialRampToValueAtTime(open ? 0.12 : 0.07, when + 0.005);
     gain.gain.exponentialRampToValueAtTime(0.0001, when + dur);
     noise.connect(filter);
     filter.connect(gain);
-    gain.connect(this.drumBus);
+    gain.connect(drumBus);
     noise.start(when);
     noise.stop(when + dur + 0.02);
-    this.activeNodes.push(noise);
+    this.pushNode(noise, trackNodes);
   }
 }
