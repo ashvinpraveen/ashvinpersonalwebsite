@@ -131,7 +131,7 @@ function MusicStudioApp() {
   const [aiAudioUrl, setAiAudioUrl] = useState<string | null>(null);
   const [draftReady, setDraftReady] = useState(false);
 
-  const { tempoBpm, setTempo, tap, tapCount } = useTapTempo(DEFAULT_TEMPO_BPM);
+  const { tempoBpm, setTempo, tap, tapCount, resetTaps } = useTapTempo(DEFAULT_TEMPO_BPM);
   const engineRef = useRef<BackingLoopEngine | null>(null);
   const [engineReady, setEngineReady] = useState(false);
   const aiAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -169,6 +169,16 @@ function MusicStudioApp() {
     engineRef.current?.stop();
     setIsLoopPlaying(false);
   }, []);
+
+  const resetBeat = useCallback(() => {
+    resetTaps();
+    void (async () => {
+      const engine = engineRef.current;
+      if (!engine) return;
+      await engine.reset(params);
+      setIsLoopPlaying(engine.isPlaying);
+    })();
+  }, [params, resetTaps]);
 
   useEffect(() => {
     setClientId(getOrCreateMusicClientId());
@@ -386,7 +396,7 @@ function MusicStudioApp() {
               aria-label="Tempo BPM"
             />
             <div className="mt-4">
-              <BeatMeter transport={transport} />
+              <BeatMeter transport={transport} onReset={resetBeat} />
             </div>
           </motion.div>
 
@@ -651,7 +661,6 @@ function MusicStudioApp() {
                 <MusicPolishControls
                   clientId={clientId}
                   params={params}
-                  engine={engineReady ? engineRef.current : null}
                   polishTrackId={polishTrackId}
                   isPolishing={isPolishing}
                   onPolishTrackId={setPolishTrackId}
@@ -671,7 +680,7 @@ function MusicStudioApp() {
               )}
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              Polish renders ~30s of your local loop, then asks ElevenLabs for a ~2 min conditioned take.
+              Polish asks ElevenLabs for a ~2 min professional instrumental take from your settings — not a clone of the local synth loop.
             </p>
           </motion.div>
 

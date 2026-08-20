@@ -230,6 +230,16 @@ export class BackingLoopEngine {
     return true;
   }
 
+  /** Jump transport back to bar 1; keep playing if it was already going. */
+  async reset(params?: BackingTrackParams) {
+    const next = params ?? this.params;
+    const wasPlaying = this.playing;
+    this.stop();
+    if (wasPlaying && next) {
+      await this.play(next);
+    }
+  }
+
   dispose() {
     this.stop();
     void this.ctx?.close();

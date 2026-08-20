@@ -7,23 +7,15 @@ import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import {
-  REFERENCE_RENDER_SECONDS,
-  type BackingLoopEngine,
-} from "./audioEngine";
-import {
-  buildNegativeStyles,
-  buildPositiveStyles,
   buildStylePrompt,
   buildTrackTitle,
   formatChordProgression,
-  REFERENCE_CONDITION_MS,
 } from "./prompt";
 import type { BackingTrackParams } from "./types";
 
 type MusicPolishControlsProps = {
   clientId: string;
   params: BackingTrackParams;
-  engine: BackingLoopEngine | null;
   polishTrackId: Id<"musicTracks"> | null;
   isPolishing: boolean;
   onPolishTrackId: (trackId: Id<"musicTracks"> | null) => void;
@@ -35,7 +27,6 @@ type MusicPolishControlsProps = {
 export default function MusicPolishControls({
   clientId,
   params,
-  engine,
   polishTrackId,
   isPolishing,
   onPolishTrackId,
@@ -44,7 +35,6 @@ export default function MusicPolishControls({
   onLocalStop,
 }: MusicPolishControlsProps) {
   const polish = useAction(api.music.polish);
-  const generateUploadUrl = useMutation(api.music.generateUploadUrl);
   const deleteTrack = useMutation(api.music.deleteTrack);
   const polishConfigured = useQuery(api.music.isPolishConfigured, {});
   const polishedTrack = useQuery(
@@ -73,32 +63,11 @@ export default function MusicPolishControls({
     }
   }, [onAiAudioUrl, onLocalStop, onPolishingChange, polishedTrack]);
 
-  async function uploadReference(blob: Blob) {
-    const uploadUrl = await generateUploadUrl({ clientId });
-    const result = await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Content-Type": blob.type || "audio/wav" },
-      body: blob,
-    });
-    if (!result.ok) {
-      throw new Error("Could not upload reference loop.");
-    }
-    const json = (await result.json()) as { storageId?: Id<"_storage"> };
-    if (!json.storageId) {
-      throw new Error("Upload did not return a storage id.");
-    }
-    return json.storageId;
-  }
-
   async function handlePolish() {
     if (polishConfigured === false) {
       toast.message("ElevenLabs not configured", {
         description: "Set ELEVENLABS_API_KEY in Convex env to enable Polish.",
       });
-      return;
-    }
-    if (!engine) {
-      toast.error("Audio engine is not ready yet.");
       return;
     }
 
@@ -107,16 +76,8 @@ export default function MusicPolishControls({
       onAiAudioUrl(null);
       onLocalStop();
       toast.message("Polishing with ElevenLabs", {
-        description: "Rendering your local loop, then composing a ~2 min take.",
+        description: "Composing a professional ~2 min instrumental take.",
       });
-
-      const referenceBlob = await engine.renderReferenceWav(
-        params,
-        REFERENCE_RENDER_SECONDS,
-      );
-      const referenceStorageId = await uploadReference(referenceBlob);
-      const positiveStyles = buildPositiveStyles(params);
-      const negativeStyles = buildNegativeStyles();
 
       const result = await polish({
         clientId,
@@ -128,10 +89,6 @@ export default function MusicPolishControls({
         drumPatternId: params.drumPatternId,
         bars: params.bars,
         notes: params.notes,
-        referenceStorageId,
-        positiveStyles,
-        negativeStyles,
-        conditionEndMs: REFERENCE_CONDITION_MS,
       });
       onPolishTrackId(result.trackId);
       if (result.audioUrl) {
@@ -171,7 +128,7 @@ export default function MusicPolishControls({
       <button
         type="button"
         onClick={() => void handlePolish()}
-        disabled={polishBusy || !engine}
+        disabled={polishBusy}
         className="inline-flex h-12 items-center gap-2 rounded-full bg-foreground/[0.08] px-5 text-sm font-medium transition-colors hover:bg-foreground/[0.12] disabled:cursor-wait disabled:opacity-70"
       >
         <Sparkles size={16} />

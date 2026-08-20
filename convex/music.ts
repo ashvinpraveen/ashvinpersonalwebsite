@@ -35,7 +35,8 @@ function asString(value: unknown) {
 
 /** Polish generates a continuous practice take instead of a short seamless loop. */
 const POLISH_DURATION_MS = 120_000;
-const REFERENCE_CONDITION_MS = 30_000;
+/** Reject tiny payloads; ~2 min mp3 @ 128kbps is ~1.8MB, keep a conservative floor. */
+const MIN_POLISHED_AUDIO_BYTES = 80_000;
 
 function extractBoundary(contentType: string) {
   const match = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType);
@@ -347,10 +348,6 @@ export const polish = action({
     drumPatternId: drumPatternValidator,
     bars: v.number(),
     notes: v.string(),
-    referenceStorageId: v.id("_storage"),
-    positiveStyles: v.array(v.string()),
-    negativeStyles: v.array(v.string()),
-    conditionEndMs: v.number(),
   },
   handler: async (ctx, args): Promise<{ trackId: Id<"musicTracks">; audioUrl: string | null }> => {
     const apiKey = env("ELEVENLABS_API_KEY");
@@ -378,102 +375,15 @@ export const polish = action({
     await ctx.runMutation(internal.music.markGenerating, { trackId });
 
     const modelId = env("ELEVENLABS_MUSIC_MODEL") || "music_v2";
-    const conditionEndMs = Math.max(
-      3000,
-      Math.min(REFERENCE_CONDITION_MS, Math.round(args.conditionEndMs)),
-    );
+    const prompt = [
+      args.stylePrompt.slice(0, 1800),
+      "about two minutes long",
+      "steady repeating progression the whole time",
+      "no vocals, no lyrics, no singing",
+    ].join(", ");
 
     try {
-      const referenceUrl = await ctx.storage.getUrl(args.referenceStorageId);
-      if (!referenceUrl) {
-        throw new Error("Reference audio missing. Try polishing again.");
-      }
-
-      const referenceResponse = await fetch(referenceUrl);
-      if (!referenceResponse.ok) {
-        throw new Error("Could not load reference audio.");
-      }
-      const referenceBlob = await referenceResponse.blob();
-
-      const uploadForm = new FormData();
-      uploadForm.append(
-        "file",
-        new Blob([referenceBlob], { type: referenceBlob.type || "audio/wav" }),
-        "reference.wav",
-      );
-
-      const uploadResponse = await fetch(`${ELEVENLABS_API_BASE}/v1/music/upload`, {
-        method: "POST",
-        headers: {
-          "xi-api-key": apiKey,
-        },
-        body: uploadForm,
-      });
-
-      if (!uploadResponse.ok) {
-        let detail = `ElevenLabs upload failed (${uploadResponse.status})`;
-        try {
-          const payload: unknown = await uploadResponse.json();
-          detail =
-            (isRecord(payload) && asString(payload.detail)) ||
-            (isRecord(payload) &&
-              isRecord(payload.detail) &&
-              asString(payload.detail.message)) ||
-            (isRecord(payload) && asString(payload.message)) ||
-            detail;
-        } catch {
-          const text = await uploadResponse.text().catch(() => "");
-          if (text) detail = text.slice(0, 300);
-        }
-        throw new Error(detail);
-      }
-
-      const uploadPayload: unknown = await uploadResponse.json();
-      const songId =
-        isRecord(uploadPayload) && asString(uploadPayload.song_id);
-      if (!songId) {
-        throw new Error("ElevenLabs upload did not return a song id.");
-      }
-
-      const half = Math.floor(POLISH_DURATION_MS / 2);
-      const positiveStyles = args.positiveStyles
-        .map((style) => style.trim())
-        .filter(Boolean)
-        .slice(0, 50);
-      const negativeStyles = args.negativeStyles
-        .map((style) => style.trim())
-        .filter(Boolean)
-        .slice(0, 50);
-
-      const compositionPlan = {
-        chunks: [
-          {
-            text: "[Groove]\n{instrumental backing}",
-            duration_ms: half,
-            positive_styles: positiveStyles,
-            negative_styles: negativeStyles,
-            context_adherence: "high",
-            conditioning_ref: {
-              song_id: songId,
-              range: { start_ms: 0, end_ms: conditionEndMs },
-            },
-            condition_strength: "high",
-          },
-          {
-            text: "[Groove]\n{continue same instrumental groove}",
-            duration_ms: half,
-            positive_styles: [
-              "same groove",
-              "steady energy",
-              "instrumental",
-              "great production quality",
-            ],
-            negative_styles: negativeStyles,
-            context_adherence: "high",
-          },
-        ],
-      };
-
+      // Prompt mode on purpose: audio conditioning was cloning our local synth demo.
       const response = await fetch(
         `${ELEVENLABS_API_BASE}/v1/music?output_format=mp3_44100_128`,
         {
@@ -484,8 +394,10 @@ export const polish = action({
             Accept: "audio/mpeg, application/octet-stream, multipart/mixed",
           },
           body: JSON.stringify({
-            composition_plan: compositionPlan,
+            prompt,
+            music_length_ms: POLISH_DURATION_MS,
             model_id: modelId,
+            force_instrumental: true,
           }),
         },
       );
@@ -516,7 +428,7 @@ export const polish = action({
       const providerSongId =
         response.headers.get("song-id") ||
         response.headers.get("Song-Id") ||
-        songId;
+        undefined;
 
       let audioBlob: Blob;
       if (contentType.includes("multipart")) {
@@ -526,13 +438,29 @@ export const polish = action({
         audioBlob = await response.blob();
       }
 
-      if (audioBlob.size < 1000) {
+      const audioType = (audioBlob.type || contentType).toLowerCase();
+      if (audioType.includes("wav") || audioType.includes("x-wav")) {
         await ctx.runMutation(internal.music.markFailed, {
           trackId,
-          errorMessage: "ElevenLabs returned empty audio.",
+          errorMessage: "ElevenLabs returned WAV unexpectedly (looks like a demo export).",
         });
-        throw new Error("ElevenLabs returned empty audio.");
+        throw new Error("Polish returned unexpected WAV audio.");
       }
+
+      if (audioBlob.size < MIN_POLISHED_AUDIO_BYTES) {
+        await ctx.runMutation(internal.music.markFailed, {
+          trackId,
+          errorMessage: `ElevenLabs returned tiny audio (${audioBlob.size} bytes).`,
+        });
+        throw new Error("ElevenLabs returned empty or tiny audio.");
+      }
+
+      console.log("music.polish ready", {
+        trackId,
+        bytes: audioBlob.size,
+        contentType: audioType,
+        providerSongId: providerSongId ?? null,
+      });
 
       const storageId = await ctx.storage.store(
         new Blob([audioBlob], { type: audioBlob.type || "audio/mpeg" }),
@@ -544,12 +472,6 @@ export const polish = action({
         providerSongId,
       });
 
-      try {
-        await ctx.storage.delete(args.referenceStorageId);
-      } catch {
-        // reference cleanup is best-effort
-      }
-
       const audioUrl = await ctx.storage.getUrl(storageId);
       return { trackId, audioUrl };
     } catch (error) {
@@ -560,11 +482,6 @@ export const polish = action({
           trackId,
           errorMessage: message,
         });
-      }
-      try {
-        await ctx.storage.delete(args.referenceStorageId);
-      } catch {
-        // reference cleanup is best-effort
       }
       throw error instanceof Error ? error : new Error(message);
     }

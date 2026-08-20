@@ -2,7 +2,6 @@ import { DRUM_PATTERNS, PAD_VOICES, PROGRESSION_PRESETS } from "./config";
 import type { BackingTrackParams } from "./types";
 
 export const POLISH_DURATION_MS = 120_000;
-export const REFERENCE_CONDITION_MS = 30_000;
 
 function clampTempo(tempoBpm: number) {
   return Math.round(Math.min(180, Math.max(60, tempoBpm)));
@@ -37,15 +36,18 @@ export function buildPositiveStyles(params: BackingTrackParams) {
     `${tempo} BPM`,
     isBlues ? `${params.key} blues` : `${params.key} major`,
     isBlues
-      ? "classic 12-bar blues progression"
-      : `chord progression ${formatChordProgression(params)}`,
-    `repeating ${bars}-bar loop`,
-    `${pad.label}`,
-    pad.description,
-    drums.label === "No drums" ? "no drums" : `${drums.label} drums`,
-    "instrumental backing track",
-    "steady groove",
-    "studio quality",
+      ? "classic 12-bar blues harmony"
+      : `harmony follows ${formatChordProgression(params)}`,
+    `repeating ${bars}-bar form`,
+    `${pad.label} inspired harmony`,
+    drums.label === "No drums"
+      ? "pads and harmony only, no drums"
+      : `${drums.label} groove with polished live drums`,
+    "started as a rough bedroom demo",
+    "then fully re-recorded by professional session musicians",
+    "real studio instruments and human performance",
+    "radio-ready instrumental practice backing",
+    "tight mix with depth and polish",
     "great production quality",
   ];
 
@@ -61,56 +63,26 @@ export function buildNegativeStyles() {
     "rap",
     "choir",
     "spoken word",
+    "simple sine wave demo",
+    "raw oscillator tones",
+    "toy synth",
+    "MIDI sketch",
+    "amateur demo",
+    "thin placeholder loop",
     "dramatic intro",
     "big finale",
   ];
 }
 
-/** Short human-readable summary stored on the track + shown in UI. */
+/** Prompt for ElevenLabs prompt-mode compose (no audio conditioning). */
 export function buildStylePrompt(params: BackingTrackParams) {
-  return buildPositiveStyles(params).join(", ");
-}
-
-export function buildCompositionPlan(params: {
-  songId: string;
-  conditionEndMs: number;
-  positiveStyles: string[];
-  negativeStyles: string[];
-}) {
-  const conditionEndMs = Math.max(
-    3000,
-    Math.min(REFERENCE_CONDITION_MS, Math.round(params.conditionEndMs)),
-  );
-  const half = Math.floor(POLISH_DURATION_MS / 2);
-
-  return {
-    chunks: [
-      {
-        text: "[Groove]\n{instrumental backing}",
-        duration_ms: half,
-        positive_styles: params.positiveStyles,
-        negative_styles: params.negativeStyles,
-        context_adherence: "high" as const,
-        conditioning_ref: {
-          song_id: params.songId,
-          range: { start_ms: 0, end_ms: conditionEndMs },
-        },
-        condition_strength: "high" as const,
-      },
-      {
-        text: "[Groove]\n{continue same instrumental groove}",
-        duration_ms: half,
-        positive_styles: [
-          "same groove",
-          "steady energy",
-          "instrumental",
-          "great production quality",
-        ],
-        negative_styles: params.negativeStyles,
-        context_adherence: "high" as const,
-      },
-    ],
-  };
+  const styles = buildPositiveStyles(params);
+  const negatives = buildNegativeStyles();
+  return [
+    "Instrumental practice backing track",
+    ...styles,
+    "avoid: " + negatives.join(", "),
+  ].join(", ");
 }
 
 export function buildTrackTitle(params: BackingTrackParams) {

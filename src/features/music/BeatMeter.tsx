@@ -1,14 +1,16 @@
 "use client";
 
+import { RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RomanNumeral, TransportState } from "./types";
 
 type BeatMeterProps = {
   transport: TransportState;
   chord?: RomanNumeral;
+  onReset?: () => void;
 };
 
-export default function BeatMeter({ transport, chord }: BeatMeterProps) {
+export default function BeatMeter({ transport, chord, onReset }: BeatMeterProps) {
   const beats = [1, 2, 3, 4] as const;
   const activeChord = chord ?? transport.chord;
 
@@ -26,9 +28,22 @@ export default function BeatMeter({ transport, chord }: BeatMeterProps) {
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           Beat
         </p>
-        <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          {transport.playing ? `Bar ${transport.barIndex + 1} · ${activeChord}` : "Ready"}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            {transport.playing ? `Bar ${transport.barIndex + 1} · ${activeChord}` : "Ready"}
+          </p>
+          {onReset ? (
+            <button
+              type="button"
+              onClick={onReset}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/[0.08] hover:text-foreground"
+              aria-label="Reset beat to bar 1"
+              title="Reset to bar 1"
+            >
+              <RotateCcw size={14} />
+            </button>
+          ) : null}
+        </div>
       </div>
       <div className="mt-3 flex items-end justify-between gap-2">
         {beats.map((beat) => {
