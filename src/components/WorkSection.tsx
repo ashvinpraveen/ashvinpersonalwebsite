@@ -8,6 +8,7 @@ type ProjectItem = {
   githubHref?: string;
   description: string;
   logo?: string | null;
+  logoClassName?: string;
   alt?: string;
   initials?: string;
 };
@@ -23,6 +24,25 @@ const projects: ProjectItem[] = [
       "AI workspace for writing and thinking. 40,000+ users. Backed by Antler.",
   },
   {
+    name: "Malaysian.ai",
+    role: "Resident and Community lead",
+    logo: "/logo-malaysian-ai-mark.png",
+    logoClassName: "dark:invert",
+    alt: "Malaysian.ai",
+    href: "https://www.malaysian.ai/",
+    githubHref: "https://github.com/ashvinpraveen/malaysianai",
+    description:
+      "Building Malaysia’s highest talent density builder space for people experimenting with AI.",
+  },
+  {
+    name: "Malaysian.ai podcast",
+    role: "Podcaster",
+    logo: "/social-icons/YouTube_logo.svg",
+    alt: "YouTube",
+    href: "https://www.youtube.com/@malaysian-ai",
+    description: "Conversations with Malaysian builders experimenting with AI.",
+  },
+  {
     name: "National AI Competition (NAIC)",
     role: "Director",
     logo: "/logo-naic.png",
@@ -30,41 +50,6 @@ const projects: ProjectItem[] = [
     githubHref: "https://github.com/ashvinpraveen/rakantutor",
     description:
       "Malaysia's largest student AI challenge. Co-organized with Sunway University.",
-  },
-  {
-    name: "Malaysian.ai",
-    role: "Committee member",
-    logo: "/logo-malaysian-ai.png",
-    href: "https://www.malaysian.ai/",
-    githubHref: "https://github.com/ashvinpraveen/malaysianai",
-    description: "Community for AI builders in Malaysia. Backed by 500 Global.",
-  },
-  {
-    name: "RakanTutor.org",
-    role: "Committee member",
-    logo: null,
-    initials: "RT",
-    href: "https://rakantutor.org",
-    githubHref: "https://github.com/ashvinpraveen/rakantutor",
-    description: "Website for a student-led education nonprofit in Malaysia.",
-  },
-  {
-    name: "Build for Public",
-    role: "Committee member",
-    logo: null,
-    initials: "BP",
-    href: "https://buildforpublic.com",
-    githubHref: "https://github.com/mfrashad/buildforpublic",
-    description:
-      "Community building practical public-interest projects in the open.",
-  },
-  {
-    name: "Tom Riddle's Diary",
-    role: "JUST FOR FUN",
-    logo: "/logo-riddle-diary.svg",
-    href: "/diary",
-    description:
-      "Write in a blank page and the ghost of Tom Riddle responds. A fun project I made with Claude Fable & GPT 5.5. Play around with it!",
   },
 ];
 
@@ -89,7 +74,7 @@ const WorkSection = () => {
                   <img
                     src={item.logo}
                     alt={item.alt ?? item.name}
-                    className="w-9 h-9 rounded-xl object-contain shrink-0"
+                    className={`w-9 h-9 rounded-xl object-contain shrink-0${item.logoClassName ? ` ${item.logoClassName}` : ""}`}
                   />
                 ) : (
                   <span className="flex w-9 h-9 items-center justify-center rounded-xl bg-muted font-mono text-xs font-semibold text-muted-foreground shrink-0">
