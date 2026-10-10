@@ -45,7 +45,8 @@
 
     --radius: 0.75rem;
 
-    --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+    --font-sans: var(--font-timeless-sans, "DM Sans", system-ui, sans-serif);
+    --font-serif: var(--font-timeless-serif, "DM Sans", Georgia, "Iowan Old Style", "Times New Roman", serif);
     --font-mono: var(--font-sans);
   }
 
@@ -93,6 +94,18 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    line-height: 1.6;
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-serif);
+    letter-spacing: -0.03em;
+  }
+
+  .prose :where(h1, h2, h3) {
+    font-family: var(--font-serif);
+    letter-spacing: -0.03em;
   }
 
   ::selection {
@@ -420,4 +433,8 @@ body[data-chat-layout="compact"] .md\:py-14 {
   .music-tap {
     animation: none;
   }
+}
+
+.prose {
+  line-height: 1.7;
 }

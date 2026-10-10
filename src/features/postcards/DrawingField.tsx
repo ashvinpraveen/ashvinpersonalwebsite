@@ -16,7 +16,7 @@ export default function DrawingField({
 
   return (
     <section className="space-y-5 border-t border-border pt-12">
-      <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+      <h2 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">
         Drawings
       </h2>
 

@@ -266,7 +266,7 @@ function MusicStudioApp() {
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
             Music studio
           </p>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight">
+          <h1 className="mt-2 text-2xl font-semibold tracking-[-0.03em]">
             Backing tracks are off
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
@@ -330,7 +330,7 @@ function MusicStudioApp() {
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             ashvinpraveen.com/music
           </p>
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+          <h1 className="text-xl font-semibold tracking-[-0.03em] sm:text-2xl">
             Backing Track
           </h1>
         </div>

@@ -15,6 +15,14 @@ export default {
     extend: {
       fontFamily: {
         sans: ["var(--font-sans)", "DM Sans", "system-ui", "sans-serif"],
+        serif: [
+          "var(--font-serif)",
+          "DM Sans",
+          "Georgia",
+          "Iowan Old Style",
+          "Times New Roman",
+          "serif",
+        ],
         mono: ["var(--font-mono)", "DM Sans", "system-ui", "sans-serif"],
       },
       colors: {

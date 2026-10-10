@@ -61,7 +61,7 @@ const BlogPost = ({ id, initialNote }: BlogPostProps) => {
 
           {note && (
             <article className="mt-8 space-y-4">
-              <h1 className={`text-3xl md:text-4xl font-semibold text-foreground ${heading}`}>
+              <h1 className={`text-3xl font-semibold leading-[1.15] text-foreground md:text-4xl ${heading}`}>
                 {note.title || "Untitled"}
               </h1>
               <div className="flex items-center gap-3 font-mono text-xs text-muted-foreground">

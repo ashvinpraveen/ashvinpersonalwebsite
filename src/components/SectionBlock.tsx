@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { contentColumnClassName } from "@/lib/layout";
+import { heading } from "@/lib/styles";
 import { cn } from "@/lib/utils";
 import RevealOnScroll from "@/components/RevealOnScroll";
 
@@ -18,7 +19,7 @@ const SectionBlock = ({ children, className, id, label }: SectionBlockProps) => 
         className={cn(contentColumnClassName, "py-10 md:py-14", className)}
       >
         {label && (
-          <h2 className="text-lg font-semibold tracking-tight mb-6">
+          <h2 className={`mb-6 text-lg font-semibold ${heading}`}>
             {label}
           </h2>
         )}

@@ -162,6 +162,34 @@ To stop the server, press `Ctrl + C` in your terminal.
 
 ---
 
+## Timeless fonts
+
+Display type is Timeless Serif and body type is Timeless Sans, from the [Timeless](https://www.timeless.co/type) family. Fraunces and Outfit stay on the run club pages, and the diary keeps its script faces. The old `font-mono` labels still follow the body face, which is what they did with DM Sans.
+
+The [Timeless Free Font License](https://www.timeless.co/type/license) allows these fonts to be embedded in a website, and only as part of that website. It does not allow putting them on a font service, a public server, or a public repository, and it does not allow redistribution. This repository is public, so the font files are not in git. `.gitignore` rejects Timeless files (woff, woff2, otf, ttf, and the other font extensions) anywhere in the tree.
+
+The files live in a private Vercel Blob store connected to the Vercel project, under `fonts/timeless/`:
+
+- `fonts/timeless/TimelessSerifVF.woff2`
+- `fonts/timeless/TimelessSerifItalicVF.woff2`
+- `fonts/timeless/TimelessSansVF.woff2`
+
+`scripts/fetch-fonts.mjs` runs before `npm run dev` and `npm run build`. It reads `BLOB_READ_WRITE_TOKEN`, which Vercel sets when a Blob store is connected, and downloads those three files into `src/fonts/timeless/`. `next/font/local` then bundles them, so they are served only as part of the site under `/_next/static/media`. The script does not print Blob URLs.
+
+To build with the fonts on your machine:
+
+```bash
+vercel link
+vercel env pull .env.local
+npm run dev
+```
+
+Do not commit `.env.local`, the downloaded font files, or a `src/fonts/timeless/load.ts` that imports them.
+
+With no token, or if the download fails, the build still passes and logs one warning. Body text keeps DM Sans (the previous face, from Google Fonts), then `system-ui, sans-serif`. Headings use that same stack, then `Georgia, "Iowan Old Style", "Times New Roman", serif`. Forks keep today's look.
+
+---
+
 ## Set Up the Blog (Cleve + Convex)
 
 The blog system has two parts:

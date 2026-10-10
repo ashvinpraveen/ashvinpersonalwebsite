@@ -174,7 +174,7 @@ const Brand = () => {
       <main className={`${pageShellClassName} pt-24`}>
         <div className={contentColumnClassName}>
           <p className={`${monoLabel} mb-3`}>Press kit</p>
-          <h1 className={`mb-3 text-3xl font-bold md:text-4xl ${heading}`}>Ashvin Praveen</h1>
+          <h1 className={`mb-3 text-3xl font-semibold leading-[1.15] md:text-4xl ${heading}`}>Ashvin Praveen</h1>
           <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">{tagline}</p>
 
           <div className="mt-10">
