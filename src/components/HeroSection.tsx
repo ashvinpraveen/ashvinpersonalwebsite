@@ -667,7 +667,7 @@ const HeroSection = () => {
         </div>
         <div className="max-w-prose">
           <motion.h1
-            className={`text-3xl md:text-4xl font-bold leading-[1.1] mb-3 ${heading}`}
+            className={`text-3xl md:text-4xl font-semibold leading-[1.15] mb-3 ${heading}`}
             variants={fadeUp}
             initial="hidden"
             animate="visible"

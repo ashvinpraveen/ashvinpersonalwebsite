@@ -1,5 +1,5 @@
 import SectionBlock from "@/components/SectionBlock";
-import { cardCompact, textSecondary, heading } from "@/lib/styles";
+import { cardCompact, textSecondary } from "@/lib/styles";
 
 type ProjectItem = {
   name: string;
@@ -97,7 +97,7 @@ const WorkSection = () => {
                   </span>
                 )}
                 <div className="min-w-0 pt-0.5">
-                  <h3 className={`text-sm font-semibold ${heading}`}>
+                  <h3 className="text-sm font-semibold tracking-tight">
                     {item.name}
                   </h3>
                   <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">

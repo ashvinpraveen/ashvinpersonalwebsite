@@ -42,7 +42,7 @@ const Blog = ({ initialNotes }: BlogProps) => {
       <SiteNav />
       <main className={`${pageShellClassName} pt-24`}>
         <div className={contentColumnClassName}>
-          <h1 className={`text-3xl md:text-4xl font-bold mb-3 ${heading}`}>Writing</h1>
+          <h1 className={`text-3xl md:text-4xl font-semibold leading-[1.15] mb-3 ${heading}`}>Writing</h1>
           <p className="text-base text-muted-foreground mb-10 max-w-md">
             Thoughts on AI, building products, and things I've learned along the way.
           </p>

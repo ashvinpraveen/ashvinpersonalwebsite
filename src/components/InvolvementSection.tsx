@@ -1,5 +1,5 @@
 import SectionBlock from "@/components/SectionBlock";
-import { cardCompact, textSecondary, heading } from "@/lib/styles";
+import { cardCompact, textSecondary } from "@/lib/styles";
 
 const projects = [
   {
@@ -55,7 +55,7 @@ const InvolvementSection = () => {
                   {project.initials || "P"}
                 </span>
               )}
-              <h3 className={`text-base font-semibold ${heading}`}>
+              <h3 className="text-base font-semibold tracking-tight">
                 {project.name}
               </h3>
             </div>

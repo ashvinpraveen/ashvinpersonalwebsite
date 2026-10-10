@@ -31,7 +31,7 @@ const Resources = () => {
       <main className={`${pageShellClassName} pt-24`}>
         <div className={contentColumnClassName}>
           <p className={`${monoLabel} mb-3`}>Resources</p>
-          <h1 className={`mb-4 text-3xl font-bold md:text-4xl ${heading}`}>
+          <h1 className={`mb-4 text-3xl font-semibold leading-[1.15] md:text-4xl ${heading}`}>
             Things I keep sending people
           </h1>
           <p className="mb-10 max-w-2xl text-base leading-relaxed text-muted-foreground">

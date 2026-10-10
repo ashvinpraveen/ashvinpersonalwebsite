@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { pageShellClassName } from "@/lib/layout";
-import { heading } from "@/lib/styles";
 
 const stats = [
   {
@@ -89,7 +88,7 @@ const StatsSection = () => {
       <div className={`${pageShellClassName} grid grid-cols-3 gap-3 py-8 md:gap-6 md:py-10`}>
         {stats.map((stat) => (
           <div key={stat.label} className="min-w-0">
-            <p className={`text-3xl font-bold leading-none text-link sm:text-4xl md:text-5xl ${heading}`}>
+            <p className="text-3xl font-bold leading-none tracking-tight text-link sm:text-4xl md:text-5xl">
               <CountUpNumber value={stat.value} suffix={stat.suffix} />
             </p>
             <p className="mt-2 text-xs font-medium leading-snug text-foreground/60 sm:text-sm">

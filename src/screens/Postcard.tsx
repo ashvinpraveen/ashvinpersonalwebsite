@@ -270,7 +270,7 @@ const PostcardApp = () => {
         <div className={contentColumnClassName}>
           <section className="space-y-12">
             <div className="max-w-2xl space-y-3">
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+              <h1 className="text-3xl font-semibold leading-[1.15] tracking-[-0.03em] text-foreground md:text-4xl">
                 drop a thought
               </h1>
               <p className="text-base leading-relaxed text-muted-foreground">
@@ -432,7 +432,7 @@ const PostcardApp = () => {
 
             <section className="space-y-6 border-t border-border pt-12">
               <div className="max-w-2xl space-y-2">
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                <h2 className="text-2xl font-semibold tracking-[-0.03em] text-foreground">
                   Feed
                 </h2>
                 <p className="text-sm leading-relaxed text-muted-foreground">
