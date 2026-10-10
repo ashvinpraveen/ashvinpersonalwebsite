@@ -16,6 +16,13 @@ type ShareCardProps = {
   createdAt: number;
 };
 
+function canvasFamily(node: ParentNode, selector: string, fallback: string) {
+  const element = node.querySelector(selector);
+  if (!(element instanceof HTMLElement)) return fallback;
+  const family = getComputedStyle(element).fontFamily.trim();
+  return family || fallback;
+}
+
 function pathBounds(path: LatLng[]) {
   if (path.length === 0) {
     return { minLat: 0, maxLat: 0, minLng: 0, maxLng: 0 };
@@ -150,13 +157,17 @@ export default function ShareCard({
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
+    await document.fonts.ready;
+    const displayFamily = canvasFamily(node, "[data-share-display]", "Fraunces, Georgia, serif");
+    const bodyFamily = canvasFamily(node, "[data-share-body]", "Outfit, DM Sans, sans-serif");
+
     ctx.fillStyle = "#b8e05c";
-    ctx.font = "700 28px Outfit, sans-serif";
+    ctx.font = `700 28px ${bodyFamily}`;
     ctx.fillText("AI RUN CLUB", 48, 72);
     ctx.fillStyle = "#f4ffe4";
-    ctx.font = "600 54px Fraunces, Georgia, serif";
+    ctx.font = `600 54px ${displayFamily}`;
     ctx.fillText(formatDistance(distanceMeters), 48, 160);
-    ctx.font = "400 24px Outfit, sans-serif";
+    ctx.font = `400 24px ${bodyFamily}`;
     ctx.fillStyle = "#cfe8d4";
     ctx.fillText(`${displayName} · ${formatDuration(durationMs)} · ${formatPace(distanceMeters, durationMs)}`, 48, 210);
 
@@ -185,7 +196,7 @@ export default function ShareCard({
     }
 
     ctx.fillStyle = "#8fb89a";
-    ctx.font = "400 20px Outfit, sans-serif";
+    ctx.font = `400 20px ${bodyFamily}`;
     ctx.fillText(
       new Intl.DateTimeFormat("en-MY", {
         dateStyle: "medium",
@@ -215,10 +226,10 @@ export default function ShareCard({
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#b8e05c]">
             AI Run Club
           </p>
-          <p className="font-[family-name:var(--run-display)] text-4xl tracking-tight">
+          <p data-share-display className="font-[family-name:var(--run-display)] text-4xl tracking-tight">
             {formatDistance(distanceMeters)}
           </p>
-          <p className="text-sm text-[#cfe8d4]">
+          <p data-share-body className="text-sm text-[#cfe8d4]">
             {displayName} · {formatDuration(durationMs)} · {formatPace(distanceMeters, durationMs)}
           </p>
           <p className="text-xs text-[#8fb89a]">

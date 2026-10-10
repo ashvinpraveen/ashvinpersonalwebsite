@@ -143,7 +143,7 @@ function runnerIcon(name: string, hue: number, isSelf: boolean, isTracking: bool
     html: `<div style="
       width:${size}px;height:${size}px;border-radius:999px;
       background:${color};color:white;display:grid;place-items:center;
-      font:700 12px Outfit, DM Sans, sans-serif;
+      font-weight:700;font-size:12px;font-family:inherit;
       box-shadow:0 0 0 ${isTracking ? "3px rgba(184,224,92,0.85)" : "2px rgba(8,28,18,0.35)"};
       border:2px solid rgba(255,255,255,0.9);
     ">${initial}</div>`,
@@ -157,7 +157,7 @@ function waypointIcon(index: number) {
     iconAnchor: [11, 11],
     html: `<div style="
       width:22px;height:22px;border-radius:999px;background:#123526;color:#b8e05c;
-      display:grid;place-items:center;font:700 10px Outfit,sans-serif;
+      display:grid;place-items:center;font-weight:700;font-size:10px;font-family:inherit;
       border:2px solid #f4ffe4;
     ">${index + 1}</div>`,
   });

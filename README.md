@@ -162,6 +162,32 @@ To stop the server, press `Ctrl + C` in your terminal.
 
 ---
 
+## Timeless fonts
+
+Display type is Timeless Serif and body and UI type is Timeless Sans, from the [Timeless](https://www.timeless.co/type) family. The run club uses that same split. DM Sans stays the fallback for the rest of the site, and the run club still falls back to Fraunces for display and Outfit for body. Diary script faces (Caveat, Tangerine, and Cormorant) stay as they are. `font-mono` was already the body face, used for small labels, so those labels follow Timeless Sans too.
+
+The [Timeless Free Font License](https://www.timeless.co/type/license) allows the fonts to be embedded in a website, and only as part of that website. It does not allow putting them on a font service, a public server, or a public repository, and it does not allow redistribution. This repository is public, so the font files are not in git. `.gitignore` rejects Timeless files (woff, woff2, otf, ttf, and the other font extensions) anywhere in the tree.
+
+The files live in a private Vercel Blob store connected to the Vercel project, under `fonts/timeless/`:
+
+- `fonts/timeless/TimelessSerifVF.woff2`
+- `fonts/timeless/TimelessSerifItalicVF.woff2`
+- `fonts/timeless/TimelessSansVF.woff2`
+
+`scripts/fetch-fonts.mjs` runs before `npm run dev`, `npm run build`, and `npm run lint`. Next also runs it from `next.config.mjs`, because Vercel calls `next build` directly. The script reads `BLOB_READ_WRITE_TOKEN` (Vercel sets this when a Blob store is connected) and downloads those three files into `src/assets/fonts/timeless/`. It then writes `src/lib/fonts.generated.ts`, which loads them with `next/font/local` so the build serves them from `/_next/static/media/`. The script does not print Blob URLs.
+
+To build with the fonts on your machine, link the Vercel project and pull its env:
+
+```bash
+vercel link
+vercel env pull .env.local
+npm run dev
+```
+
+If `BLOB_READ_WRITE_TOKEN` is missing, or the download fails and no local copies are already present, the build still succeeds. The script logs one warning and the site keeps today's fonts: DM Sans for body and headings, Fraunces and Outfit on the run club.
+
+---
+
 ## Set Up the Blog (Cleve + Convex)
 
 The blog system has two parts:
