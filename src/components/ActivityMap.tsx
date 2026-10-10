@@ -376,7 +376,7 @@ const ActivityMap = ({ notes }: ActivityMapProps) => {
 
             {panelNote && !isLoadingNote && (
               <article className="space-y-4">
-                <div className="prose prose-sm dark:prose-invert max-w-none">
+                <div className="prose prose-sm prose-headings:font-display dark:prose-invert max-w-none">
                   <LazyRichMarkdown>{panelMarkdown}</LazyRichMarkdown>
                 </div>
               </article>

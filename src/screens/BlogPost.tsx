@@ -73,7 +73,7 @@ const BlogPost = ({ id, initialNote }: BlogPostProps) => {
                   </span>
                 )}
               </div>
-              <div className="prose prose-sm dark:prose-invert max-w-none pt-4">
+              <div className="prose prose-sm prose-headings:font-display dark:prose-invert max-w-none pt-4">
                 <LazyRichMarkdown>{note.content ?? ""}</LazyRichMarkdown>
               </div>
             </article>

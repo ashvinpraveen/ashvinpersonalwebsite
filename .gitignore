@@ -17,6 +17,19 @@ tsconfig.tsbuildinfo
 .env
 .env.*
 
+# Timeless Free Font License: the fonts may be embedded in this site, but this
+# public repository must not contain the files or any derivative. The prebuild
+# step downloads them from a private Vercel Blob store into src/assets/fonts/timeless/.
+src/assets/fonts/timeless/
+src/lib/fonts.generated.ts
+**/*[Tt]imeless*.woff2
+**/*[Tt]imeless*.woff
+**/*[Tt]imeless*.otf
+**/*[Tt]imeless*.ttf
+**/*[Tt]imeless*.ttc
+**/*[Tt]imeless*.eot
+**/*[Tt]imeless*.dfont
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

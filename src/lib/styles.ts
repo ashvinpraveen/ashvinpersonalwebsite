@@ -20,8 +20,7 @@ export const textBody = "text-foreground/90";
 export const textSecondary = "text-foreground/80";
 export const textSubtle = "text-foreground/60";
 
-export const heading =
-  "tracking-tight";
+export const heading = "font-display tracking-tight";
 
 export const monoLabel =
   "font-mono text-xs text-muted-foreground uppercase tracking-widest";

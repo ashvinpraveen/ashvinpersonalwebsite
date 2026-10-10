@@ -45,7 +45,8 @@
 
     --radius: 0.75rem;
 
-    --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+    --font-sans: var(--font-dm-sans, "DM Sans"), "DM Sans", system-ui, sans-serif;
+    --font-display: var(--font-dm-sans, "DM Sans"), "DM Sans", system-ui, sans-serif;
     --font-mono: var(--font-sans);
   }
 
@@ -93,6 +94,13 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display;
   }
 
   ::selection {
@@ -326,7 +334,7 @@ body[data-chat-layout="compact"] .md\:py-14 {
   --run-panel: rgba(244, 255, 228, 0.88);
   --run-line: rgba(18, 53, 38, 0.14);
   --run-display: var(--font-run-fraunces), Georgia, serif;
-  font-family: var(--font-run-outfit), "DM Sans", system-ui, sans-serif;
+  font-family: var(--font-run-outfit), var(--font-sans), system-ui, sans-serif;
   background:
     radial-gradient(1200px 600px at 10% -10%, rgba(184, 224, 92, 0.35), transparent 55%),
     radial-gradient(900px 500px at 90% 0%, rgba(72, 140, 96, 0.28), transparent 50%),
@@ -420,4 +428,45 @@ body[data-chat-layout="compact"] .md\:py-14 {
   .music-tap {
     animation: none;
   }
+}
+
+/* Unlayered so these beat Tailwind utilities, and only when the build embedded Timeless. */
+html.timeless-active {
+  --font-sans: var(--font-timeless-sans, "DM Sans"), "DM Sans", system-ui, sans-serif;
+  --font-display: var(--font-timeless-serif, Georgia), Georgia, "Iowan Old Style", "Times New Roman", serif;
+}
+
+html.timeless-active :is(h1, h2, h3, h4, .font-display):not(.font-mono) {
+  letter-spacing: -0.016em;
+  text-rendering: optimizeLegibility;
+}
+
+html.timeless-active h1 {
+  line-height: 1.12;
+}
+
+html.timeless-active :is(h1, h2, .font-display).font-bold {
+  font-weight: 640;
+}
+
+html.timeless-active .prose :is(h1, h2, h3, h4) {
+  font-weight: 600;
+  letter-spacing: -0.016em;
+}
+
+html.timeless-active :is(em, i, .italic) {
+  font-variation-settings: "ital" 1, "STYL" 0;
+}
+
+html.timeless-active :is(h1, h2, h3, h4, .font-display) :is(em, i, .italic) {
+  font-variation-settings: "STYL" 100;
+}
+
+html.timeless-active .run-club-shell {
+  --run-display: var(--font-display), Georgia, serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+html.timeless-active .run-club-shell [class*="--run-display"] {
+  letter-spacing: -0.02em;
 }
