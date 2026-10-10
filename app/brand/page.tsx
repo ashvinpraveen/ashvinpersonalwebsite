@@ -3,8 +3,9 @@ import JsonLd from "@/components/JsonLd";
 import Brand from "@/screens/Brand";
 import { absoluteUrl, createMetadata } from "@/lib/seo";
 
-const title = "Brand — Ashvin Praveen";
-const description = "Photos of Ashvin Praveen for speaker and press use.";
+const title = "Speaker & press kit — Ashvin Praveen";
+const description =
+  "Speaker and press kit for Ashvin Praveen, Co-founder & CEO of Cleve. Bios, talks, and photos for events and press.";
 
 export const metadata: Metadata = createMetadata({
   title,
