@@ -16,6 +16,7 @@ const navLinks = [
   { href: "/diary", label: "Diary" },
   { href: "/postcards", label: "Postcards" },
   { href: "/resources", label: "Resources" },
+  { href: "/brand", label: "Brand" },
   { href: "/blog", label: "Writing" },
 ].filter((link) => {
   if (link.href === "/blog") return isBlogEnabled;
