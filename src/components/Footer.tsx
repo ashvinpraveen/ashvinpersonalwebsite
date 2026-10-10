@@ -37,6 +37,7 @@ const Footer = () => {
               <a href="/diary" className={linkSubtle}>Diary</a>
               {isBlogEnabled ? <a href="/blog" className={linkSubtle}>Writing</a> : null}
               <a href="/resources" className={linkSubtle}>Resources</a>
+              <a href="/brand" className={linkSubtle}>Brand</a>
               {isPostcardsEnabled ? <a href="/postcards" className={linkSubtle}>Postcards</a> : null}
               {isRunClubEnabled ? <a href="/run" className={linkSubtle}>AI Run Club</a> : null}
             </div>
