@@ -437,7 +437,7 @@ html.timeless-active {
 }
 
 html.timeless-active :is(h1, h2, h3, h4, .font-display):not(.font-mono) {
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: -0.03em;
   text-rendering: optimizeLegibility;
 }
@@ -447,7 +447,7 @@ html.timeless-active h1 {
 }
 
 html.timeless-active .prose :is(h1, h2, h3, h4) {
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: -0.03em;
 }
 
@@ -456,7 +456,7 @@ html.timeless-active :is(em, i, .italic) {
 }
 
 html.timeless-active :is(h1, h2, h3, h4, .font-display) :is(em, i, .italic) {
-  font-variation-settings: "wght" 500, "ital" 100, "STYL" 0;
+  font-variation-settings: "wght" 400, "ital" 100, "STYL" 0;
 }
 
 html.timeless-active .run-club-shell {
@@ -465,7 +465,7 @@ html.timeless-active .run-club-shell {
 }
 
 html.timeless-active .run-club-shell [class*="--run-display"] {
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: -0.03em;
 }
 
