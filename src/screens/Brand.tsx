@@ -2,6 +2,7 @@ import Image from "next/image";
 import CopyTextButton from "@/components/CopyTextButton";
 import Footer from "@/components/Footer";
 import SiteNav from "@/components/SiteNav";
+import TypographySpecimen from "@/components/TypographySpecimen";
 import { contentColumnClassName, pageShellClassName } from "@/lib/layout";
 import { heading, linkPrimary, monoLabel } from "@/lib/styles";
 
@@ -207,6 +208,8 @@ const Brand = () => {
               ))}
             </ul>
           </div>
+
+          <TypographySpecimen />
 
           <section className="mt-16 space-y-4" aria-labelledby="bios-heading">
             <h2 id="bios-heading" className={sectionTitleClass}>

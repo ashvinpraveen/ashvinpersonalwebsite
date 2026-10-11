@@ -79,6 +79,14 @@ const Footer = () => {
               >
                 Fork this site
               </a>
+              <a
+                href="https://www.timeless.co/type"
+                target="_blank"
+                rel="noreferrer"
+                className={linkSubtle}
+              >
+                Timeless
+              </a>
               <span>© {year} Ashvin Praveen</span>
             </div>
           </div>
