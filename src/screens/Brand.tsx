@@ -2,12 +2,12 @@ import Image from "next/image";
 import CopyTextButton from "@/components/CopyTextButton";
 import Footer from "@/components/Footer";
 import SiteNav from "@/components/SiteNav";
-import TypographySpecimen from "@/components/TypographySpecimen";
+import BrandGuidelines from "@/components/BrandGuidelines";
 import { contentColumnClassName, pageShellClassName } from "@/lib/layout";
 import { heading, linkPrimary, monoLabel } from "@/lib/styles";
 
-const tagline =
-  "Co-founder & CEO of Cleve.ai | AI Content Workspace | Sharing my thoughts & lessons while building in public | Antler W23";
+const heroIntro =
+  "Co-founder and CEO of Cleve, helping entrepreneurs and professionals turn raw ideas into content.";
 
 const shortBio =
   "Ashvin Praveen is Co-founder & CEO of Cleve, a fast-growing Malaysian AI startup helping entrepreneurs and professionals transform their raw ideas into content that amplifies their message. Cleve has 40,000+ users and is used in 100+ countries.";
@@ -175,13 +175,34 @@ const Brand = () => {
       <main className={`${pageShellClassName} pt-24`}>
         <div className={contentColumnClassName}>
           <p className={`${monoLabel} mb-3`}>Press kit</p>
-          <h1 className={`mb-3 text-3xl font-bold md:text-4xl ${heading}`}>Ashvin Praveen</h1>
-          <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">{tagline}</p>
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between lg:gap-6">
+            <div className="max-w-md lg:max-w-[22rem] lg:pb-3">
+              <h1 className={`mb-3 text-3xl font-bold md:text-4xl ${heading}`}>Ashvin Praveen</h1>
+              <p className="text-base leading-relaxed text-muted-foreground">{heroIntro}</p>
+            </div>
+            <div className="flex shrink-0 items-end justify-center gap-1 sm:justify-start lg:justify-end">
+              <Image
+                src="/brand/ashvin-praveen-cutout-three-quarter.webp"
+                alt="Ashvin Praveen smiling in a closer portrait, hands in his pockets, wearing a black button-up shirt with rolled sleeves and beige chinos."
+                width={812}
+                height={1477}
+                priority
+                className="h-72 w-auto sm:h-80 lg:h-[22rem]"
+              />
+              <Image
+                src="/brand/ashvin-praveen-cutout-full-length.webp"
+                alt="Ashvin Praveen smiling in a wider portrait, hands in his pockets, wearing a black button-up shirt with rolled sleeves and beige chinos."
+                width={586}
+                height={1239}
+                className="h-64 w-auto sm:h-72 lg:h-80"
+              />
+            </div>
+          </div>
 
           <div className="mt-10">
             <p className="mb-4 text-sm text-muted-foreground">Photos for speaker and press use.</p>
             <ul className="grid list-none gap-8 md:grid-cols-2">
-              {photos.map((photo, index) => (
+              {photos.map((photo) => (
                 <li key={photo.downloadHref}>
                   <figure>
                     <Image
@@ -189,7 +210,6 @@ const Brand = () => {
                       alt={photo.alt}
                       width={1023}
                       height={1537}
-                      priority={index === 0}
                       sizes="(min-width: 768px) 22rem, calc(100vw - 3rem)"
                       className="h-auto w-full rounded-2xl"
                     />
@@ -208,8 +228,6 @@ const Brand = () => {
               ))}
             </ul>
           </div>
-
-          <TypographySpecimen />
 
           <section className="mt-16 space-y-4" aria-labelledby="bios-heading">
             <h2 id="bios-heading" className={sectionTitleClass}>
@@ -312,6 +330,8 @@ const Brand = () => {
               For speaking and press enquiries, book a call or message on LinkedIn.
             </p>
           </section>
+
+          <BrandGuidelines />
 
           <Footer />
         </div>
