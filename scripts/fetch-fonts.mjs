@@ -149,7 +149,8 @@ const timelessSerif = localFont({
   display: "swap",
   fallback: ["Georgia", "Iowan Old Style", "Times New Roman", "serif"],
   adjustFontFallback: "Times New Roman",
-  declarations: [{ prop: "font-variation-settings", value: "'STYL' 100" }],
+  // STYL 0 is Display (Thin–Bold). STYL 100 is Text, the small-size cut.
+  declarations: [{ prop: "font-variation-settings", value: "'STYL' 0" }],
 });
 
 const timelessSans = localFont({
@@ -169,6 +170,7 @@ const timelessSans = localFont({
   display: "swap",
   fallback: ["DM Sans", "system-ui", "sans-serif"],
   adjustFontFallback: "Arial",
+  // STYL 0 is Grotesk. STYL 100 is Sans. Body stays on the current pin.
   declarations: [{ prop: "font-variation-settings", value: "'STYL' 0" }],
 });
 
