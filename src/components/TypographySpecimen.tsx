@@ -133,7 +133,7 @@ export default function TypographySpecimen() {
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-xs text-foreground/70">
                       {weight.name}
-                      {specimen.id === "serif-display" && weight.weight === 500 ? " · headings" : ""}
+                      {specimen.id === "serif-display" && weight.weight === 400 ? " · headings" : ""}
                     </span>
                     <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
                       {weight.weight}
