@@ -96,12 +96,14 @@ function sampleStyle(specimen: Specimen, weight: number, italic: boolean): CSSPr
   };
 }
 
-export default function TypographySpecimen() {
+export default function TypographySpecimen({ nested = false }: { nested?: boolean }) {
+  const Title = nested ? "h3" : "h2";
+  const SpecimenTitle = nested ? "h4" : "h3";
   return (
-    <section className="mt-14" aria-labelledby="typography-heading" id="typography">
-      <h2 id="typography-heading" className={`text-xl font-semibold md:text-2xl ${heading}`}>
+    <section className={nested ? "mt-10" : "mt-14"} aria-labelledby="typography-heading" id="typography">
+      <Title id="typography-heading" className={`text-xl font-semibold md:text-2xl ${heading}`}>
         Typography
-      </h2>
+      </Title>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
         The site is set in{" "}
         <a
@@ -122,7 +124,7 @@ export default function TypographySpecimen() {
         {specimens.map((specimen) => (
           <article key={specimen.id} className="rounded-2xl bg-muted/50 p-5">
             <header className="mb-4">
-              <h3 className="text-base font-semibold">{specimen.title}</h3>
+              <SpecimenTitle className="text-base font-semibold">{specimen.title}</SpecimenTitle>
               <p className="mt-1 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
                 {specimen.kicker}
               </p>
