@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { heading } from "@/lib/styles";
+import { heading, linkPrimary } from "@/lib/styles";
 
 const sample = "Designing fun products";
 
@@ -103,7 +103,16 @@ export default function TypographySpecimen() {
         Typography
       </h2>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-        The site is set in Timeless.
+        The site is set in{" "}
+        <a
+          href="https://www.timeless.co/type"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`underline ${linkPrimary}`}
+        >
+          Timeless
+        </a>
+        .
       </p>
       <p className="timeless-specimen-note mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
         Timeless is embedded on the live site. This preview is using the fallback faces.
