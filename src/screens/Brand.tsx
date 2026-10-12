@@ -42,6 +42,47 @@ const photos = [
   },
 ] as const;
 
+const cleveLogos = [
+  {
+    src: "/brand/cleve-logo-black-text.png",
+    alt: "Cleve logo with a yellow mascot and the word Cleve in black.",
+    label: "Black text",
+    note: "For light backgrounds. Transparent background.",
+    surface: "bg-[hsl(40,45%,97%)]",
+    files: [
+      {
+        label: "PNG",
+        href: "/brand/cleve-logo-black-text.png",
+        downloadName: "cleve-logo-black-text.png",
+      },
+      {
+        label: "SVG",
+        href: "/brand/cleve-logo-black-text.svg",
+        downloadName: "cleve-logo-black-text.svg",
+      },
+    ],
+  },
+  {
+    src: "/brand/cleve-logo-white-text.png",
+    alt: "Cleve logo with a yellow mascot and the word Cleve in white.",
+    label: "White text",
+    note: "For dark backgrounds. Transparent background.",
+    surface: "bg-[hsl(30,8%,10%)]",
+    files: [
+      {
+        label: "PNG",
+        href: "/brand/cleve-logo-white-text.png",
+        downloadName: "cleve-logo-white-text.png",
+      },
+      {
+        label: "SVG",
+        href: "/brand/cleve-logo-white-text.svg",
+        downloadName: "cleve-logo-white-text.svg",
+      },
+    ],
+  },
+] as const;
+
 const topics = [
   "AI's role in creativity",
   "The future of personal branding",
@@ -228,6 +269,49 @@ const Brand = () => {
               ))}
             </ul>
           </div>
+
+          <section className="mt-16" aria-labelledby="cleve-logo-heading">
+            <h2 id="cleve-logo-heading" className={sectionTitleClass}>
+              Cleve logo
+            </h2>
+            <ul className="mt-4 grid list-none gap-8 md:grid-cols-2">
+              {cleveLogos.map((logo) => (
+                <li key={logo.label}>
+                  <figure>
+                    <div
+                      className={`flex items-center justify-center rounded-2xl border border-foreground/10 px-6 py-10 sm:px-8 ${logo.surface}`}
+                    >
+                      <Image
+                        src={logo.src}
+                        alt={logo.alt}
+                        width={3228}
+                        height={1104}
+                        sizes="(min-width: 768px) 22rem, calc(100vw - 3rem)"
+                        className="h-auto w-full"
+                      />
+                    </div>
+                    <figcaption className="mt-3 flex flex-col items-start gap-1.5">
+                      <span className="font-mono text-xs text-muted-foreground">{logo.label}</span>
+                      <p className="text-sm leading-relaxed text-muted-foreground">{logo.note}</p>
+                      <div className="flex gap-4">
+                        {logo.files.map((file) => (
+                          <a
+                            key={file.label}
+                            href={file.href}
+                            download={file.downloadName}
+                            aria-label={`${file.label} of the Cleve logo with ${logo.label.toLowerCase()}`}
+                            className={`font-mono text-xs underline ${linkPrimary}`}
+                          >
+                            {file.label}
+                          </a>
+                        ))}
+                      </div>
+                    </figcaption>
+                  </figure>
+                </li>
+              ))}
+            </ul>
+          </section>
 
           <section className="mt-16 space-y-4" aria-labelledby="bios-heading">
             <h2 id="bios-heading" className={sectionTitleClass}>
