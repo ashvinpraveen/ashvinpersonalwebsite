@@ -11,6 +11,8 @@ export const metadata: Metadata = createMetadata({
   title,
   description,
   path: "/brand",
+  image: "/og-brand.png",
+  imageAlt: "Speaker and press kit for Ashvin Praveen, with his three-quarter portrait.",
 });
 
 export default function BrandPage() {
