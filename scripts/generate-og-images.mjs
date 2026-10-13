@@ -4,8 +4,9 @@
  *   node scripts/generate-og-images.mjs
  *   node scripts/generate-og-images.mjs --artifacts /opt/cursor/artifacts
  *
- * Type is Timeless Serif (Display cut, STYL 0), with Georgia as the fallback
- * stack. The variable fonts are not in git. `scripts/fetch-fonts.mjs` downloads
+ * Layout follows the homepage hero: cutting-mat ground, faint gears, Timeless
+ * Serif (Display cut, STYL 0, Georgia fallback), and the square profile photo.
+ * The variable font is not in git. `scripts/fetch-fonts.mjs` downloads
  * them into src/assets/fonts/timeless/ when BLOB_READ_WRITE_TOKEN is set.
  *
  * Needs Chrome or Chromium on PATH (or CHROME_PATH).
@@ -22,44 +23,35 @@ const height = 630;
 
 const fontDir = join(root, "src/assets/fonts/timeless");
 const romanPath = join(fontDir, "TimelessSerifVF.woff2");
-const italicPath = join(fontDir, "TimelessSerifItalicVF.woff2");
 
 const cards = [
   {
     file: "og-image.png",
-    kicker: "ashvinpraveen.com",
-    titleLines: ["Ashvin Praveen"],
-    titleSize: 88,
+    title: "Ashvin Praveen",
     subtitle: "Co-founder & CEO of Cleve",
-    logos: true,
+    cleveWord: true,
   },
   {
     file: "og-brand.png",
-    kicker: "Ashvin Praveen",
-    titleLines: ["Speaker &", "press kit"],
-    titleSize: 80,
+    title: "Speaker & press kit",
     subtitle: "Bios, talks, and photos for events and press.",
-    logos: true,
   },
   {
     file: "og-startup.png",
-    kicker: "ashvinpraveen.com",
-    titleLines: ["Startup Simulator"],
-    titleSize: 64,
+    title: "Startup Simulator",
     subtitle: "Grow a pixel-art startup by managing marketing, product, and sales.",
-    logos: true,
   },
 ];
 
 const artifactsDir = readArtifactsDir(process.argv.slice(2));
 
-const grainSvg = readGrainSvg();
+const visuals = readFileSync(join(root, "src/lib/visuals.ts"), "utf8");
+const grainSvg = readGrainSvg(visuals);
+const cuttingMat = readCuttingMat(visuals);
 const roman = readFont(romanPath);
-const italic = readFont(italicPath);
-const portrait = dataUri(join(root, "public/brand/ashvin-praveen-portrait-three-quarter.png"));
-const cleve = dataUri(join(root, "public/brand/cleve-logo-black-text.png"));
-const malaysian = dataUri(join(root, "public/logo-malaysian-ai.png"));
-const naic = dataUri(join(root, "public/logo-naic.png"));
+const portrait = dataUri(join(root, "public/ashvin-profile.png"));
+const cleveMark = dataUri(join(root, "public/cleve-logo.png"));
+const gearMarkup = buildGearMarkup();
 
 const chrome = findChrome();
 const scratch = join(tmpdir(), `og-images-${process.pid}`);
@@ -103,13 +95,73 @@ function readFont(path) {
   }
 }
 
-function readGrainSvg() {
-  const source = readFileSync(join(root, "src/lib/visuals.ts"), "utf8");
+function readGrainSvg(source) {
   const match = source.match(/export const grainSvg = `([^`]+)`/);
   if (!match) {
     throw new Error("Could not read grainSvg from src/lib/visuals.ts");
   }
   return match[1];
+}
+
+function readCuttingMat(source) {
+  const match = source.match(/export const cuttingMatGridLight = \[([\s\S]*?)\]\.join/);
+  if (!match) {
+    throw new Error("Could not read cuttingMatGridLight from src/lib/visuals.ts");
+  }
+  const layers = [...match[1].matchAll(/"([^"]+)"/g)].map((found) => found[1]);
+  if (layers.length === 0) {
+    throw new Error("cuttingMatGridLight has no gradient layers");
+  }
+  return layers.join(", ");
+}
+
+function createGearPath(cx, cy, pitchRadius, toothDepth, teeth) {
+  const points = Array.from({ length: teeth * 2 }, (_, index) => {
+    const radius = pitchRadius + (index % 2 === 0 ? toothDepth / 2 : -toothDepth / 2);
+    const angle = -Math.PI / 2 + (index * Math.PI) / teeth;
+    return [cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius];
+  });
+  return points
+    .map(([x, y], index) => `${index === 0 ? "M" : "L"} ${x.toFixed(3)} ${y.toFixed(3)}`)
+    .join(" ") + " Z";
+}
+
+function buildGearMarkup() {
+  const ring = createGearPath(480, 320, 400, -10, 90);
+  const sun = createGearPath(480, 320, 320, 10, 72);
+  const planets = [
+    [660, 631.769],
+    [120, 320],
+    [660, 8.231],
+  ].map(([x, y]) => ({ x, y, path: createGearPath(x, y, 40, 10, 9) }));
+
+  const planetMarkup = planets
+    .map(
+      (gear) => `<g>
+        <circle cx="${gear.x}" cy="${gear.y}" r="40" stroke-dasharray="6 8" fill="none" />
+        <path d="${gear.path}" />
+      </g>`,
+    )
+    .join("");
+
+  const spokes = planets
+    .map(
+      (gear) => `<line x1="480" y1="320" x2="${gear.x}" y2="${gear.y}" />
+        <circle cx="${gear.x}" cy="${gear.y}" r="7" fill="none" />`,
+    )
+    .join("");
+
+  return `<g stroke="currentColor" stroke-width="1.5" fill="none">
+    <path d="${ring}" opacity="0.36" />
+    <circle cx="480" cy="320" r="400" stroke-dasharray="4 11" stroke-width="1.2" opacity="0.32" />
+    <path d="${sun}" />
+    <circle cx="480" cy="320" r="320" stroke-dasharray="6 8" />
+    <g opacity="0.34" stroke-width="1.1">
+      ${spokes}
+      <circle cx="480" cy="320" r="20" />
+    </g>
+    ${planetMarkup}
+  </g>`;
 }
 
 function dataUri(path) {
@@ -151,7 +203,7 @@ async function screenshot(htmlPath, pngPath) {
       "--hide-scrollbars",
       "--force-device-scale-factor=1",
       `--window-size=${width},${height}`,
-      "--default-background-color=FFF3ECE2",
+      "--default-background-color=FFEDE7DE",
       "--virtual-time-budget=4000",
       "--run-all-compositor-stages-before-draw",
       `--screenshot=${pngPath}`,
@@ -194,15 +246,13 @@ function pngSize(buffer) {
   };
 }
 
-function renderHtml(card) {
-  const logos = card.logos
-    ? `<div class="logos">
-        <img class="cleve" src="${cleve}" alt="" />
-        <img class="my" src="${malaysian}" alt="" />
-        <img class="naic" src="${naic}" alt="" />
-      </div>`
-    : "";
+function subtitleHtml(card) {
+  if (!card.cleveWord) return escapeHtml(card.subtitle);
+  const [before, after = ""] = card.subtitle.split("Cleve");
+  return `${escapeHtml(before)}<span class="cleve"><img src="${cleveMark}" alt="" />Cleve</span>${escapeHtml(after)}`;
+}
 
+function renderHtml(card) {
   return `<!doctype html>
 <html>
 <head>
@@ -215,26 +265,19 @@ function renderHtml(card) {
     font-style: normal;
     font-display: block;
   }
-  @font-face {
-    font-family: "Timeless Serif";
-    src: url("data:font/woff2;base64,${italic}") format("woff2");
-    font-weight: 300 700;
-    font-style: italic;
-    font-display: block;
-  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     width: ${width}px;
     height: ${height}px;
     overflow: hidden;
-    background: hsl(36 40% 92%);
+    background: hsl(35 30% 90%);
   }
   .card {
     position: relative;
     width: ${width}px;
     height: ${height}px;
     overflow: hidden;
-    background: hsl(36 40% 92%);
+    background: hsl(35 30% 90%);
     color: hsl(30 14% 25%);
     font-family: "Timeless Serif", Georgia, "Iowan Old Style", "Times New Roman", serif;
     font-weight: 400;
@@ -243,114 +286,97 @@ function renderHtml(card) {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
+  .mat {
+    position: absolute;
+    inset: 0;
+    background-image: ${cuttingMat};
+    background-position: right top;
+  }
+  .gears {
+    position: absolute;
+    right: -133px;
+    top: -20px;
+    width: 667px;
+    height: 733px;
+    overflow: visible;
+    color: hsl(30 14% 25% / 0.15);
+  }
+  .stage {
+    position: absolute;
+    z-index: 2;
+    left: 72px;
+    right: 64px;
+    top: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    column-gap: 40px;
+    align-items: center;
+  }
+  h1 {
+    max-width: 12em;
+    font-size: 44px;
+    font-weight: 400;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    font-variation-settings: "STYL" 0, "wght" 400;
+  }
+  .sub {
+    max-width: 28em;
+    margin-top: 12px;
+    font-size: 20px;
+    font-weight: 400;
+    font-style: normal;
+    letter-spacing: -0.01em;
+    line-height: 1.55;
+    color: hsl(30 14% 25% / 0.7);
+    font-variation-settings: "STYL" 0, "wght" 400;
+  }
+  .cleve {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28em;
+    font-weight: 600;
+    color: hsl(30 14% 25%);
+    font-variation-settings: "STYL" 0, "wght" 600;
+  }
+  .cleve img {
+    width: 0.95em;
+    height: 0.95em;
+    border-radius: 0.2em;
+  }
+  .photo {
+    width: 300px;
+    height: 300px;
+    border-radius: 16px;
+    object-fit: cover;
+    object-position: center top;
+  }
   .grain {
     position: absolute;
     inset: 0;
     z-index: 4;
     pointer-events: none;
-    /* Same grain tile as the site (128px, overlay). A touch stronger than the
-       hero's 0.3 so the tooth still reads after link-preview compression. */
-    opacity: 0.42;
+    opacity: 0.3;
     mix-blend-mode: overlay;
     background-image: ${grainSvg};
     background-repeat: repeat;
     background-size: 128px 128px;
   }
-  .copy {
-    position: absolute;
-    z-index: 2;
-    left: 68px;
-    top: 64px;
-    bottom: 52px;
-    width: 640px;
-    display: flex;
-    flex-direction: column;
-  }
-  .kicker {
-    font-size: 20px;
-    line-height: 1.2;
-    letter-spacing: -0.01em;
-    color: hsl(30 12% 48%);
-    font-variation-settings: "STYL" 0, "wght" 400;
-  }
-  h1 {
-    margin-top: 16px;
-    max-width: 9.6em;
-    font-size: ${card.titleSize}px;
-    font-weight: 400;
-    font-style: normal;
-    letter-spacing: -0.03em;
-    line-height: 1.02;
-    font-variation-settings: "STYL" 0, "wght" 400;
-  }
-  .rule {
-    width: 64px;
-    height: 5px;
-    margin: 26px 0 20px;
-    border-radius: 99px;
-    background: hsl(33 18% 82%);
-  }
-  .sub {
-    max-width: 15.5em;
-    font-size: 30px;
-    font-style: italic;
-    font-weight: 400;
-    letter-spacing: -0.02em;
-    line-height: 1.28;
-    color: hsl(30 14% 25% / 0.86);
-    font-variation-settings: "wght" 400;
-  }
-  .logos {
-    display: flex;
-    align-items: center;
-    gap: 22px;
-    margin-top: auto;
-    padding-top: 28px;
-  }
-  .logos img { display: block; width: auto; }
-  .logos .cleve { height: 38px; }
-  .logos .my { height: 44px; }
-  .logos .naic { height: 42px; }
-  .frame {
-    position: absolute;
-    z-index: 1;
-    top: 40px;
-    right: 48px;
-    width: 356px;
-    height: 535px;
-  }
-  .mat {
-    position: absolute;
-    left: 16px;
-    top: 16px;
-    width: 356px;
-    height: 535px;
-    border-radius: 18px;
-    background: hsl(33 18% 82%);
-  }
-  .frame img {
-    position: absolute;
-    inset: 0;
-    width: 356px;
-    height: 535px;
-    object-fit: cover;
-    object-position: center center;
-    border-radius: 18px;
-  }
 </style>
 </head>
 <body>
   <div class="card">
-    <div class="copy">
-      <p class="kicker">${escapeHtml(card.kicker)}</p>
-      <h1>${card.titleLines.map((line) => escapeHtml(line)).join("<br />")}</h1>
-      <div class="rule"></div>
-      <p class="sub">${escapeHtml(card.subtitle)}</p>
-      ${logos}
-    </div>
-    <div class="frame">
-      <div class="mat"></div>
-      <img src="${portrait}" alt="" />
+    <div class="mat"></div>
+    <svg class="gears" viewBox="0 0 800 880" fill="none" aria-hidden="true">
+      ${gearMarkup}
+    </svg>
+    <div class="stage">
+      <div>
+        <h1>${escapeHtml(card.title)}</h1>
+        <p class="sub">${subtitleHtml(card)}</p>
+      </div>
+      <img class="photo" src="${portrait}" alt="" />
     </div>
     <div class="grain"></div>
   </div>
