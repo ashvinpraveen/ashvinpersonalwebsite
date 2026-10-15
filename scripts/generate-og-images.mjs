@@ -4,10 +4,12 @@
  *   node scripts/generate-og-images.mjs
  *   node scripts/generate-og-images.mjs --artifacts /opt/cursor/artifacts
  *
- * Layout follows the homepage hero: cutting-mat ground, faint gears, Timeless
- * Serif (Display cut, STYL 0, Georgia fallback), and the square profile photo.
- * The variable font is not in git. `scripts/fetch-fonts.mjs` downloads
- * them into src/assets/fonts/timeless/ when BLOB_READ_WRITE_TOKEN is set.
+ * Layout follows the homepage hero: cutting-mat ground, faint gears, and the
+ * square profile photo. The heading is Timeless Serif (Display cut, STYL 0,
+ * Georgia fallback). Secondary text is Timeless Sans when
+ * src/assets/fonts/timeless/TimelessSansVF.woff2 is present, and DM Sans
+ * otherwise. Those files are gitignored; `scripts/fetch-fonts.mjs` downloads
+ * them when BLOB_READ_WRITE_TOKEN is set.
  *
  * Needs Chrome or Chromium on PATH (or CHROME_PATH).
  */
@@ -23,6 +25,7 @@ const height = 630;
 
 const fontDir = join(root, "src/assets/fonts/timeless");
 const romanPath = join(fontDir, "TimelessSerifVF.woff2");
+const sansPath = join(fontDir, "TimelessSansVF.woff2");
 
 const cards = [
   {
@@ -33,13 +36,14 @@ const cards = [
   },
   {
     file: "og-brand.png",
-    title: "Speaker & press kit",
-    subtitle: "Bios, talks, and photos for events and press.",
+    // Kept off one line so "kit" is not stranded beside the photo.
+    title: "Speaker &\npress kit",
+    subtitle: "Bios, talks, and photos\nfor events and press.",
   },
   {
     file: "og-startup.png",
     title: "Startup Simulator",
-    subtitle: "Grow a pixel-art startup by managing marketing, product, and sales.",
+    subtitle: "Grow a pixel-art startup\nby managing marketing,\nproduct, and sales.",
   },
 ];
 
@@ -49,6 +53,7 @@ const visuals = readFileSync(join(root, "src/lib/visuals.ts"), "utf8");
 const grainSvg = readGrainSvg(visuals);
 const cuttingMat = readCuttingMat(visuals);
 const roman = readFont(romanPath);
+const sans = await loadSans();
 const portrait = dataUri(join(root, "public/ashvin-profile.png"));
 const cleveMark = dataUri(join(root, "public/cleve-logo.png"));
 const gearMarkup = buildGearMarkup();
@@ -93,6 +98,49 @@ function readFont(path) {
       `Missing ${path}. Run scripts/fetch-fonts.mjs with BLOB_READ_WRITE_TOKEN set. See the Timeless fonts section of the README.`,
     );
   }
+}
+
+async function loadSans() {
+  if (existsSync(sansPath)) {
+    console.log("secondary type: Timeless Sans");
+    return {
+      family: '"Timeless Sans", "DM Sans", system-ui, sans-serif',
+      face: faceRule("Timeless Sans", readFileSync(sansPath).toString("base64"), "300 800"),
+      variation: '"STYL" 0, "ital" 0, "wght" 420',
+      cleveVariation: '"STYL" 0, "ital" 0, "wght" 700',
+    };
+  }
+
+  console.log("secondary type: DM Sans");
+  const cssResponse = await fetch(
+    "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,700",
+    { headers: { "User-Agent": "Mozilla/5.0" } },
+  );
+  if (!cssResponse.ok) {
+    throw new Error("Timeless Sans is missing and DM Sans could not be downloaded");
+  }
+  const css = await cssResponse.text();
+  const url = css.match(/https:\/\/fonts\.gstatic\.com\/[^)]+/);
+  if (!url) throw new Error("DM Sans stylesheet did not include a font file");
+  const fontResponse = await fetch(url[0]);
+  if (!fontResponse.ok) throw new Error("DM Sans file download failed");
+  const bytes = Buffer.from(await fontResponse.arrayBuffer());
+  return {
+    family: '"DM Sans", system-ui, sans-serif',
+    face: faceRule("DM Sans", bytes.toString("base64"), "400 700"),
+    variation: '"opsz" 24, "wght" 400',
+    cleveVariation: '"opsz" 24, "wght" 700',
+  };
+}
+
+function faceRule(family, base64, weight) {
+  return `@font-face {
+    font-family: "${family}";
+    src: url("data:font/woff2;base64,${base64}") format("woff2");
+    font-weight: ${weight};
+    font-style: normal;
+    font-display: block;
+  }`;
 }
 
 function readGrainSvg(source) {
@@ -246,10 +294,14 @@ function pngSize(buffer) {
   };
 }
 
+function withBreaks(value) {
+  return escapeHtml(value).replaceAll("\n", "<br>");
+}
+
 function subtitleHtml(card) {
-  if (!card.cleveWord) return escapeHtml(card.subtitle);
+  if (!card.cleveWord) return withBreaks(card.subtitle);
   const [before, after = ""] = card.subtitle.split("Cleve");
-  return `${escapeHtml(before)}<span class="cleve"><img src="${cleveMark}" alt="" />Cleve</span>${escapeHtml(after)}`;
+  return `${withBreaks(before)}<span class="cleve"><img src="${cleveMark}" alt="" />Cleve</span>${withBreaks(after)}`;
 }
 
 function renderHtml(card) {
@@ -265,6 +317,7 @@ function renderHtml(card) {
     font-style: normal;
     font-display: block;
   }
+  ${sans.face}
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     width: ${width}px;
@@ -279,7 +332,7 @@ function renderHtml(card) {
     overflow: hidden;
     background: hsl(35 30% 90%);
     color: hsl(30 14% 25%);
-    font-family: "Timeless Serif", Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-family: ${sans.family};
     font-weight: 400;
     font-style: normal;
     font-synthesis: none;
@@ -304,41 +357,41 @@ function renderHtml(card) {
   .stage {
     position: absolute;
     z-index: 2;
-    left: 72px;
-    right: 64px;
+    left: 56px;
+    right: 48px;
     top: 0;
     bottom: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 300px;
-    column-gap: 40px;
+    grid-template-columns: minmax(0, 1fr) 400px;
+    column-gap: 36px;
     align-items: center;
   }
   h1 {
-    max-width: 12em;
-    font-size: 44px;
+    font-family: "Timeless Serif", Georgia, "Iowan Old Style", "Times New Roman", serif;
+    font-size: 84px;
     font-weight: 400;
     letter-spacing: -0.03em;
-    line-height: 1.1;
+    line-height: 1.02;
     font-variation-settings: "STYL" 0, "wght" 400;
   }
   .sub {
-    max-width: 28em;
-    margin-top: 12px;
-    font-size: 20px;
-    font-weight: 400;
+    margin-top: 20px;
+    font-family: ${sans.family};
+    font-size: 40px;
+    font-weight: 420;
     font-style: normal;
-    letter-spacing: -0.01em;
-    line-height: 1.55;
-    color: hsl(30 14% 25% / 0.7);
-    font-variation-settings: "STYL" 0, "wght" 400;
+    letter-spacing: -0.015em;
+    line-height: 1.3;
+    color: hsl(30 14% 25% / 0.72);
+    font-variation-settings: ${sans.variation};
   }
   .cleve {
     display: inline-flex;
     align-items: center;
     gap: 0.28em;
-    font-weight: 600;
+    font-weight: 700;
     color: hsl(30 14% 25%);
-    font-variation-settings: "STYL" 0, "wght" 600;
+    font-variation-settings: ${sans.cleveVariation};
   }
   .cleve img {
     width: 0.95em;
@@ -346,9 +399,9 @@ function renderHtml(card) {
     border-radius: 0.2em;
   }
   .photo {
-    width: 300px;
-    height: 300px;
-    border-radius: 16px;
+    width: 400px;
+    height: 400px;
+    border-radius: 20px;
     object-fit: cover;
     object-position: center top;
   }
@@ -373,7 +426,7 @@ function renderHtml(card) {
     </svg>
     <div class="stage">
       <div>
-        <h1>${escapeHtml(card.title)}</h1>
+        <h1>${withBreaks(card.title)}</h1>
         <p class="sub">${subtitleHtml(card)}</p>
       </div>
       <img class="photo" src="${portrait}" alt="" />
