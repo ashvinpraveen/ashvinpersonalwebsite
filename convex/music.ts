@@ -1,25 +1,44 @@
 import { v } from "convex/values";
 import {
-  action,
+  internalAction,
   internalMutation,
   internalQuery,
   mutation,
   query,
+  type MutationCtx,
+  type QueryCtx,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
+import {
+  MAX_BARS,
+  STYLE_IDS,
+  buildPolishPrompt,
+  buildPolishTitle,
+  chordName,
+  clampTempo,
+  keyName,
+  parseChordToken,
+  type Chord,
+  type StyleId,
+} from "./lib/musicTheory";
 
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-const RATE_LIMIT_MAX = 100;
 const ELEVENLABS_API_BASE = "https://api.elevenlabs.io";
+/** Each visitor (by browser client id) gets a few takes an hour. */
+const CLIENT_WINDOW_MS = 60 * 60 * 1000;
+const CLIENT_MAX = 6;
+/** Site-wide guard on ElevenLabs spend. Override with MUSIC_POLISH_DAILY_LIMIT. */
+const GLOBAL_WINDOW_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_GLOBAL_MAX = 60;
+/** A generation that hasn't finished in this long is treated as failed. */
+const STALE_AFTER_MS = 10 * 60 * 1000;
+/** Polish generates a continuous practice take instead of a short seamless loop. */
+const POLISH_DURATION_MS = 120_000;
+/** Reject tiny payloads; ~2 min mp3 @ 128kbps is ~1.8MB. */
+const MIN_POLISHED_AUDIO_BYTES = 80_000;
 
-const drumPatternValidator = v.union(
-  v.literal("none"),
-  v.literal("fourFloor"),
-  v.literal("softPop"),
-  v.literal("rockBasic"),
-  v.literal("boomBap"),
-);
+const styleValidator = v.union(...STYLE_IDS.map((id) => v.literal(id)));
+const modeValidator = v.union(v.literal("major"), v.literal("minor"));
 
 function env(name: string) {
   return process.env[name]?.trim() || "";
@@ -32,11 +51,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function asString(value: unknown) {
   return typeof value === "string" ? value : null;
 }
-
-/** Polish generates a continuous practice take instead of a short seamless loop. */
-const POLISH_DURATION_MS = 120_000;
-/** Reject tiny payloads; ~2 min mp3 @ 128kbps is ~1.8MB, keep a conservative floor. */
-const MIN_POLISHED_AUDIO_BYTES = 80_000;
 
 function extractBoundary(contentType: string) {
   const match = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(contentType);
@@ -110,18 +124,52 @@ function indexOfBytes(haystack: Uint8Array, needle: Uint8Array) {
   return -1;
 }
 
-async function trackAudioUrl(
-  ctx: { storage: { getUrl: (id: Id<"_storage">) => Promise<string | null> } },
-  track: {
-    storageId?: Id<"_storage">;
-    audioUrl?: string;
-    streamAudioUrl?: string;
-  },
-) {
+async function trackAudioUrl(ctx: QueryCtx, track: Doc<"musicTracks">) {
   if (track.storageId) {
     return (await ctx.storage.getUrl(track.storageId)) ?? null;
   }
   return track.audioUrl ?? track.streamAudioUrl ?? null;
+}
+
+async function toClientTrack(ctx: QueryCtx, track: Doc<"musicTracks">) {
+  const pending = track.status === "queued" || track.status === "generating";
+  const stale = pending && Date.now() - track.updatedAt > STALE_AFTER_MS;
+  return {
+    _id: track._id,
+    status: stale ? ("failed" as const) : track.status,
+    title: track.title,
+    key: track.key,
+    tempoBpm: track.tempoBpm,
+    styleId: track.styleId ?? null,
+    progression: track.progression,
+    audioUrl: track.status === "ready" ? await trackAudioUrl(ctx, track) : null,
+    errorMessage: stale ? "Generation timed out. Try again." : (track.errorMessage ?? null),
+    createdAt: track.createdAt,
+  };
+}
+
+async function bumpLimit(
+  ctx: MutationCtx,
+  key: string,
+  windowMs: number,
+  max: number,
+  message: string,
+) {
+  const now = Date.now();
+  const row = await ctx.db
+    .query("musicRateLimits")
+    .withIndex("by_key", (q) => q.eq("key", key))
+    .unique();
+  if (!row) {
+    await ctx.db.insert("musicRateLimits", { key, windowStart: now, count: 1, updatedAt: now });
+    return;
+  }
+  if (now - row.windowStart >= windowMs) {
+    await ctx.db.patch(row._id, { windowStart: now, count: 1, updatedAt: now });
+    return;
+  }
+  if (row.count >= max) throw new Error(message);
+  await ctx.db.patch(row._id, { count: row.count + 1, updatedAt: now });
 }
 
 export const isPolishConfigured = query({
@@ -139,18 +187,7 @@ export const getTrack = query({
   handler: async (ctx, args) => {
     const track = await ctx.db.get(args.trackId);
     if (!track || track.clientId !== args.clientId) return null;
-    const audioUrl = await trackAudioUrl(ctx, track);
-    return {
-      _id: track._id,
-      status: track.status,
-      title: track.title,
-      stylePrompt: track.stylePrompt,
-      audioUrl,
-      streamAudioUrl: audioUrl,
-      imageUrl: track.imageUrl ?? null,
-      errorMessage: track.errorMessage ?? null,
-      createdAt: track.createdAt,
-    };
+    return await toClientTrack(ctx, track);
   },
 });
 
@@ -159,28 +196,13 @@ export const listRecent = query({
     clientId: v.string(),
   },
   handler: async (ctx, args) => {
+    if (!args.clientId.trim()) return [];
     const tracks = await ctx.db
       .query("musicTracks")
       .withIndex("by_clientId_and_createdAt", (q) => q.eq("clientId", args.clientId))
       .order("desc")
-      .take(8);
-
-    return await Promise.all(
-      tracks.map(async (track) => {
-        const audioUrl = await trackAudioUrl(ctx, track);
-        return {
-          _id: track._id,
-          status: track.status,
-          title: track.title,
-          stylePrompt: track.stylePrompt,
-          audioUrl,
-          streamAudioUrl: audioUrl,
-          imageUrl: track.imageUrl ?? null,
-          errorMessage: track.errorMessage ?? null,
-          createdAt: track.createdAt,
-        };
-      }),
-    );
+      .take(12);
+    return await Promise.all(tracks.map((track) => toClientTrack(ctx, track)));
   },
 });
 
@@ -207,83 +229,83 @@ export const deleteTrack = mutation({
   },
 });
 
-export const generateUploadUrl = mutation({
+/**
+ * Queue an ElevenLabs studio take. The prompt is built here from validated
+ * musical settings, so the endpoint can't be used as a free-form generator.
+ */
+export const requestPolish = mutation({
   args: {
     clientId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    if (!args.clientId.trim()) throw new Error("Missing client id.");
-    return await ctx.storage.generateUploadUrl();
-  },
-});
-
-export const createQueuedTrack = internalMutation({
-  args: {
-    clientId: v.string(),
-    title: v.string(),
-    stylePrompt: v.string(),
+    tonic: v.number(),
+    mode: modeValidator,
     tempoBpm: v.number(),
-    key: v.string(),
-    progression: v.string(),
-    drumPatternId: drumPatternValidator,
-    bars: v.number(),
+    styleId: styleValidator,
+    chords: v.array(v.string()),
     notes: v.string(),
   },
-  handler: async (ctx, args) => {
-    if (!args.clientId.trim()) {
-      throw new Error("Missing client id.");
-    }
+  handler: async (ctx, args): Promise<Id<"musicTracks">> => {
+    const clientId = args.clientId.trim().slice(0, 80);
+    if (!clientId) throw new Error("Missing client id.");
     if (!env("ELEVENLABS_API_KEY")) {
-      throw new Error(
-        "ElevenLabs polish is not configured. Set ELEVENLABS_API_KEY in Convex.",
-      );
+      throw new Error("Studio takes aren't set up yet (ELEVENLABS_API_KEY is missing).");
+    }
+    if (!Number.isInteger(args.tonic) || args.tonic < 0 || args.tonic > 11) {
+      throw new Error("Invalid key.");
+    }
+    if (args.chords.length === 0 || args.chords.length > MAX_BARS) {
+      throw new Error(`Use between 1 and ${MAX_BARS} bars.`);
+    }
+    const chords: Chord[] = [];
+    for (const token of args.chords) {
+      const chord = parseChordToken(token);
+      if (!chord) throw new Error("Invalid chord.");
+      chords.push(chord);
     }
 
+    await bumpLimit(
+      ctx,
+      `music:${clientId}`,
+      CLIENT_WINDOW_MS,
+      CLIENT_MAX,
+      "You've made a lot of takes this hour. Give it a little while.",
+    );
+    const globalMax = Number(env("MUSIC_POLISH_DAILY_LIMIT")) || DEFAULT_GLOBAL_MAX;
+    await bumpLimit(
+      ctx,
+      "music:global",
+      GLOBAL_WINDOW_MS,
+      globalMax,
+      "The studio is fully booked today. Try again tomorrow!",
+    );
+
+    const spec = {
+      tonic: args.tonic,
+      mode: args.mode,
+      tempoBpm: clampTempo(args.tempoBpm),
+      styleId: args.styleId as StyleId,
+      chords,
+      notes: args.notes.slice(0, 240),
+    };
     const now = Date.now();
-    const rateLimitKey = `music:${args.clientId}`;
-    const rateLimit = await ctx.db
-      .query("musicRateLimits")
-      .withIndex("by_key", (q) => q.eq("key", rateLimitKey))
-      .unique();
-
-    if (rateLimit && now - rateLimit.windowStart < RATE_LIMIT_WINDOW_MS) {
-      if (rateLimit.count >= RATE_LIMIT_MAX) {
-        throw new Error("Polish limit reached. Try again in a bit.");
-      }
-      await ctx.db.patch(rateLimit._id, {
-        count: rateLimit.count + 1,
-        updatedAt: now,
-      });
-    } else if (rateLimit) {
-      await ctx.db.patch(rateLimit._id, {
-        windowStart: now,
-        count: 1,
-        updatedAt: now,
-      });
-    } else {
-      await ctx.db.insert("musicRateLimits", {
-        key: rateLimitKey,
-        windowStart: now,
-        count: 1,
-        updatedAt: now,
-      });
-    }
-
-    return await ctx.db.insert("musicTracks", {
-      clientId: args.clientId,
+    const trackId = await ctx.db.insert("musicTracks", {
+      clientId,
       status: "queued",
-      title: args.title.slice(0, 100),
-      stylePrompt: args.stylePrompt.slice(0, 1000),
-      tempoBpm: args.tempoBpm,
-      key: args.key,
-      progression: args.progression,
-      drumPatternId: args.drumPatternId,
-      bars: args.bars,
+      title: buildPolishTitle(spec).slice(0, 100),
+      stylePrompt: buildPolishPrompt(spec).slice(0, 1800),
+      tempoBpm: spec.tempoBpm,
+      key: keyName(spec.tonic, spec.mode),
+      mode: spec.mode,
+      styleId: spec.styleId,
+      progression: chords.map((ch) => chordName(ch, spec.tonic, spec.mode)).join(" "),
+      drumPatternId: spec.styleId,
+      bars: chords.length,
       hasMicTake: false,
-      notes: args.notes.slice(0, 400),
+      notes: spec.notes,
       createdAt: now,
       updatedAt: now,
     });
+    await ctx.scheduler.runAfter(0, internal.music.generate, { trackId });
+    return trackId;
   },
 });
 
@@ -337,53 +359,41 @@ export const getTrackInternal = internalQuery({
   },
 });
 
-export const polish = action({
-  args: {
-    clientId: v.string(),
-    title: v.string(),
-    stylePrompt: v.string(),
-    tempoBpm: v.number(),
-    key: v.string(),
-    progression: v.string(),
-    drumPatternId: drumPatternValidator,
-    bars: v.number(),
-    notes: v.string(),
-  },
-  handler: async (ctx, args): Promise<{ trackId: Id<"musicTracks">; audioUrl: string | null }> => {
+async function readErrorDetail(response: Response) {
+  let detail = `ElevenLabs request failed (${response.status})`;
+  const text = await response.text().catch(() => "");
+  try {
+    const payload: unknown = JSON.parse(text);
+    detail =
+      (isRecord(payload) && asString(payload.detail)) ||
+      (isRecord(payload) && isRecord(payload.detail) && asString(payload.detail.message)) ||
+      (isRecord(payload) && asString(payload.message)) ||
+      detail;
+  } catch {
+    if (text) detail = text.slice(0, 300);
+  }
+  return detail;
+}
+
+export const generate = internalAction({
+  args: { trackId: v.id("musicTracks") },
+  handler: async (ctx, args) => {
+    const { trackId } = args;
+    const track = await ctx.runQuery(internal.music.getTrackInternal, { trackId });
+    if (!track || track.status !== "queued") return null;
+
     const apiKey = env("ELEVENLABS_API_KEY");
     if (!apiKey) {
-      throw new Error(
-        "ElevenLabs polish is not configured. Set ELEVENLABS_API_KEY in Convex.",
-      );
+      await ctx.runMutation(internal.music.markFailed, {
+        trackId,
+        errorMessage: "ElevenLabs isn't configured.",
+      });
+      return null;
     }
-
-    const trackId: Id<"musicTracks"> = await ctx.runMutation(
-      internal.music.createQueuedTrack,
-      {
-        clientId: args.clientId,
-        title: args.title,
-        stylePrompt: args.stylePrompt,
-        tempoBpm: args.tempoBpm,
-        key: args.key,
-        progression: args.progression,
-        drumPatternId: args.drumPatternId,
-        bars: args.bars,
-        notes: args.notes,
-      },
-    );
-
     await ctx.runMutation(internal.music.markGenerating, { trackId });
 
-    const modelId = env("ELEVENLABS_MUSIC_MODEL") || "music_v2";
-    const prompt = [
-      args.stylePrompt.slice(0, 1800),
-      "about two minutes long",
-      "steady repeating progression the whole time",
-      "no vocals, no lyrics, no singing",
-    ].join(", ");
-
     try {
-      // Prompt mode on purpose: audio conditioning was cloning our local synth demo.
+      // Prompt mode on purpose: audio conditioning cloned our local synth demo.
       const response = await fetch(
         `${ELEVENLABS_API_BASE}/v1/music?output_format=mp3_44100_128`,
         {
@@ -394,96 +404,37 @@ export const polish = action({
             Accept: "audio/mpeg, application/octet-stream, multipart/mixed",
           },
           body: JSON.stringify({
-            prompt,
+            prompt: track.stylePrompt,
             music_length_ms: POLISH_DURATION_MS,
-            model_id: modelId,
+            model_id: env("ELEVENLABS_MUSIC_MODEL") || "music_v2",
             force_instrumental: true,
           }),
         },
       );
 
       if (!response.ok) {
-        let detail = `ElevenLabs request failed (${response.status})`;
-        try {
-          const payload: unknown = await response.json();
-          detail =
-            (isRecord(payload) && asString(payload.detail)) ||
-            (isRecord(payload) &&
-              isRecord(payload.detail) &&
-              asString(payload.detail.message)) ||
-            (isRecord(payload) && asString(payload.message)) ||
-            detail;
-        } catch {
-          const text = await response.text().catch(() => "");
-          if (text) detail = text.slice(0, 300);
-        }
-        await ctx.runMutation(internal.music.markFailed, {
-          trackId,
-          errorMessage: detail,
-        });
-        throw new Error(detail);
+        throw new Error(await readErrorDetail(response));
       }
 
       const contentType = response.headers.get("content-type") || "audio/mpeg";
-      const providerSongId =
-        response.headers.get("song-id") ||
-        response.headers.get("Song-Id") ||
-        undefined;
-
-      let audioBlob: Blob;
-      if (contentType.includes("multipart")) {
-        const bytes = await response.arrayBuffer();
-        audioBlob = extractAudioFromMultipart(bytes, contentType);
-      } else {
-        audioBlob = await response.blob();
-      }
-
-      const audioType = (audioBlob.type || contentType).toLowerCase();
-      if (audioType.includes("wav") || audioType.includes("x-wav")) {
-        await ctx.runMutation(internal.music.markFailed, {
-          trackId,
-          errorMessage: "ElevenLabs returned WAV unexpectedly (looks like a demo export).",
-        });
-        throw new Error("Polish returned unexpected WAV audio.");
-      }
+      const providerSongId = response.headers.get("song-id") || undefined;
+      const audioBlob = contentType.includes("multipart")
+        ? extractAudioFromMultipart(await response.arrayBuffer(), contentType)
+        : await response.blob();
 
       if (audioBlob.size < MIN_POLISHED_AUDIO_BYTES) {
-        await ctx.runMutation(internal.music.markFailed, {
-          trackId,
-          errorMessage: `ElevenLabs returned tiny audio (${audioBlob.size} bytes).`,
-        });
-        throw new Error("ElevenLabs returned empty or tiny audio.");
+        throw new Error(`ElevenLabs returned tiny audio (${audioBlob.size} bytes).`);
       }
-
-      console.log("music.polish ready", {
-        trackId,
-        bytes: audioBlob.size,
-        contentType: audioType,
-        providerSongId: providerSongId ?? null,
-      });
 
       const storageId = await ctx.storage.store(
         new Blob([audioBlob], { type: audioBlob.type || "audio/mpeg" }),
       );
-
-      await ctx.runMutation(internal.music.markReady, {
-        trackId,
-        storageId,
-        providerSongId,
-      });
-
-      const audioUrl = await ctx.storage.getUrl(storageId);
-      return { trackId, audioUrl };
+      await ctx.runMutation(internal.music.markReady, { trackId, storageId, providerSongId });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Polish failed.";
-      const track = await ctx.runQuery(internal.music.getTrackInternal, { trackId });
-      if (track && track.status !== "failed" && track.status !== "ready") {
-        await ctx.runMutation(internal.music.markFailed, {
-          trackId,
-          errorMessage: message,
-        });
-      }
-      throw error instanceof Error ? error : new Error(message);
+      const message = error instanceof Error ? error.message : "Studio take failed.";
+      console.error("music.generate failed", { trackId, message });
+      await ctx.runMutation(internal.music.markFailed, { trackId, errorMessage: message });
     }
+    return null;
   },
 });

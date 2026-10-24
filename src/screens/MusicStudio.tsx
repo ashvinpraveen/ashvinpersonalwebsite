@@ -3,272 +3,340 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion } from "motion/react";
-import {
-  AudioLines,
-  Pause,
-  Play,
-  RotateCcw,
-  Sparkles,
-} from "lucide-react";
+import { AudioLines, Dices, Minus, Pause, Play, Plus, Share2 } from "lucide-react";
 import {
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
 } from "react";
-import { toast } from "sonner";
-import type { Id } from "../../convex/_generated/dataModel";
-import { BackingLoopEngine } from "@/features/music/audioEngine";
-import BeatMeter from "@/features/music/BeatMeter";
+import { notify } from "@/features/music/notify";
+import {
+  chordName,
+  clampTempo,
+  findProgression,
+  keyName,
+  progressionsForMode,
+  type Chord,
+  type Mode,
+} from "../../convex/lib/musicTheory";
+import ChordChart from "@/features/music/ChordChart";
+import ChordEditor from "@/features/music/ChordEditor";
+import {
+  JamEngine,
+  buildPlan,
+  loopSeconds,
+  renderLoopWav,
+  type SongPlan,
+} from "@/features/music/engine";
+import GroovePanel from "@/features/music/GroovePanel";
+import { grooveFor } from "@/features/music/grooves";
+import {
+  applyProgression,
+  applyStyle,
+  decodeJam,
+  defaultJam,
+  encodeJam,
+  setChords,
+  surpriseJam,
+  type JamState,
+} from "@/features/music/jam";
 import {
   getOrCreateMusicClientId,
-  readMusicDraft,
-  writeMusicDraft,
+  readJamDraft,
+  writeJamDraft,
 } from "@/features/music/browser";
-import {
-  DEFAULT_BARS,
-  DEFAULT_KEY,
-  DEFAULT_PAD_VOICE,
-  DEFAULT_TEMPO_BPM,
-  DRUM_PATTERNS,
-  KEYS,
-  MAX_TEMPO_BPM,
-  MIN_TEMPO_BPM,
-  PAD_VOICES,
-  PROGRESSION_PRESETS,
-  ROMAN_OPTIONS,
-} from "@/features/music/config";
-import MusicPicker from "@/features/music/MusicPicker";
-import MusicTunerPanel from "@/features/music/MusicTunerPanel";
-import {
-  buildLocalPreviewLabel,
-  buildStylePrompt,
-  resolveChords,
-} from "@/features/music/prompt";
-import type {
-  BackingTrackParams,
-  DrumPatternId,
-  MusicKey,
-  PadVoiceId,
-  ProgressionPresetId,
-  RomanNumeral,
-  TransportState,
-} from "@/features/music/types";
+import KeySheet from "@/features/music/KeySheet";
+import MixPanel, { type ExportChoice } from "@/features/music/MixPanel";
+import Stage from "@/features/music/Stage";
+import TempoPanel from "@/features/music/TempoPanel";
+import TunerSheet from "@/features/music/TunerSheet";
+import { Label } from "@/features/music/ui";
+import { panelClass, usePosition } from "@/features/music/usePosition";
 import { useTapTempo } from "@/features/music/useTapTempo";
 import { isConvexConfigured, isMusicEnabled } from "@/lib/features";
-import { pageShellClassName } from "@/lib/layout";
-import { card } from "@/lib/styles";
-import {
-  cuttingMatGridDark,
-  cuttingMatGridLight,
-  grainSvg,
-} from "@/lib/visuals";
+import { cuttingMatGridDark, cuttingMatGridLight } from "@/lib/visuals";
 import { cn } from "@/lib/utils";
 
-const MusicPolishControls = dynamic(
-  () => import("@/features/music/MusicPolishControls"),
-  { ssr: false },
-);
+const StudioTakes = dynamic(() => import("@/features/music/StudioTakes"), { ssr: false });
 
-const PRESET_IDS = Object.keys(PROGRESSION_PRESETS) as Array<
-  Exclude<ProgressionPresetId, "custom">
->;
+type Tab = "groove" | "tempo" | "mix";
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: "groove", label: "Groove" },
+  { id: "tempo", label: "Tempo" },
+  { id: "mix", label: "Mix & export" },
+];
 
-const PAD_VOICE_IDS = Object.keys(PAD_VOICES) as PadVoiceId[];
+type WakeLockSentinelLike = { release: () => Promise<void> };
 
-const panelClass = cn(card, "border-0 shadow-none");
-const choiceClass =
-  "rounded-2xl px-3 py-3 text-left transition-colors bg-background/60 hover:bg-accent/70";
-const choiceActiveClass = "bg-foreground text-background hover:bg-foreground";
-const chipClass =
-  "h-10 min-w-10 rounded-full px-3 text-sm transition-colors bg-background/70 hover:bg-accent/70";
-const chipActiveClass = "bg-foreground text-background hover:bg-foreground";
+function slug(text: string) {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
 
-function barsForProgression(id: ProgressionPresetId) {
-  if (id === "custom") return DEFAULT_BARS;
-  return PROGRESSION_PRESETS[id].chords.length;
+function isTypingTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) ||
+    Boolean(target.closest("[role=dialog]"))
+  );
+}
+
+function exportChoices(plan: SongPlan): ExportChoice[] {
+  const seconds = loopSeconds(plan);
+  const fit = Math.max(1, Math.round(120 / seconds));
+  const fmt = (s: number) => (s < 60 ? `${Math.round(s)}s` : `${Math.round(s / 6) / 10} min`);
+  return [
+    { id: "one", label: `1 loop · ${fmt(seconds)}`, loops: 1 },
+    { id: "four", label: `4 loops · ${fmt(seconds * 4)}`, loops: 4 },
+    { id: "long", label: `~2 min`, loops: fit },
+  ];
 }
 
 function MusicStudioApp() {
+  const [jam, setJam] = useState<JamState>(defaultJam);
+  const [ready, setReady] = useState(false);
   const [clientId, setClientId] = useState("");
-  const [key, setKey] = useState<MusicKey>(DEFAULT_KEY);
-  const [progressionId, setProgressionId] =
-    useState<ProgressionPresetId>("blues-12");
-  const [customChords, setCustomChords] = useState<RomanNumeral[]>([
-    "I7",
-    "I7",
-    "I7",
-    "I7",
-    "IV7",
-    "IV7",
-    "I7",
-    "I7",
-    "V7",
-    "IV7",
-    "I7",
-    "V7",
-  ]);
-  const [drumPatternId, setDrumPatternId] =
-    useState<DrumPatternId>("softPop");
-  const [padVoiceId, setPadVoiceId] = useState<PadVoiceId>(DEFAULT_PAD_VOICE);
-  const [bars, setBars] = useState(12);
-  const [notes, setNotes] = useState("");
-  const [isLoopPlaying, setIsLoopPlaying] = useState(false);
+  const [engine, setEngine] = useState<JamEngine | null>(null);
+  const [tab, setTab] = useState<Tab>("groove");
+  const [editing, setEditing] = useState<number | null>(null);
+  const [keyOpen, setKeyOpen] = useState(false);
   const [tunerOpen, setTunerOpen] = useState(false);
-  const [keyPickerOpen, setKeyPickerOpen] = useState(false);
-  const [progressionPickerOpen, setProgressionPickerOpen] = useState(false);
-  const [transport, setTransport] = useState<TransportState>({
-    beat: 1,
-    barIndex: 0,
-    chord: "I7",
-    playing: false,
-  });
-  const [polishTrackId, setPolishTrackId] = useState<Id<"musicTracks"> | null>(
-    null,
-  );
-  const [isPolishing, setIsPolishing] = useState(false);
-  const [aiAudioUrl, setAiAudioUrl] = useState<string | null>(null);
-  const [draftReady, setDraftReady] = useState(false);
+  const [droneOn, setDroneOn] = useState(false);
+  const [exporting, setExporting] = useState<string | null>(null);
+  const position = usePosition(engine);
+  const playing = position.playing;
+  const controlsRef = useRef<HTMLDivElement | null>(null);
 
-  const { tempoBpm, setTempo, tap, tapCount, resetTaps } = useTapTempo(DEFAULT_TEMPO_BPM);
-  const engineRef = useRef<BackingLoopEngine | null>(null);
-  const [engineReady, setEngineReady] = useState(false);
-  const aiAudioRef = useRef<HTMLAudioElement | null>(null);
+  const plan = useMemo(() => buildPlan(jam), [jam]);
+  const groove = grooveFor(jam.styleId);
 
-  const params: BackingTrackParams = useMemo(
-    () => ({
-      tempoBpm,
-      key,
-      progressionId,
-      chords:
-        progressionId === "custom"
-          ? customChords
-          : PROGRESSION_PRESETS[progressionId].chords,
-      drumPatternId,
-      padVoiceId,
-      bars,
-      notes,
-    }),
-    [
-      bars,
-      customChords,
-      drumPatternId,
-      key,
-      notes,
-      padVoiceId,
-      progressionId,
-      tempoBpm,
-    ],
-  );
-
-  const stylePrompt = useMemo(() => buildStylePrompt(params), [params]);
-  const localLabel = useMemo(() => buildLocalPreviewLabel(params), [params]);
-
-  const stopLocalLoop = useCallback(() => {
-    engineRef.current?.stop();
-    setIsLoopPlaying(false);
+  const update = useCallback((patch: Partial<JamState> | ((jam: JamState) => JamState)) => {
+    setJam((current) => (typeof patch === "function" ? patch(current) : { ...current, ...patch }));
   }, []);
 
-  const resetBeat = useCallback(() => {
-    resetTaps();
-    void (async () => {
-      const engine = engineRef.current;
-      if (!engine) return;
-      await engine.reset(params);
-      setIsLoopPlaying(engine.isPlaying);
-    })();
-  }, [params, resetTaps]);
+  const setTempo = useCallback(
+    (bpm: number) => update((current) => ({ ...current, tempo: clampTempo(bpm) })),
+    [update],
+  );
+  const { tap, tapCount } = useTapTempo(setTempo);
 
+  // Boot: shared link > saved draft > defaults. Engine lives for the page's lifetime.
   useEffect(() => {
     setClientId(getOrCreateMusicClientId());
-    const draft = readMusicDraft();
-    if (draft) {
-      if (typeof draft.tempoBpm === "number") setTempo(draft.tempoBpm);
-      if (draft.key) setKey(draft.key);
-      if (
-        draft.progressionId === "custom" ||
-        (draft.progressionId && draft.progressionId in PROGRESSION_PRESETS)
-      ) {
-        setProgressionId(draft.progressionId);
-      }
-      if (draft.chords?.length) setCustomChords(draft.chords);
-      if (draft.drumPatternId) setDrumPatternId(draft.drumPatternId);
-      if (draft.padVoiceId && draft.padVoiceId in PAD_VOICES) {
-        setPadVoiceId(draft.padVoiceId);
-      }
-      if (typeof draft.bars === "number") setBars(draft.bars);
-      if (typeof draft.notes === "string") setNotes(draft.notes);
+    const draft = readJamDraft();
+    const base = draft ?? defaultJam();
+    const params = new URLSearchParams(window.location.search);
+    const shared = params.get("jam");
+    const decoded = shared ? decodeJam(shared, base) : null;
+    setJam(decoded ?? base);
+    if (shared) {
+      if (decoded) notify.success("Loaded a shared jam 🎶", { description: "Hit play to hear it." });
+      params.delete("jam");
+      const query = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
     }
-    setDraftReady(true);
-    const engine = new BackingLoopEngine();
-    engineRef.current = engine;
-    setEngineReady(true);
-    const unsubscribe = engine.subscribeTransport(setTransport);
-    return () => {
-      unsubscribe();
-      engine.dispose();
-      engineRef.current = null;
-      setEngineReady(false);
-    };
-  }, [setTempo]);
+    setReady(true);
+
+    const instance = new JamEngine();
+    setEngine(instance);
+    return () => instance.dispose();
+  }, []);
 
   useEffect(() => {
-    if (!draftReady) return;
-    writeMusicDraft(params);
-  }, [draftReady, params]);
+    engine?.setPlan(plan);
+  }, [engine, plan]);
 
   useEffect(() => {
-    engineRef.current?.setParams(params);
-  }, [params]);
+    engine?.setMix(jam.mix);
+  }, [engine, jam.mix]);
 
   useEffect(() => {
-    if (aiAudioRef.current) {
-      aiAudioRef.current.loop = false;
-    }
-  }, [aiAudioUrl]);
+    if (!ready) return;
+    const id = window.setTimeout(() => writeJamDraft(jam), 250);
+    return () => window.clearTimeout(id);
+  }, [jam, ready]);
 
-  async function toggleLocalLoop() {
-    const engine = engineRef.current;
+  const togglePlay = useCallback(() => {
     if (!engine) return;
-    const playing = await engine.toggle(params);
-    setIsLoopPlaying(playing);
-    if (playing && aiAudioRef.current) {
-      aiAudioRef.current.pause();
-    }
-  }
+    void engine.toggle({ countIn: jam.countIn });
+  }, [engine, jam.countIn]);
 
-  function handlePolishFallback() {
-    toast.message("Local loop is ready", {
-      description: "Connect Convex and set ELEVENLABS_API_KEY to polish with ElevenLabs.",
+  // Speed trainer: bump the tempo every N completed loops.
+  const jamRef = useRef(jam);
+  jamRef.current = jam;
+  useEffect(() => {
+    if (!engine) return;
+    let lastLoop = 0;
+    return engine.subscribe(() => {
+      const pos = engine.getPosition();
+      if (!pos.playing) {
+        lastLoop = 0;
+        return;
+      }
+      if (pos.loop === lastLoop) return;
+      lastLoop = pos.loop;
+      const { trainer, tempo } = jamRef.current;
+      if (!trainer.enabled || pos.loop % trainer.every !== 0 || tempo >= trainer.target) return;
+      const next = Math.min(trainer.target, tempo + trainer.step);
+      setJam((current) => ({ ...current, tempo: next }));
+      notify.message(`Speed trainer → ${next} BPM`, { duration: 1500 });
+    });
+  }, [engine]);
+
+  // Lock screen / headphone controls and keep the screen awake while jamming.
+  useEffect(() => {
+    if (!("mediaSession" in navigator)) return;
+    const session = navigator.mediaSession;
+    session.playbackState = playing ? "playing" : "paused";
+    if (playing && typeof MediaMetadata !== "undefined") {
+      session.metadata = new MediaMetadata({
+        title: jam.chords.map((ch) => chordName(ch, jam.tonic, jam.mode)).join(" · "),
+        artist: `${keyName(jam.tonic, jam.mode)} · ${groove.name} · ${jam.tempo} BPM`,
+        album: "Jam Room",
+      });
+    }
+    const handlers: Array<[MediaSessionAction, () => void]> = [
+      ["play", () => void engine?.play({ countIn: false })],
+      ["pause", () => engine?.stop()],
+      ["stop", () => engine?.stop()],
+    ];
+    for (const [action, handler] of handlers) {
+      try {
+        session.setActionHandler(action, handler);
+      } catch {
+        // Unsupported action.
+      }
+    }
+  }, [engine, groove.name, jam.chords, jam.mode, jam.tempo, jam.tonic, playing]);
+
+  useEffect(() => {
+    if (!playing) return;
+    let lock: WakeLockSentinelLike | null = null;
+    let cancelled = false;
+    const acquire = async () => {
+      try {
+        const nav = navigator as Navigator & {
+          wakeLock?: { request: (type: "screen") => Promise<WakeLockSentinelLike> };
+        };
+        if (nav.wakeLock && document.visibilityState === "visible") {
+          const next = await nav.wakeLock.request("screen");
+          if (cancelled) void next.release();
+          else lock = next;
+        }
+      } catch {
+        // Battery saver or unsupported.
+      }
+    };
+    void acquire();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void acquire();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      void lock?.release().catch(() => undefined);
+    };
+  }, [playing]);
+
+  // Keyboard: space play/stop, T tap, arrows nudge tempo.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target)) return;
+      if (event.code === "Space") {
+        event.preventDefault();
+        togglePlay();
+      } else if (event.key === "t" || event.key === "T") {
+        tap();
+      } else if (event.key === "ArrowRight" || event.key === "ArrowUp") {
+        event.preventDefault();
+        update((current) => ({ ...current, tempo: clampTempo(current.tempo + (event.shiftKey ? 5 : 1)) }));
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
+        event.preventDefault();
+        update((current) => ({ ...current, tempo: clampTempo(current.tempo - (event.shiftKey ? 5 : 1)) }));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tap, togglePlay, update]);
+
+  useEffect(() => {
+    void engine?.setDrone(droneOn && tunerOpen ? jam.tonic : null);
+  }, [droneOn, engine, jam.tonic, tunerOpen]);
+
+  function changeKey(tonic: number, mode: Mode) {
+    update((current) => {
+      const preset = current.progressionId ? findProgression(current.progressionId) : null;
+      // Presets follow the mode so "A minor" actually sounds minor.
+      if (preset && preset.mode !== mode) {
+        return applyProgression({ ...current, tonic }, progressionsForMode(mode)[0]!.id);
+      }
+      return { ...current, tonic, mode };
     });
   }
 
-  function selectProgression(id: ProgressionPresetId) {
-    setProgressionId(id);
-    if (id !== "custom") {
-      setBars(barsForProgression(id));
-      setCustomChords([...PROGRESSION_PRESETS[id].chords]);
-    }
-    setProgressionPickerOpen(false);
+  function changeChords(chords: Chord[], focus?: number | null) {
+    update((current) => setChords(current, chords));
+    if (focus !== undefined) setEditing(focus);
   }
 
-  function updateCustomChord(index: number, value: RomanNumeral) {
-    const base = resolveChords(params);
-    setProgressionId("custom");
-    setCustomChords(base.map((chord, i) => (i === index ? value : chord)));
+  function addBar() {
+    const last = jam.chords[jam.chords.length - 1]!;
+    update((current) => setChords(current, [...current.chords, { ...last }]));
+    setEditing(jam.chords.length);
+  }
+
+  async function share() {
+    const url = `${window.location.origin}/music?jam=${encodeJam(jam)}`;
+    const title = `${keyName(jam.tonic, jam.mode)} ${groove.name} jam`;
+    try {
+      if (navigator.share && window.matchMedia("(pointer: coarse)").matches) {
+        await navigator.share({ title, text: "Jam along with me 🎸", url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      notify.success("Jam link copied", { description: "Anyone who opens it gets this exact setup." });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      notify.error("Couldn't share the link.");
+    }
+  }
+
+  async function exportWav(choice: ExportChoice) {
+    try {
+      setExporting(choice.id);
+      const result = await renderLoopWav(plan, jam.mix, choice.loops);
+      const url = URL.createObjectURL(result.blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${slug(`${keyName(jam.tonic, jam.mode)} ${groove.name} ${jam.tempo}bpm`)}.wav`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      notify.success(`Exported ${result.loops} loop${result.loops > 1 ? "s" : ""}`, {
+        description: `${Math.round(result.seconds)} seconds, loops seamlessly.`,
+      });
+    } catch {
+      notify.error("Export failed on this browser.");
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  function surprise() {
+    update((current) => surpriseJam(current));
   }
 
   if (!isMusicEnabled) {
     return (
       <div className="music-studio grid min-h-dvh place-items-center px-6">
         <div className={cn(panelClass, "max-w-md")}>
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Music studio
-          </p>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight">
-            Backing tracks are off
-          </h1>
+          <Label>Jam Room</Label>
+          <h1 className="mt-2 text-2xl tracking-tight">The jam room is closed</h1>
           <p className="mt-3 text-sm text-muted-foreground">
             Set NEXT_PUBLIC_ENABLE_MUSIC=true to turn this page back on.
           </p>
@@ -280,18 +348,13 @@ function MusicStudioApp() {
     );
   }
 
-  const chords = resolveChords(params);
-  const progressionLabel =
-    progressionId === "custom"
-      ? "Custom mix"
-      : PROGRESSION_PRESETS[progressionId].shortLabel;
-  const progressionDetail =
-    progressionId === "custom"
-      ? `${chords.length} bars · edit below`
-      : PROGRESSION_PRESETS[progressionId].label;
+  const progression = jam.progressionId ? findProgression(jam.progressionId) : null;
 
   return (
-    <div className="music-studio relative min-h-dvh overflow-hidden text-foreground">
+    <div
+      className="music-studio relative overflow-x-clip text-foreground"
+      style={{ "--jam-hue": groove.hue } as CSSProperties}
+    >
       <div
         className="pointer-events-none absolute inset-0 dark:hidden"
         aria-hidden="true"
@@ -302,426 +365,275 @@ function MusicStudioApp() {
         aria-hidden="true"
         style={{ backgroundImage: cuttingMatGridDark, backgroundPosition: "right top" }}
       />
-      <div
-        className="pointer-events-none absolute inset-0 opacity-30 mix-blend-overlay dark:opacity-50"
-        aria-hidden="true"
-        style={{
-          backgroundImage: grainSvg,
-          backgroundRepeat: "repeat",
-          backgroundSize: "128px 128px",
-        }}
-      />
 
-      <header
-        className={cn(
-          pageShellClassName,
-          "relative flex items-center justify-between gap-3 pb-2 pt-[max(1rem,env(safe-area-inset-top))]",
-          tunerOpen ? "z-30" : "z-10",
-        )}
-      >
+      <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 pb-2 pt-[max(0.9rem,env(safe-area-inset-top))] sm:px-6">
         <Link
           href="/"
-          className="inline-flex h-10 items-center gap-2 rounded-full bg-foreground/[0.08] px-3 text-sm transition-colors hover:bg-foreground/[0.12]"
+          className="inline-flex h-10 items-center gap-2 rounded-full bg-foreground/[0.07] px-3 text-sm transition-colors hover:bg-foreground/[0.12]"
+          aria-label="Back to ashvinpraveen.com"
         >
           <span aria-hidden="true">↩</span>
           <span className="hidden sm:inline">Ashvin</span>
         </Link>
-        <div className="text-center">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-            ashvinpraveen.com/music
+        <div className="min-w-0 text-center">
+          <h1 className="font-display text-2xl leading-none tracking-tight sm:text-3xl">Jam Room</h1>
+          <p className="mt-1 hidden font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:block">
+            a pocket band to practise with
           </p>
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-            Backing Track
-          </h1>
         </div>
-        <div className="relative z-30 flex w-10 justify-end sm:w-[4.5rem]">
+        <div className="flex gap-1.5">
           <button
             type="button"
-            onClick={() => setTunerOpen((open) => !open)}
-            className={cn(
-              "inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors",
-              tunerOpen
-                ? "bg-foreground text-background"
-                : "bg-foreground/[0.08] text-muted-foreground hover:bg-foreground/[0.12] hover:text-foreground",
-            )}
-            aria-label={tunerOpen ? "Close tuner" : "Open tuner"}
-            aria-expanded={tunerOpen}
+            onClick={() => void share()}
+            className="grid h-10 w-10 place-items-center rounded-full bg-foreground/[0.07] text-muted-foreground transition-colors hover:bg-foreground/[0.12] hover:text-foreground"
+            aria-label="Share this jam"
           >
-            <AudioLines size={18} />
+            <Share2 size={17} />
           </button>
-          <MusicTunerPanel open={tunerOpen} onClose={() => setTunerOpen(false)} />
+          <button
+            type="button"
+            onClick={() => setTunerOpen(true)}
+            className="grid h-10 w-10 place-items-center rounded-full bg-foreground/[0.07] text-muted-foreground transition-colors hover:bg-foreground/[0.12] hover:text-foreground"
+            aria-label="Open tuner"
+          >
+            <AudioLines size={17} />
+          </button>
         </div>
       </header>
 
-      <main className={cn(pageShellClassName, "relative z-10 grid gap-4 pb-28 pt-4 lg:grid-cols-[1.1fr_0.9fr] lg:gap-5")}>
-        <section className="space-y-4">
+      <main className="relative z-10 mx-auto grid w-full max-w-6xl gap-4 px-4 pb-36 pt-2 sm:px-6 lg:grid-cols-[1.15fr_1fr] lg:gap-6">
+        <div className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:self-start">
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className={panelClass}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Tempo
-                </p>
-                <p className="mt-1 text-5xl font-bold tabular-nums leading-none tracking-tight">
-                  {tempoBpm}
-                  <span className="ml-2 text-base font-medium text-muted-foreground">
-                    BPM
-                  </span>
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={tap}
-                className="music-tap flex h-24 w-24 flex-col items-center justify-center rounded-full bg-foreground text-sm font-medium text-background transition active:scale-95"
-              >
-                Tap
-                {tapCount > 0 ? (
-                  <span className="mt-1 font-mono text-[10px] uppercase tracking-wider opacity-70">
-                    {tapCount} taps
-                  </span>
-                ) : null}
-              </button>
-            </div>
-            <input
-              type="range"
-              min={MIN_TEMPO_BPM}
-              max={MAX_TEMPO_BPM}
-              value={tempoBpm}
-              onChange={(event) => setTempo(Number(event.target.value))}
-              className="music-slider mt-5 w-full"
-              aria-label="Tempo BPM"
+            <Stage
+              jam={jam}
+              engine={engine}
+              onOpenKey={() => setKeyOpen(true)}
+              onOpenGroove={() => {
+                setTab("groove");
+                controlsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
             />
-            <div className="mt-4">
-              <BeatMeter transport={transport} onReset={resetBeat} />
-            </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
+          <motion.section
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.4, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
             className={panelClass}
+            aria-label="Chord chart"
           >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <MusicPicker
-                label="Key"
-                value={key}
-                open={keyPickerOpen}
-                onOpenChange={setKeyPickerOpen}
-                title="Choose key"
-                description="Keys stay fixed for the loop — change between takes."
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setKeyOpen(true)}
+                className="min-w-0 rounded-xl text-left transition-opacity hover:opacity-75"
               >
-                <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                  {KEYS.map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => {
-                        setKey(option);
-                        setKeyPickerOpen(false);
-                      }}
-                      className={cn(
-                        chipClass,
-                        key === option && chipActiveClass,
-                      )}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              </MusicPicker>
-
-              <MusicPicker
-                label="Chord progression"
-                value={progressionLabel}
-                detail={progressionDetail}
-                open={progressionPickerOpen}
-                onOpenChange={setProgressionPickerOpen}
-                title="Chord progression"
-                description="Pick a preset, or mix your own bar by bar."
+                <Label>Progression</Label>
+                <p className="truncate text-base font-semibold">
+                  {progression ? progression.name : "Your own changes"}
+                  <span className="ml-1.5 text-sm font-normal text-muted-foreground">
+                    · {jam.chords.length} bar{jam.chords.length > 1 ? "s" : ""}
+                  </span>
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={surprise}
+                className="group inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-foreground/[0.07] px-3.5 text-sm font-medium transition-colors hover:bg-foreground/[0.12]"
               >
-                <div className="space-y-2">
-                  {PRESET_IDS.map((id) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => selectProgression(id)}
-                      className={cn(
-                        "flex w-full flex-col rounded-2xl px-3 py-3 text-left transition-colors",
-                        progressionId === id
-                          ? choiceActiveClass
-                          : "bg-muted/50 hover:bg-accent/70",
-                      )}
-                    >
-                      <span className="text-sm font-semibold">
-                        {PROGRESSION_PRESETS[id].shortLabel}
-                      </span>
-                      <span
-                        className={cn(
-                          "mt-0.5 text-xs",
-                          progressionId === id
-                            ? "text-background/70"
-                            : "text-muted-foreground",
-                        )}
-                      >
-                        {PROGRESSION_PRESETS[id].label}
-                      </span>
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => selectProgression("custom")}
-                    className={cn(
-                      "flex w-full flex-col rounded-2xl px-3 py-3 text-left transition-colors",
-                      progressionId === "custom"
-                        ? choiceActiveClass
-                        : "bg-muted/50 hover:bg-accent/70",
-                    )}
-                  >
-                    <span className="text-sm font-semibold">Mix your own</span>
-                    <span
-                      className={cn(
-                        "mt-0.5 text-xs",
-                        progressionId === "custom"
-                          ? "text-background/70"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      Edit each bar after closing this panel
-                    </span>
-                  </button>
-                </div>
-              </MusicPicker>
+                <Dices size={16} className="transition-transform duration-300 group-hover:rotate-180 group-active:rotate-[360deg]" />
+                Surprise me
+              </button>
             </div>
+            <ChordChart jam={jam} engine={engine} onEdit={setEditing} onAdd={addBar} />
+          </motion.section>
+        </div>
 
-            {progressionId === "custom" ? (
-              <div
+        <motion.section
+          ref={controlsRef}
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+          className={cn(panelClass, "min-w-0 scroll-mt-4")}
+        >
+          <div className="mb-5 grid grid-cols-3 gap-1 rounded-full bg-background/70 p-1" role="tablist">
+            {TABS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === item.id}
+                onClick={() => setTab(item.id)}
                 className={cn(
-                  "mt-4 grid gap-2",
-                  chords.length > 8 ? "grid-cols-4 sm:grid-cols-6" : "grid-cols-4",
+                  "relative h-10 rounded-full text-sm font-medium transition-colors",
+                  tab === item.id ? "text-background" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {chords.map((chord, index) => (
-                  <label key={`${chord}-${index}`} className="block">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                      Bar {index + 1}
-                    </span>
-                    <select
-                      className="mt-1 w-full rounded-xl border border-border bg-background px-2 py-2 text-sm outline-none ring-foreground focus:ring-1"
-                      value={chord}
-                      onChange={(event) =>
-                        updateCustomChord(index, event.target.value as RomanNumeral)
-                      }
-                    >
-                      {ROMAN_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-3 font-mono text-xs text-muted-foreground">
-                {chords.join(" · ")}
-              </p>
-            )}
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-            className={panelClass}
-          >
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Pad voice
-            </p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {PAD_VOICE_IDS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setPadVoiceId(id)}
-                  className={cn(choiceClass, padVoiceId === id && choiceActiveClass)}
-                >
-                  <p className="text-sm font-semibold">{PAD_VOICES[id].label}</p>
-                  <p
-                    className={cn(
-                      "mt-1 text-xs",
-                      padVoiceId === id ? "text-background/70" : "text-muted-foreground",
-                    )}
-                  >
-                    {PAD_VOICES[id].description}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-            className={panelClass}
-          >
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Drum beat · 4/4
-            </p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {(Object.keys(DRUM_PATTERNS) as DrumPatternId[]).map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setDrumPatternId(id)}
-                  className={cn(choiceClass, drumPatternId === id && choiceActiveClass)}
-                >
-                  <p className="text-sm font-semibold">{DRUM_PATTERNS[id].label}</p>
-                  <p
-                    className={cn(
-                      "mt-1 text-xs",
-                      drumPatternId === id
-                        ? "text-background/70"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {DRUM_PATTERNS[id].description}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        </section>
-
-        <section className="space-y-4">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-            className={panelClass}
-          >
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Extra notes
-            </p>
-            <textarea
-              value={notes}
-              onChange={(event) => setNotes(event.target.value.slice(0, 240))}
-              placeholder="e.g. warm Rhodes, slight swing, lo-fi hush"
-              className="mt-3 min-h-24 w-full resize-y rounded-2xl border border-border bg-background/70 px-3 py-3 text-sm outline-none ring-foreground focus:ring-1"
-            />
-            <label className="mt-4 flex items-center justify-between gap-3 text-sm">
-              <span className="text-muted-foreground">Loop length</span>
-              <select
-                value={bars}
-                onChange={(event) => setBars(Number(event.target.value))}
-                className="rounded-xl border border-border bg-background px-3 py-2"
-              >
-                {[2, 4, 8, 12].map((value) => (
-                  <option key={value} value={value}>
-                    {value} bars
-                  </option>
-                ))}
-              </select>
-            </label>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className={cn(panelClass, "bg-[hsl(var(--selection)/0.22)]")}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Prompt preview
-                </p>
-                <p className="mt-2 text-lg font-semibold tracking-tight">{localLabel}</p>
-              </div>
-              <Sparkles className="mt-1 text-link" size={18} />
-            </div>
-            <p className="mt-3 text-sm leading-relaxed text-foreground/80">
-              {stylePrompt}
-            </p>
-            <div className="mt-5 flex flex-wrap items-start gap-2">
-              <button
-                type="button"
-                onClick={() => void toggleLocalLoop()}
-                className="inline-flex h-12 items-center gap-2 rounded-full bg-foreground px-5 text-sm font-medium text-background transition hover:opacity-90"
-              >
-                {isLoopPlaying ? <Pause size={16} /> : <Play size={16} />}
-                {isLoopPlaying ? "Stop local loop" : "Play local loop"}
+                {tab === item.id ? (
+                  <motion.span
+                    layoutId="jam-tab"
+                    className="absolute inset-0 rounded-full bg-foreground"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+                  />
+                ) : null}
+                <span className="relative">{item.label}</span>
               </button>
-              {isConvexConfigured && clientId ? (
-                <MusicPolishControls
-                  clientId={clientId}
-                  params={params}
-                  polishTrackId={polishTrackId}
-                  isPolishing={isPolishing}
-                  onPolishTrackId={setPolishTrackId}
-                  onPolishingChange={setIsPolishing}
-                  onAiAudioUrl={setAiAudioUrl}
-                  onLocalStop={stopLocalLoop}
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={handlePolishFallback}
-                  className="inline-flex h-12 items-center gap-2 rounded-full bg-foreground/[0.08] px-5 text-sm font-medium transition-colors hover:bg-foreground/[0.12]"
-                >
-                  <Sparkles size={16} />
-                  Polish with ElevenLabs
-                </button>
-              )}
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Polish asks ElevenLabs for a ~2 min professional instrumental take from your settings — not a clone of the local synth loop.
-            </p>
-          </motion.div>
+            ))}
+          </div>
 
-          {aiAudioUrl ? (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={panelClass}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Polished take · ~2 min
-                </p>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                  onClick={() => {
-                    setAiAudioUrl(null);
-                    setPolishTrackId(null);
-                  }}
-                >
-                  <RotateCcw size={12} />
-                  Clear
-                </button>
-              </div>
-              <audio
-                ref={aiAudioRef}
-                className="mt-3 w-full"
-                controls
-                autoPlay
-                src={aiAudioUrl}
+          <div role="tabpanel">
+            {tab === "groove" ? (
+              <GroovePanel
+                jam={jam}
+                engine={engine}
+                onStyle={(id) => update((current) => applyStyle(current, id))}
+                onVoice={(voice) => update({ voice })}
+                onDrums={(drums) => update({ drums, drumsEdited: true })}
+                onResetDrums={() =>
+                  update((current) => ({
+                    ...current,
+                    drums: { ...grooveFor(current.styleId).drums },
+                    drumsEdited: false,
+                  }))
+                }
               />
-            </motion.div>
-          ) : null}
-        </section>
+            ) : tab === "tempo" ? (
+              <TempoPanel
+                jam={jam}
+                tapCount={tapCount}
+                onTap={tap}
+                onTempo={setTempo}
+                onCountIn={(countIn) => update({ countIn })}
+                onClick={(click) => update({ click })}
+                onTrainer={(trainer) => update({ trainer })}
+              />
+            ) : (
+              <MixPanel
+                mix={jam.mix}
+                onMix={(mix) => update({ mix })}
+                exportChoices={exportChoices(plan)}
+                exporting={exporting}
+                onExport={(choice) => void exportWav(choice)}
+                studio={
+                  isConvexConfigured ? (
+                    <StudioTakes
+                      clientId={clientId}
+                      jam={jam}
+                      onNotes={(notes) => update({ notes })}
+                      onListen={() => engine?.stop()}
+                    />
+                  ) : null
+                }
+              />
+            )}
+          </div>
+        </motion.section>
       </main>
 
-      <div
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-20 h-24 bg-gradient-to-t from-[hsl(35,30%,90%)] to-transparent dark:from-[hsl(30,15%,12%)]"
-        aria-hidden="true"
+      <TransportBar
+        playing={playing}
+        tempo={jam.tempo}
+        tapCount={tapCount}
+        onToggle={togglePlay}
+        onTap={tap}
+        onTempo={setTempo}
       />
+
+      <ChordEditor
+        jam={jam}
+        index={editing}
+        onClose={() => setEditing(null)}
+        onChange={changeChords}
+        onAudition={(chord) => {
+          if (!engine || playing) return;
+          void engine.audition(chord, jam.tonic, jam.voice, buildPlan({ ...jam, chords: [chord] }).voicings[0]!);
+        }}
+      />
+      <KeySheet
+        open={keyOpen}
+        onOpenChange={setKeyOpen}
+        jam={jam}
+        onKey={changeKey}
+        onProgression={(id) => update((current) => applyProgression(current, id))}
+      />
+      <TunerSheet
+        open={tunerOpen}
+        onOpenChange={(open) => {
+          setTunerOpen(open);
+          if (!open) setDroneOn(false);
+        }}
+        tonic={jam.tonic}
+        mode={jam.mode}
+        droneOn={droneOn}
+        onDrone={setDroneOn}
+      />
+    </div>
+  );
+}
+
+function TransportBar({
+  playing,
+  tempo,
+  tapCount,
+  onToggle,
+  onTap,
+  onTempo,
+}: {
+  playing: boolean;
+  tempo: number;
+  tapCount: number;
+  onToggle: () => void;
+  onTap: () => void;
+  onTempo: (bpm: number) => void;
+}) {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="pointer-events-auto mx-auto flex max-w-md items-center gap-2 rounded-full border border-foreground/10 bg-background/80 p-2 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+        <button
+          type="button"
+          onClick={onTap}
+          className="h-12 shrink-0 rounded-full bg-foreground/[0.07] px-4 text-sm font-semibold transition-[background-color,transform] hover:bg-foreground/[0.12] active:scale-90"
+          aria-label="Tap tempo"
+        >
+          Tap
+          {tapCount > 1 ? <span className="ml-1 font-mono text-[10px] text-muted-foreground">×{tapCount}</span> : null}
+        </button>
+        <div className="flex min-w-0 flex-1 items-center justify-center">
+          <button
+            type="button"
+            onClick={() => onTempo(tempo - 1)}
+            className="grid h-10 w-9 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Slower"
+          >
+            <Minus size={16} />
+          </button>
+          <p className="w-14 text-center leading-none">
+            <span className="block font-display text-2xl tabular-nums tracking-tight">{tempo}</span>
+            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">bpm</span>
+          </p>
+          <button
+            type="button"
+            onClick={() => onTempo(tempo + 1)}
+            className="grid h-10 w-9 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Faster"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          data-playing={playing}
+          className="jam-play grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[hsl(var(--jam-hue)_75%_45%)] text-white transition-[transform,background-color] duration-300 active:scale-90"
+          aria-label={playing ? "Stop (space)" : "Play (space)"}
+        >
+          {playing ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" className="ml-0.5" />}
+        </button>
+      </div>
     </div>
   );
 }

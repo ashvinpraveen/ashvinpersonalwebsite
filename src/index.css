@@ -361,71 +361,149 @@ body[data-chat-layout="compact"] .md\:py-14 {
 }
 
 .music-studio {
-  --music-bg: hsl(var(--background));
-  --music-ink: hsl(var(--foreground));
-  --music-muted: hsl(var(--muted-foreground));
-  --music-panel: hsl(var(--muted) / 0.55);
-  --music-inset: hsl(var(--background) / 0.8);
-  --music-line: hsl(var(--border));
-  --music-accent: hsl(var(--link));
-  --music-accent-soft: hsl(var(--selection) / 0.42);
-  --music-accent-ink: hsl(var(--selection-foreground));
+  --jam-hue: 28;
+  --jam-drums: var(--gear-planet);
+  --jam-bass: var(--gear-ring);
+  --jam-keys: var(--gear-carrier);
+  --jam-click: var(--gear-sun);
   background: hsl(35 30% 90%);
   color: hsl(var(--foreground));
   min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .dark .music-studio {
-  background: hsl(30 15% 12%);
-  color: hsl(var(--foreground));
+  background: hsl(30 15% 10%);
 }
 
-.music-tap {
-  box-shadow: 0 0 0 0 hsl(var(--link) / 0.28);
-  animation: music-pulse 2.4s ease-out infinite;
+/* The stage is a little hardware display: dark in both themes, tinted by the groove. */
+.jam-stage {
+  background:
+    radial-gradient(120% 90% at 85% 0%, hsl(var(--jam-hue) 70% 45% / 0.35), transparent 60%),
+    radial-gradient(90% 80% at 0% 100%, hsl(calc(var(--jam-hue) + 40) 60% 40% / 0.18), transparent 65%),
+    hsl(30 12% 9%);
+  color: hsl(35 20% 94%);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.06),
+    0 18px 40px -18px hsl(var(--jam-hue) 50% 20% / 0.55);
+  transition: background 0.6s ease;
 }
 
-.music-slider {
+.jam-led {
+  background: hsl(0 0% 100% / 0.12);
+  transition: background-color 60ms linear, box-shadow 60ms linear, transform 60ms linear;
+}
+
+.jam-led[data-on="true"] {
+  background: hsl(var(--jam-hue) 95% 62%);
+  box-shadow: 0 0 16px hsl(var(--jam-hue) 95% 60% / 0.7);
+  transform: scaleY(1.25);
+}
+
+.jam-led[data-on="true"][data-downbeat="true"] {
+  background: hsl(38 100% 70%);
+  box-shadow: 0 0 22px hsl(38 100% 65% / 0.85);
+}
+
+.jam-range {
+  --range-color: hsl(var(--link));
+  --range-fill: 50%;
   appearance: none;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+
+.jam-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--range-color) var(--range-fill), hsl(var(--foreground) / 0.12) var(--range-fill));
+}
+
+.jam-range::-moz-range-track {
   height: 6px;
   border-radius: 999px;
   background: hsl(var(--foreground) / 0.12);
-  outline: none;
 }
 
-.music-slider::-webkit-slider-thumb {
+.jam-range::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--range-color);
+}
+
+.jam-range::-webkit-slider-thumb {
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
   border-radius: 999px;
-  background: hsl(var(--link));
-  border: 2px solid hsl(var(--background));
-  cursor: pointer;
+  background: hsl(var(--background));
+  border: 3px solid var(--range-color);
+  box-shadow: 0 2px 6px hsl(0 0% 0% / 0.18);
 }
 
-.music-slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
+.jam-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
   border-radius: 999px;
-  background: hsl(var(--link));
-  border: 2px solid hsl(var(--background));
-  cursor: pointer;
+  background: hsl(var(--background));
+  border: 3px solid var(--range-color);
 }
 
-@keyframes music-pulse {
+.jam-range:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+.jam-play {
+  box-shadow: 0 10px 24px -8px hsl(var(--jam-hue) 70% 35% / 0.6);
+}
+
+.jam-play[data-playing="true"] {
+  animation: jam-pulse 1.6s ease-out infinite;
+}
+
+.jam-scroll {
+  scrollbar-width: none;
+}
+
+.jam-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes jam-pulse {
   0% {
-    box-shadow: 0 0 0 0 hsl(var(--link) / 0.28);
+    box-shadow: 0 0 0 0 hsl(var(--jam-hue) 80% 55% / 0.45);
   }
   70% {
-    box-shadow: 0 0 0 18px hsl(var(--link) / 0);
+    box-shadow: 0 0 0 16px hsl(var(--jam-hue) 80% 55% / 0);
   }
   100% {
-    box-shadow: 0 0 0 0 hsl(var(--link) / 0);
+    box-shadow: 0 0 0 0 hsl(var(--jam-hue) 80% 55% / 0);
   }
+}
+
+@keyframes jam-eq {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.jam-eq > span {
+  transform-origin: bottom;
+  animation: jam-eq 0.9s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .music-tap {
+  .jam-play[data-playing="true"],
+  .jam-eq > span {
     animation: none;
   }
 }

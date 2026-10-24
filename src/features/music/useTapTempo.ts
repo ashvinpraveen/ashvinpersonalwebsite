@@ -1,55 +1,36 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import {
-  DEFAULT_TEMPO_BPM,
-  MAX_TEMPO_BPM,
-  MIN_TEMPO_BPM,
-  TAP_TEMPO_WINDOW_MS,
-} from "./config";
+import { clampTempo } from "../../../convex/lib/musicTheory";
 
-function averageInterval(taps: number[]) {
+const TAP_WINDOW_MS = 2500;
+
+/** Median of recent tap intervals → BPM (median shrugs off one sloppy tap). */
+export function tempoFromTaps(taps: number[]) {
   if (taps.length < 2) return null;
-  let total = 0;
-  for (let i = 1; i < taps.length; i += 1) {
-    total += taps[i]! - taps[i - 1]!;
-  }
-  return total / (taps.length - 1);
+  const intervals: number[] = [];
+  for (let i = 1; i < taps.length; i += 1) intervals.push(taps[i]! - taps[i - 1]!);
+  const sorted = [...intervals].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+  if (median <= 0) return null;
+  return clampTempo(60_000 / median);
 }
 
-export function useTapTempo(initialBpm = DEFAULT_TEMPO_BPM) {
-  const [tempoBpm, setTempoBpm] = useState(initialBpm);
+export function useTapTempo(onTempo: (bpm: number) => void) {
   const [tapCount, setTapCount] = useState(0);
-  const tapsRef = useRef<number[]>([]);
-
-  const clamp = useCallback((value: number) => {
-    return Math.round(Math.min(MAX_TEMPO_BPM, Math.max(MIN_TEMPO_BPM, value)));
-  }, []);
-
-  const setTempo = useCallback(
-    (value: number) => {
-      setTempoBpm(clamp(value));
-    },
-    [clamp],
-  );
+  const taps = useRef<number[]>([]);
 
   const tap = useCallback(() => {
     const now = performance.now();
-    const recent = tapsRef.current.filter((t) => now - t < TAP_TEMPO_WINDOW_MS);
+    const last = taps.current[taps.current.length - 1];
+    const recent = last != null && now - last > TAP_WINDOW_MS ? [] : taps.current.slice(-7);
     recent.push(now);
-    tapsRef.current = recent;
+    taps.current = recent;
     setTapCount(recent.length);
+    const bpm = tempoFromTaps(recent);
+    if (bpm) onTempo(bpm);
+  }, [onTempo]);
 
-    const interval = averageInterval(recent);
-    if (interval && interval > 0) {
-      setTempoBpm(clamp(60_000 / interval));
-    }
-  }, [clamp]);
-
-  const resetTaps = useCallback(() => {
-    tapsRef.current = [];
-    setTapCount(0);
-  }, []);
-
-  return { tempoBpm, setTempo, tap, tapCount, resetTaps };
+  return { tap, tapCount };
 }

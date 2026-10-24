@@ -237,6 +237,8 @@ export default defineSchema({
     stylePrompt: v.string(),
     tempoBpm: v.number(),
     key: v.string(),
+    mode: v.optional(v.string()),
+    styleId: v.optional(v.string()),
     progression: v.string(),
     drumPatternId: v.string(),
     bars: v.number(),
