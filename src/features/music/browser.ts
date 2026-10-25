@@ -1,5 +1,7 @@
-import { MUSIC_CLIENT_ID_KEY, MUSIC_DRAFT_KEY } from "./config";
-import type { BackingTrackParams } from "./types";
+import { sanitizeJam, type JamState } from "./jam";
+
+const CLIENT_ID_KEY = "ashvin-music-client-id-v1";
+const DRAFT_KEY = "ashvin-music-jam-v2";
 
 function randomId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -10,25 +12,32 @@ function randomId() {
 
 export function getOrCreateMusicClientId() {
   if (typeof window === "undefined") return "";
-  const existing = window.localStorage.getItem(MUSIC_CLIENT_ID_KEY);
-  if (existing) return existing;
-  const next = randomId();
-  window.localStorage.setItem(MUSIC_CLIENT_ID_KEY, next);
-  return next;
+  try {
+    const existing = window.localStorage.getItem(CLIENT_ID_KEY);
+    if (existing) return existing;
+    const next = randomId();
+    window.localStorage.setItem(CLIENT_ID_KEY, next);
+    return next;
+  } catch {
+    return randomId();
+  }
 }
 
-export function readMusicDraft(): Partial<BackingTrackParams> | null {
+export function readJamDraft(): JamState | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(MUSIC_DRAFT_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as Partial<BackingTrackParams>;
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    return raw ? sanitizeJam(JSON.parse(raw)) : null;
   } catch {
     return null;
   }
 }
 
-export function writeMusicDraft(params: BackingTrackParams) {
+export function writeJamDraft(jam: JamState) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(MUSIC_DRAFT_KEY, JSON.stringify(params));
+  try {
+    window.localStorage.setItem(DRAFT_KEY, JSON.stringify(jam));
+  } catch {
+    // Private mode or full storage: the jam just won't be remembered.
+  }
 }

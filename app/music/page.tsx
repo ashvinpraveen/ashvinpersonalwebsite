@@ -2,15 +2,15 @@ import type { Metadata } from "next";
 import MusicStudio from "@/screens/MusicStudio";
 import { createMetadata } from "@/lib/seo";
 
-const title = "Backing Track Studio — Ashvin Praveen";
+const title = "Jam Room — Backing Track Studio · Ashvin Praveen";
 const description =
-  "Dial tempo, key, chords, and drums, then polish a loopable instrumental backing track.";
+  "A pocket band to practise with: pick a key, chords, and groove, then jam over drums, bass, and keys. Tuner, speed trainer, WAV export, and AI studio takes.";
 
 export const metadata: Metadata = createMetadata({
   title,
   description,
   path: "/music",
-  imageAlt: "Backing Track Studio — tempo, chords, drums, and ElevenLabs polish",
+  imageAlt: "Jam Room — a backing track studio with chords, grooves, and a tuner",
 });
 
 export default function MusicPage() {
