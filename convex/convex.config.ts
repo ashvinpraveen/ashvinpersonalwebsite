@@ -16,6 +16,7 @@ const app = defineApp({
     ILMU_API_KEY: v.optional(v.string()),
     ILMU_MODEL: v.optional(v.string()),
     POSTCARD_ADMIN_SECRET: v.optional(v.string()),
+    QUADRATIC_APP_URL: v.optional(v.string()),
   },
 });
 

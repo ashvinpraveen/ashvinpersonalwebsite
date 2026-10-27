@@ -1,0 +1,336 @@
+/* Quadratic: a Linear-style theme scoped to .quadratic-root. */
+
+.quadratic-root {
+  --q-font: var(--font-q-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --q-mono: ui-monospace, "SF Mono", "Berkeley Mono", Menlo, monospace;
+
+  --q-bg: #090909;
+  --q-panel: #0f1011;
+  --q-raised: #141516;
+  --q-elevated: #1b1c1e;
+  --q-hover: rgba(255, 255, 255, 0.045);
+  --q-active: rgba(255, 255, 255, 0.075);
+  --q-selected: rgba(94, 106, 210, 0.16);
+  --q-border: #26272b;
+  --q-line: #1c1d20;
+  --q-text: #f7f8f8;
+  --q-text-2: #d0d6e0;
+  --q-text-3: #8a8f98;
+  --q-text-4: #62666d;
+  --q-accent: #5e6ad2;
+  --q-accent-hover: #6e79e0;
+  --q-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --q-focus: rgba(94, 106, 210, 0.5);
+
+  color-scheme: dark;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--q-bg);
+  color: var(--q-text);
+  font-family: var(--q-font);
+  font-size: 13px;
+  line-height: 1.5;
+  font-feature-settings: "cv01", "ss03";
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.003em;
+}
+
+.quadratic-root[data-q-theme="light"] {
+  --q-bg: #f4f4f5;
+  --q-panel: #fcfcfc;
+  --q-raised: #f4f4f5;
+  --q-elevated: #ffffff;
+  --q-hover: rgba(0, 0, 0, 0.04);
+  --q-active: rgba(0, 0, 0, 0.07);
+  --q-selected: rgba(94, 106, 210, 0.12);
+  --q-border: #e0e0e2;
+  --q-line: #ededef;
+  --q-text: #1b1b1d;
+  --q-text-2: #3c3d42;
+  --q-text-3: #6b6f76;
+  --q-text-4: #9b9ea4;
+  --q-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  color-scheme: light;
+}
+
+/* Base element rules use :where() so Tailwind utilities always win. */
+:where(.quadratic-root) *,
+:where(.quadratic-root) *::before,
+:where(.quadratic-root) *::after {
+  border-color: var(--q-border);
+}
+
+.quadratic-root ::selection {
+  background: rgba(94, 106, 210, 0.45);
+  color: inherit;
+}
+
+:where(.quadratic-root) button {
+  cursor: default;
+}
+
+:where(.quadratic-root) a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:where(.quadratic-root) :focus-visible {
+  outline: 2px solid var(--q-focus);
+  outline-offset: -1px;
+}
+
+:where(.quadratic-root) :where(input, textarea) {
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+:where(.quadratic-root) :where(input, textarea):focus-visible {
+  outline: none;
+}
+
+:where(.quadratic-root) :where(input, textarea)::placeholder {
+  color: var(--q-text-4);
+}
+
+.quadratic-root .q-scroll {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--q-border) transparent;
+}
+
+.quadratic-root .q-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.quadratic-root .q-scroll::-webkit-scrollbar-thumb {
+  background: var(--q-border);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+
+.q-kbd {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid var(--q-border);
+  background: var(--q-raised);
+  color: var(--q-text-3);
+  font-size: 11px;
+  font-family: var(--q-font);
+  line-height: 1;
+}
+
+/* Popovers and menus are portalled outside .quadratic-root, so they carry the class too. */
+.q-popover {
+  z-index: 60;
+  background: var(--q-elevated);
+  color: var(--q-text);
+  border-radius: 8px;
+  box-shadow: var(--q-shadow);
+  font-family: var(--q-font);
+  font-size: 13px;
+  overflow: hidden;
+  animation: q-pop 120ms ease-out;
+}
+
+@keyframes q-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.q-overlay {
+  animation: q-fade 120ms ease-out;
+}
+
+@keyframes q-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* cmdk lists */
+.q-cmd [cmdk-item] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  margin: 0 4px;
+  padding: 0 10px;
+  border-radius: 5px;
+  color: var(--q-text-2);
+  cursor: default;
+  user-select: none;
+}
+
+.q-cmd [cmdk-item][data-selected="true"] {
+  background: var(--q-active);
+  color: var(--q-text);
+}
+
+.q-cmd [cmdk-item][data-disabled="true"] {
+  opacity: 0.5;
+}
+
+.q-cmd [cmdk-group-heading] {
+  padding: 8px 14px 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--q-text-4);
+}
+
+.q-cmd [cmdk-empty] {
+  padding: 14px;
+  color: var(--q-text-3);
+}
+
+.q-cmd [cmdk-input] {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--q-text);
+}
+
+/* Rendered markdown */
+.q-prose {
+  color: var(--q-text-2);
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.q-prose > :first-child {
+  margin-top: 0;
+}
+
+.q-prose > :last-child {
+  margin-bottom: 0;
+}
+
+.q-prose p,
+.q-prose ul,
+.q-prose ol,
+.q-prose pre,
+.q-prose blockquote,
+.q-prose table {
+  margin: 0.55em 0;
+}
+
+.q-prose h1,
+.q-prose h2,
+.q-prose h3 {
+  color: var(--q-text);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.1em 0 0.4em;
+}
+
+.q-prose h1 {
+  font-size: 1.45em;
+}
+
+.q-prose h2 {
+  font-size: 1.25em;
+}
+
+.q-prose h3 {
+  font-size: 1.08em;
+}
+
+.q-prose ul {
+  list-style: disc;
+  padding-left: 1.4em;
+}
+
+.q-prose ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+}
+
+.q-prose li {
+  margin: 0.15em 0;
+}
+
+.q-prose li > input[type="checkbox"] {
+  margin-right: 6px;
+  accent-color: var(--q-accent);
+}
+
+.q-prose a {
+  color: var(--q-accent-hover);
+}
+
+.q-prose a:hover {
+  text-decoration: underline;
+}
+
+.q-prose strong {
+  color: var(--q-text);
+  font-weight: 600;
+}
+
+.q-prose code {
+  font-family: var(--q-mono);
+  font-size: 0.86em;
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+  background: var(--q-raised);
+  border: 1px solid var(--q-border);
+}
+
+.q-prose pre {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--q-raised);
+  border: 1px solid var(--q-border);
+  overflow-x: auto;
+}
+
+.q-prose pre code {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.q-prose blockquote {
+  padding-left: 12px;
+  border-left: 2px solid var(--q-border);
+  color: var(--q-text-3);
+}
+
+.q-prose hr {
+  border: 0;
+  border-top: 1px solid var(--q-border);
+  margin: 1.2em 0;
+}
+
+.q-prose table {
+  border-collapse: collapse;
+}
+
+.q-prose th,
+.q-prose td {
+  border: 1px solid var(--q-border);
+  padding: 4px 8px;
+}
+
+.q-prose .q-mention {
+  color: var(--q-accent-hover);
+  background: rgba(94, 106, 210, 0.14);
+  border-radius: 4px;
+  padding: 0 3px;
+}

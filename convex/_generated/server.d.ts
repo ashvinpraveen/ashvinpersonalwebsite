@@ -36,6 +36,7 @@ type Env = {
   readonly ILMU_API_KEY: string | undefined;
   readonly ILMU_MODEL: string | undefined;
   readonly POSTCARD_ADMIN_SECRET: string | undefined;
+  readonly QUADRATIC_APP_URL: string | undefined;
 };
 
 /**

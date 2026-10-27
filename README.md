@@ -18,6 +18,7 @@ The cool part: blog posts aren't stored in the code. They come from [Cleve](http
 - A blog powered by your Cleve writing (no markdown files to manage)
 - A writing activity heatmap (like GitHub's contribution graph, but for your writing)
 - A postcard wall where visitors can leave you notes
+- Quadratic, a Linear-style issue tracker with an MCP server for AI agents
 - SEO-friendly pages with Open Graph tags and JSON-LD
 - Dark mode support
 - Fully responsive on mobile, tablet, and desktop
@@ -328,6 +329,19 @@ The site includes a postcard feature where visitors can leave you notes at `/pos
 ```bash
 npx convex env set POSTCARD_ADMIN_SECRET your_secret_password
 ```
+
+### Quadratic (Linear-style issue tracker)
+
+`/quadratic` is a full issue tracker modeled on Linear, stored in your Convex deployment: workspaces, teams with custom workflows, issues with sub-issues and relations, projects with updates, cycles, saved views, an inbox, a ⌘K command menu, and Linear's keyboard shortcuts (press `?` in the app). Sign-up is passwordless: each browser keeps a random session token and Convex stores only its hash.
+
+It also ships an MCP server, so Claude, Cursor and other agents can read and update issues. Create a key in **Settings → API & MCP**, then:
+
+```bash
+claude mcp add --transport http quadratic https://your-site.com/quadratic/mcp \
+  --header "Authorization: Bearer qk_..."
+```
+
+The Next.js route `/quadratic/mcp` proxies to the Convex HTTP action in `convex/quadratic/mcp.ts`; tool names match Linear's MCP server. Issue links returned by the tools use the requesting site's origin, or `QUADRATIC_APP_URL` (`npx convex env set QUADRATIC_APP_URL https://your-site.com`) when called on the Convex URL directly.
 
 ---
 

@@ -1,6 +1,7 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
+import { handleMcp } from "./quadratic/mcp";
 
 const http = httpRouter();
 
@@ -434,5 +435,10 @@ http.route({
     }
   }),
 });
+
+// Quadratic MCP server (Streamable HTTP). Also proxied at /quadratic/mcp on the site.
+for (const method of ["POST", "GET", "DELETE", "OPTIONS"] as const) {
+  http.route({ path: "/quadratic/mcp", method, handler: handleMcp });
+}
 
 export default http;

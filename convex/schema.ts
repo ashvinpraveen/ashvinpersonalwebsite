@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { quadraticTables } from "./quadratic/tables";
 
 export default defineSchema({
   articleViews: defineTable({
@@ -264,4 +265,5 @@ export default defineSchema({
     count: v.number(),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
+  ...quadraticTables,
 });
