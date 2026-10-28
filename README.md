@@ -365,6 +365,8 @@ npx convex deploy
 
 This pushes your Convex functions to the cloud. Copy the deployment URLs it gives you — you'll need them for Vercel.
 
+**Optional: deploy Convex automatically.** In the Convex dashboard, open your production deployment's **Settings → Deploy key**, generate a key, and add it to Vercel as `CONVEX_DEPLOY_KEY` (Production environment only). From then on, every production build on Vercel runs `npx convex deploy` before building the site (see `vercel.json`), so backend and frontend ship together. Without the key, Vercel just builds the site as before.
+
 ### Step 2: Push Your Code to GitHub
 
 If you forked the repo, your changes need to be pushed to your fork:
