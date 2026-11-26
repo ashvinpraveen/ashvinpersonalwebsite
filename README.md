@@ -156,7 +156,7 @@ Open your browser and go to:
 http://localhost:8080
 ```
 
-You should see the website! It'll look like Ashvin's site right now — that's expected. The writing section won't work yet (we'll set that up next), but the rest of the site should load fine.
+You should see the website! It'll look like Ashvin's site right now, blog posts included. That's expected: you'll point the blog at your own Cleve posts next.
 
 To stop the server, press `Ctrl + C` in your terminal.
 
@@ -188,59 +188,54 @@ If `BLOB_READ_WRITE_TOKEN` is missing, or the download fails and no local copies
 
 ---
 
-## Set Up the Blog (Cleve + Convex)
+## Set Up the Blog (Cleve)
 
-The blog system has two parts:
-
-1. **Cleve** — where you write and publish posts
-2. **Convex** — a backend that connects your Cleve writing to your website
+Blog posts come from [Cleve](https://cleve.ai), where you write. Publish a doc there and your website shows it. The site reads your posts from Cleve's public posts API, so the blog needs no API key and no backend of its own.
 
 Here's how it flows:
 
 ```
-You write in Cleve
-  -> Cleve hosts your public writing profile
-  -> Convex fetches your posts via a small proxy
-  -> Your website displays them
+You publish a doc in Cleve
+  -> It appears on your public Cleve page (cleve.ai/@your_handle)
+  -> Your website reads it from Cleve's posts API
+  -> Your website displays it
 ```
 
 ### Step 1: Create a Cleve Account
 
 Go to [cleve.ai](https://cleve.ai) and create a free account.
 
-Write some notes and publish the ones you want on your website. Your public profile will be at:
+Write some docs and publish the ones you want on your website. Your public page will be at:
 
 ```
-https://app.cleve.ai/user/YOUR_CLEVE_USERNAME
+https://cleve.ai/@YOUR_CLEVE_HANDLE
 ```
 
-### Step 2: Set Up Convex
+### Step 2: Add Your Cleve Handle
 
-Convex is the backend that fetches your Cleve posts. It's free for personal use.
+Create a file called `.env.local` in the root of your project (the same folder as `package.json`) and add your handle:
 
-First, install the Convex CLI if you don't have it:
+```bash
+NEXT_PUBLIC_CLEVE_HANDLE=your_cleve_handle
+```
+
+For example, if your Cleve page is `https://cleve.ai/@janedoe`, use `janedoe`.
+
+That's all the blog needs. Run `npm run dev`, open `http://localhost:8080/blog`, and your posts are there.
+
+### Step 3: Set Up Convex (Optional)
+
+[Convex](https://convex.dev) is the backend for the site's other features: post view counts, AI chat, postcards, run club and admin. It's free for personal use. Skip this step if you don't need those yet.
+
+Run:
 
 ```bash
 npx convex dev
 ```
 
-The first time you run this, it'll walk you through creating a Convex account and project. Follow the prompts — it takes about 2 minutes.
+The first time you run this, it'll walk you through creating a Convex account and project. Follow the prompts. It takes about 2 minutes.
 
-Once you have a Convex deployment, set your Cleve username:
-
-```bash
-npx convex env set CLEVE_PUBLIC_PROFILE_SLUG your_cleve_username
-```
-
-For example, if your Cleve profile is `https://app.cleve.ai/user/janedoe`:
-
-```bash
-npx convex env set CLEVE_PUBLIC_PROFILE_SLUG janedoe
-```
-
-### Step 3: Add Environment Variables
-
-Create a file called `.env.local` in the root of your project (the same folder as `package.json`):
+Then add your Convex URLs to `.env.local`:
 
 ```bash
 NEXT_PUBLIC_CONVEX_URL=your_convex_cloud_url
@@ -249,7 +244,7 @@ NEXT_PUBLIC_CONVEX_SITE_URL=your_convex_site_url
 
 You can find these URLs in your Convex dashboard after setting up your project. The site URL usually looks like `https://your-deployment.convex.site`.
 
-You can also skip `.env.local` at first. The site will still start, but service-backed features such as writing data, AI chat, postcards, admin, and PostHog will be empty, hidden, or show a not-configured state until their environment variables are added.
+You can also skip the Convex variables at first. The site will still start, but service-backed features such as view counts, AI chat, postcards, admin, and PostHog will be empty, hidden, or show a not-configured state until their environment variables are added. Until `NEXT_PUBLIC_CLEVE_HANDLE` is set, the blog shows Ashvin's posts.
 
 To intentionally hide optional features in a fork, add any of these:
 
@@ -276,7 +271,7 @@ npm run dev
 npx convex dev
 ```
 
-Now go to `http://localhost:8080` again. The writing section should show your Cleve posts!
+You only need Terminal 2 if you set up Convex. Now go to `http://localhost:8080` again. The writing section should show your Cleve posts!
 
 ---
 
@@ -335,15 +330,9 @@ npx convex env set POSTCARD_ADMIN_SECRET your_secret_password
 
 Once your site looks good locally, let's put it on the internet. Everything below is free.
 
-### Step 1: Deploy Convex
+### Step 1: Deploy Convex (If You Use It)
 
-Make sure your Cleve username is set:
-
-```bash
-npx convex env set CLEVE_PUBLIC_PROFILE_SLUG your_cleve_username
-```
-
-Then deploy:
+Skip this if you didn't set up Convex. Otherwise, deploy it:
 
 ```bash
 npx convex deploy
@@ -372,8 +361,9 @@ If this is your first push, Git might ask you to log in. Follow the prompts.
 3. Import your forked repository
 4. Vercel will auto-detect it's a Next.js project — the defaults are fine
 5. Before deploying, add your environment variables:
-   - `NEXT_PUBLIC_CONVEX_URL` — your Convex cloud URL
-   - `NEXT_PUBLIC_CONVEX_SITE_URL` — your Convex site URL (the one ending in `.convex.site`)
+   - `NEXT_PUBLIC_CLEVE_HANDLE`: your Cleve handle, for the blog
+   - `NEXT_PUBLIC_CONVEX_URL`: your Convex cloud URL, if you use Convex
+   - `NEXT_PUBLIC_CONVEX_SITE_URL`: your Convex site URL (the one ending in `.convex.site`), if you use Convex
    - Optional feature flags such as `NEXT_PUBLIC_ENABLE_BLOG=false` if you want to ship without a service-backed feature
 6. Click **Deploy**
 
@@ -390,7 +380,7 @@ For the curious, here's what powers everything:
 | Framework | Next.js + React | Builds the pages and handles routing |
 | Styling | Tailwind CSS + shadcn/ui | Makes everything look good without writing much CSS |
 | Data fetching | TanStack Query | Fetches and caches blog posts efficiently |
-| Backend | Convex | Runs the proxy that connects to Cleve |
+| Backend | Convex | View counts, AI chat, postcards and admin |
 | Blog content | Cleve | Where you write and publish posts |
 | Analytics | Vercel Analytics | Tracks page views (privacy-friendly) |
 | Hosting | Vercel | Serves the site to visitors |
@@ -412,7 +402,7 @@ ashvinpersonalwebsite/
 |   |-- sitemap.ts                # Auto-generated sitemap for SEO
 |
 |-- convex/
-|   |-- http.ts                   # The Cleve proxy (fetches your posts)
+|   |-- http.ts                   # HTTP routes (post view counts)
 |
 |-- public/                       # Images, icons, and static files
 |
@@ -427,7 +417,7 @@ ashvinpersonalwebsite/
 |   |   |-- ...                   # Other sections
 |   |
 |   |-- lib/
-|   |   |-- cleve.ts              # Talks to the Convex proxy
+|   |   |-- cleve.ts              # Reads your posts from Cleve's posts API
 |   |   |-- layout.ts             # Shared layout settings
 |   |   |-- seo.ts                # SEO metadata helpers
 |   |
@@ -450,7 +440,7 @@ ashvinpersonalwebsite/
 | `npm run build` | Build for production (Vercel does this for you) |
 | `npm run lint` | Check code for common mistakes |
 | `npm run test` | Run automated tests |
-| `npx convex dev` | Run Convex locally (needed for the blog to work) |
+| `npx convex dev` | Run Convex locally (needed for view counts, AI chat and postcards) |
 | `npx convex deploy` | Deploy Convex to the cloud |
 
 ---
@@ -459,45 +449,25 @@ ashvinpersonalwebsite/
 
 ### "I see the site but the writing section is empty"
 
-You need both environment variables in `.env.local`:
+Check that `.env.local` has your Cleve handle, then restart `npm run dev`:
 
 ```bash
-NEXT_PUBLIC_CONVEX_URL=your_convex_url
-NEXT_PUBLIC_CONVEX_SITE_URL=your_convex_site_url
+NEXT_PUBLIC_CLEVE_HANDLE=your_cleve_handle
 ```
 
-And you need Convex running (`npx convex dev` in a second terminal).
+Also make sure `NEXT_PUBLIC_ENABLE_BLOG` isn't set to `false`.
 
 ### "It still shows Ashvin's blog posts"
 
-Set your own Cleve username in Convex:
-
-```bash
-npx convex env set CLEVE_PUBLIC_PROFILE_SLUG your_cleve_username
-```
-
-Then restart Convex:
-
-```bash
-npx convex dev --once
-```
+The blog shows Ashvin's posts until you set your own handle. Add `NEXT_PUBLIC_CLEVE_HANDLE=your_cleve_handle` to `.env.local` (and to Vercel's environment variables), then restart `npm run dev` or redeploy.
 
 ### "My Cleve posts don't show up"
 
-Make sure your notes are **published** on your public Cleve profile. Private notes won't appear on your website.
+Make sure your docs are **published** and appear on `https://cleve.ai/@your_cleve_handle`. Private docs won't appear on your website. A new post or an edit can take up to five minutes to show, because Cleve caches the posts API.
 
 ### "The site works locally but the blog breaks on Vercel"
 
-Double-check that Vercel has both environment variables set:
-
-- `NEXT_PUBLIC_CONVEX_URL`
-- `NEXT_PUBLIC_CONVEX_SITE_URL`
-
-And that Convex has your Cleve slug:
-
-```bash
-npx convex env set CLEVE_PUBLIC_PROFILE_SLUG your_cleve_username
-```
+Double-check that Vercel has `NEXT_PUBLIC_CLEVE_HANDLE` set, then redeploy. Variables that start with `NEXT_PUBLIC_` are read when the site is built.
 
 ### "npm install gives errors"
 
@@ -522,20 +492,20 @@ GitHub no longer accepts passwords for Git operations. You'll need to either:
 You don't need to understand this to use the template, but if you're curious:
 
 ```
-You publish a note on Cleve
-  -> Your Cleve public profile updates (app.cleve.ai/user/you)
-  -> Your website's Convex proxy fetches from Cleve's API
+You publish a doc on Cleve
+  -> Your public Cleve page updates (cleve.ai/@you)
+  -> Your website reads it from Cleve's public posts API
   -> The frontend (WritingSection, Blog, ActivityMap) displays it
 ```
 
-The Convex proxy lives in `convex/http.ts`. It exposes two endpoints:
+The API needs no key. The site uses two of its routes:
 
 ```
-GET /cleve-proxy?resource=notes        # All published notes
-GET /cleve-proxy?resource=note&id=123  # A single note by ID
+GET https://app.cleve.ai/api/v1/sites/{handle}/posts            # Published posts, newest first
+GET https://app.cleve.ai/api/v1/sites/{handle}/posts/{postId}   # One post, with its body as Markdown
 ```
 
-The frontend client in `src/lib/cleve.ts` calls these endpoints and feeds the data into React components. TanStack Query handles caching so the site feels fast.
+There's also an RSS feed at `https://app.cleve.ai/api/v1/sites/{handle}/rss`. The client in `src/lib/cleve.ts` calls these routes and feeds the data into React components. TanStack Query handles caching so the site feels fast. The full API reference is at [docs.cleve.ai/developers/api](https://docs.cleve.ai/developers/api#published-posts).
 
 When you publish a new note on Cleve:
 - The homepage writing section updates

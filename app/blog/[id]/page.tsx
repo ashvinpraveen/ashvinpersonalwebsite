@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
 
   return createMetadata({
     title: `${note.title || "Untitled"} — Ashvin Praveen`,
-    description: excerpt(note.content),
+    description: excerpt(note.excerpt),
     path: `/blog/${id}`,
     type: "article",
   });
@@ -42,7 +42,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         "@context": "https://schema.org",
         "@type": "BlogPosting",
         headline: note.title || "Untitled",
-        description: excerpt(note.content),
+        description: excerpt(note.excerpt),
         url: absoluteUrl(`/blog/${id}`),
         image: absoluteUrl("/og-image.png"),
         datePublished: note.createdAt ? new Date(note.createdAt).toISOString() : undefined,
